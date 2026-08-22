@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏰</text></svg>">
+<title>Dubrovnik — The Walled City</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0a1420; }
+  #app { position: fixed; inset: 0; }
+  canvas { display: block; }
+
+  /* ---- タイトル ---- */
+  /* ---- 表題 — 画面ではなく「最初の一瞬」。背景は生きた街そのもの ---- */
+  #title {
+    position: fixed; inset: 0; z-index: 30;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; color: #ece2cd;
+    /* 幕(スクリム)ではなく、映画の頭で画を少し抑えているだけ。入城で開く。 */
+    background: linear-gradient(to bottom,
+      rgba(6,11,17,.46) 0%, rgba(6,11,17,.14) 34%,
+      rgba(6,11,17,.16) 62%, rgba(6,11,17,.40) 100%);
+    transition: opacity 2.2s cubic-bezier(.4,0,.2,1), background-color 2.2s linear;
+    font-family: "Trajan Pro 3", "Trajan Pro", Trajan, Cinzel,
+                 "Hoefler Text", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  }
+  #title.hidden { opacity: 0; pointer-events: none; }
+  /* 入城の 2.6 秒。型は溶け、抑えていた画が開く。暗転はしない。 */
+  #title.entering { opacity: 0; background: rgba(6,11,17,0); transition: opacity 2.0s ease, background 2.2s ease; }
+
+  /* 表題 — ローマの碑文体。字は「置く」のではなく「彫る」。 */
+  #ttlMain {
+    margin: 0; font-weight: 400; font-size: clamp(34px, 6.4vw, 84px); line-height: 1.06;
+    letter-spacing: .30em; margin-right: -.30em;      /* 字送りの分だけ光学的に中央へ戻す */
+    color: #ece2cd;                                    /* 石灰岩の生成り。純白にはしない */
+    /* 上に陰・下に照り返し = 石を彫った溝。落ち影でも面取りでもない。 */
+    text-shadow: 0 -1px 0 rgba(24,18,10,.50), 0 1px 0 rgba(255,247,229,.20),
+                 0 0 30px rgba(8,13,20,.52);
+    animation: ttlTrack 2.6s cubic-bezier(.22,.61,.36,1) both;
+  }
+  #ttlMain span { display: inline-block; opacity: 0; animation: ttlCut 1.7s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes ttlCut { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes ttlTrack { from { letter-spacing: .52em; margin-right: -.52em; } }
+
+  #ttlSub {
+    margin-top: 16px; font-size: clamp(10.5px, 1.32vw, 15px);
+    letter-spacing: .58em; margin-right: -.58em; opacity: .62;
+    text-shadow: 0 -1px 0 rgba(24,18,10,.42), 0 1px 0 rgba(255,247,229,.14),
+                 0 0 22px rgba(8,13,20,.5);
+    animation: ttlCut 2.0s 1.15s cubic-bezier(.22,.61,.36,1) both;
+  }
+
+  /* 誘い — 広告文ではない。抑えたセリフ体で、行間を十分に。 */
+  #title .lead {
+    margin: 46px 0 0; font-family: "Hoefler Text", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: clamp(12.5px, 1.36vw, 16.5px); line-height: 2.25; letter-spacing: .045em;
+    /* 誘いの行は、朝日が舐める明るい帯の上を横切る。大気を少し濃くして
+       文字の縁を立てる — 落ち影ではなく「石の街の空気」として。 */
+    opacity: .82; text-shadow: 0 0 7px rgba(8,13,20,.62), 0 0 22px rgba(8,13,20,.66);
+    animation: ttlCut 2.2s 1.9s ease both;
+  }
+
+  /* 扉はひとつ。塗った矩形ではなく、細い罫の下にある言葉。 */
+  #btnStart {
+    margin-top: 44px; font-family: inherit; font-weight: 400;
+    font-size: clamp(11.5px, 1.32vw, 15px); letter-spacing: .34em; margin-right: -.34em;
+    color: rgba(236,226,205,.74); background: none; border: 0; border-radius: 0;
+    border-bottom: 1px solid rgba(236,226,205,.28);
+    padding: 12px 6px 9px; cursor: pointer;
+    transition: color 1.1s ease, border-color 1.1s ease;
+    animation: ttlCut 2.2s 2.5s ease both;
+  }
+  #btnStart:hover, #btnStart:focus-visible { color: #fbeed3; border-color: rgba(255,238,205,.66); outline: none; }
+  #btnStart:disabled { opacity: .34; cursor: default; }
+  #btnStart:disabled:hover { color: rgba(236,226,205,.74); border-color: rgba(236,226,205,.28); }
+
+  /* 副。下辺に小さく暗く、二つだけ。 */
+  #titleFoot {
+    position: absolute; left: 0; right: 0; bottom: 22px;
+    display: flex; gap: 34px; justify-content: center;
+    animation: ttlCut 2.4s 3.1s ease both;
+  }
+  #titleFoot button {
+    font-family: inherit; font-size: 10.5px; letter-spacing: .24em; margin-right: -.24em;
+    color: rgba(236,226,205,.32); background: none; border: 0; padding: 4px 2px; cursor: pointer;
+    transition: color .9s ease;
+  }
+  #titleFoot button:hover { color: rgba(236,226,205,.66); }
+  /* 操作の札は表題の外に置く。入城したあとも H で開けるため
+     (表題の中に入れていたので、街に入ると二度と見られなかった)。 */
+  #keysCard {
+    position: fixed; z-index: 40; left: 50%; bottom: 62px; transform: translateX(-50%);
+    max-width: 560px; opacity: 0; pointer-events: none; transition: opacity .8s ease;
+    font-family: "Hoefler Text", Palatino, Georgia, serif;
+    font-size: 11.5px; line-height: 2.05; letter-spacing: .06em;
+    color: rgba(236,226,205,.55); text-shadow: 0 0 16px rgba(8,13,20,.7);
+  }
+  #keysCard.show { opacity: 1; }
+
+  #bootErr {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 99; display: none;
+    background: #7a1f1f; color: #ffe8e0; font: 12px/1.6 ui-monospace, monospace;
+    padding: 8px 14px; white-space: pre-wrap;
+  }
+  #title .keys { margin-top: 26px; font-size: 12px; letter-spacing: .08em; opacity: .5; line-height: 2; }
+
+  /* ---- HUD ---- */
+  /* 表題のあいだ、計器は一つも出さない。扉はひとつ、という約束のため。
+     入城の降下と一緒に、ゆっくり現れる。 */
+  body.titling #hud { opacity: 0; pointer-events: none; }
+  #hud { transition: opacity 2.4s ease; }
+  #hud { position: fixed; inset: 0; z-index: 20; pointer-events: none;
+         font-family: "Hiragino Mincho ProN", Georgia, serif; color: #efe6d2; }
+  #hint {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    font-size: 12.5px; letter-spacing: .12em; padding: 7px 16px; border-radius: 3px;
+    background: rgba(7,14,22,.45); opacity: 0; transition: opacity .9s; white-space: nowrap;
+  }
+  #hint.show { opacity: .92; }
+
+  /* 時刻ウィジェット(太陽の弧) */
+  #timeCtl {
+    position: absolute; top: 14px; right: 16px; width: 168px; pointer-events: auto;
+    background: rgba(7,14,22,.42); border: 1px solid rgba(239,230,210,.16);
+    border-radius: 4px; padding: 8px 10px 7px; cursor: pointer; user-select: none;
+  }
+  #timeCtl canvas { display: block; width: 100%; height: 46px; }
+  #timeLabel { text-align: center; font-size: 11.5px; letter-spacing: .22em; opacity: .8; margin-top: 2px; }
+
+  /* デバッグ読み出し(ドローコール等) */
+  /* 計器の読み出しは既定で伏せる。街を歩くのに数字は要らない。F3 で出る。 */
+  #debug {
+    display: none;
+    position: absolute; left: 10px; bottom: 10px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; line-height: 1.55;
+    color: rgba(239,230,210,.62); background: rgba(7,14,22,.4);
+    padding: 6px 9px; border-radius: 3px; white-space: pre;
+  }
+
+  /* 手描き地図 */
+  #map {
+    position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+    background: rgba(6,10,16,.55); pointer-events: auto;
+  }
+  #map.show { display: flex; }
+  #map canvas {
+    width: min(78vmin, 900px); height: min(78vmin, 900px);
+    box-shadow: 0 24px 70px rgba(0,0,0,.55); border-radius: 2px;
+  }
+
+  /* 眺めの場所(V)。数字を覚えなくていいための札。
+     地図と違って画面は覆わない — 視界の隅に置く。 */
+  #spots {
+    position: absolute; top: 14px; left: 16px; display: none; pointer-events: auto;
+    background: rgba(7,14,22,.66); border: 1px solid rgba(239,230,210,.20);
+    border-radius: 4px; padding: 9px 12px 10px; min-width: 274px; user-select: none;
+    backdrop-filter: blur(2px);
+  }
+  #spots.show { display: block; }
+  #spots h4 {
+    margin: 0 0 6px; font-size: 10.5px; letter-spacing: .22em; font-weight: 400;
+    opacity: .70; text-transform: none;
+  }
+  #spots .row {
+    display: flex; align-items: baseline; gap: 9px; padding: 3px 4px; border-radius: 3px;
+    font-size: 12px; letter-spacing: .04em; cursor: pointer;
+  }
+  #spots .row:hover { background: rgba(239,230,210,.10); }
+  #spots .k {
+    flex: 0 0 15px; text-align: center; opacity: .55; font-size: 11px;
+    border: 1px solid rgba(239,230,210,.22); border-radius: 2px; line-height: 15px;
+  }
+  #spots .n { flex: 1 1 auto; }
+  #spots .v { flex: 0 0 auto; opacity: .62; font-size: 10.5px; letter-spacing: .06em; }
+  #spots .sep { height: 1px; background: rgba(239,230,210,.14); margin: 6px 2px; }
+
+  #fade { position: fixed; inset: 0; z-index: 25; background: #000; opacity: 0;
+          pointer-events: none; transition: opacity 1.1s ease; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="bootErr"></div>
+<script>
+  (function () {
+    const bar = () => document.getElementById('bootErr');
+    function show(msg) {
+      const b = bar(); if (!b) return;
+      b.style.display = 'block';
+      b.textContent = '読み込みに失敗しました — ハードリロード(Cmd+Shift+R)を試してください\n' + msg;
+    }
+    addEventListener('error', e => { if (e.message) show(e.message + (e.filename ? '  @' + e.filename.split('/').pop() + ':' + e.lineno : '')); }, true);
+    addEventListener('unhandledrejection', e => show(String(e.reason).slice(0, 300)));
+  })();
+</script>
+
+<div id="title">
+  <h1 id="ttlMain" aria-label="DUBROVNIK"></h1>
+  <div id="ttlSub">— THE WALLED CITY —</div>
+  <p class="lead">
+    Lose yourself in the alleys. Catch your breath on the walls.<br>
+    Only the bells and the light off the sea to guide you.
+  </p>
+  <button id="btnStart" disabled>ENTER THE CITY</button>
+  <div id="titleFoot">
+    <button id="btnSound">SOUND ON</button>
+    <button id="btnKeys">CONTROLS</button>
+  </div>
+
+</div>
+<div id="keysCard">
+    W A S D walk &nbsp;·&nbsp; ← → or Q E turn &nbsp;·&nbsp; mouse look &nbsp;·&nbsp; Shift quicken<br>
+    T G or the arc at the top right set the hour &nbsp;·&nbsp; M the chart &nbsp;·&nbsp; V the viewpoints<br>
+    1–9 0 travel to a viewpoint &nbsp;·&nbsp; Shift 1–4 let the city walk you &nbsp;·&nbsp; Esc release the mouse<br>
+    I &nbsp;the instruments (draw calls, position) &nbsp;·&nbsp; H &nbsp;show this card again
+  </div>
+
+<div id="hud">
+  <div id="timeCtl"><canvas id="timeArc" width="296" height="92"></canvas><div id="timeLabel">--:--</div></div>
+  <div id="debug"></div>
+  <div id="map"><canvas id="mapCanvas" width="2600" height="2600"></canvas></div>
+  <div id="spots"></div>
+  <div id="hint"></div>
+</div>
+<div id="fade"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./node_modules/three/build/three.module.js",
+    "three/addons/": "./node_modules/three/examples/jsm/"
+  }
+}
+</script>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>

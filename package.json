@@ -1,0 +1,17 @@
+{
+  "name": "dubrovnik-walled-city",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "puppeteer-core": "25.5.0",
+    "three": "0.185.1"
+  }
+}

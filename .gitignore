@@ -1,0 +1,15 @@
+# 依存関係(package-lock.json から復元できる)
+node_modules/
+
+# 検証の書き出し。418 枚 639MB あり、すべて再生成できる:
+#   node tools/shot.mjs "$(grep '^s01' tools/shots.txt)" …
+#   node tools/culltest.mjs / titletest.mjs --png
+# 定点の定義そのものは tools/shots.txt にある(こちらは追跡する)。
+shots/
+
+# 構造検査の JSON 出力(実行のたびに書き変わる)
+shots/structure.json
+
+# 機械固有のもの
+.DS_Store
+.claude/settings.local.json
