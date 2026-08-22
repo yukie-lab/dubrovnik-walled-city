@@ -338,6 +338,27 @@ masonry: true, groundContact: true })` のように、作った側が宣言し�
 要り、32m の岩の上には walkable な勾配で収まらない。要塞を刳り抜いて内階段を
 通す仕事になる。得られる眺め(正面の海 ~51%)は砲座より悪いので、そこで止めた。
 
+### 静的ホストに上げたら画面が黒いまま — importmap が node_modules を指していた
+
+Vercel に上げたら黒画面のまま、と報告。index.html の importmap が
+`./node_modules/three/…` を指していて、node_modules は追跡していないので
+404。three が読めず、モジュールが 1 行も走らない。
+
+**ローカルで動くことは、配れることの証明にならない。** `node_modules` は
+「開発機にたまたま在るもの」で、リポジトリの一部ではない。
+必要な 13 本(three.module / three.core / postprocessing 6 本 /
+shaders 3 本 / BufferGeometryUtils)を `vendor/three/` に取り込み、
+importmap をそこへ向けた。相対配置を node_modules と同じにしてあるので、
+addons 内の相対 import(Pass.js / CopyShader.js)もそのまま解決される。
+
+依存の集合は **目で数えず import グラフを辿って** 出した。src/*.js の
+`from 'three…'` を起点に、相対 import を再帰で追う。13 本ちょうど。
+
+**検証は「配られる物」でやる。** `git ls-files | tar` で追跡ファイルだけを
+別ディレクトリに展開し、そこを静的サーバで配って puppeteer で読み込む。
+Vercel が受け取るのと同じ集合。__READY 到達・例外なし・404 なし・
+draw calls 177 まで確認してから push した。
+
 ### 海を深くする — 動かしていたつもりの数字が、毎フレーム消されていた
 
 「沖をもっと深い青に、浅場はそのまま」という依頼。消散係数 σ の赤と緑を
