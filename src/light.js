@@ -259,5 +259,6 @@ export function makeLighting(renderer, scene, tex) {
     return state;
   }
 
-  return { sun, hemi, update, state };
+  // envUniforms は計器(tools/lightprobe.mjs)が IBL の放射照度を積分するために要る。
+  return { sun, hemi, update, state, envUniforms };
 }

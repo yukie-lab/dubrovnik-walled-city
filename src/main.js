@@ -156,6 +156,10 @@ window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
   solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
   renderer,
+  // 光の計器(tools/lightprobe.mjs)— 露出・放射照度・影の設定を数字で読む
+  get lighting() { return lighting; },
+  get sunState() { return sunState(state.time); },
+  get worldState() { return state; },
 };
 
 // ---------------------------------------------------------------- 後段 ----
@@ -319,6 +323,11 @@ const keys = new Set();
 let started = SHOT;
 if (SHOT) {
   ui.hideTitle();
+  // hidden はトランジション(2.2s)で消える。撮影は __READY の 1.4 秒後なので、
+  // 表題の幕(上下 46%/40% の暗いグラデーション)と字が **消えかけの状態で
+  // 焼き込まれる**。しかも消え具合が読み込み時間で変わるため、同じ定点の
+  // 2 枚が比較できない。撮影では要素ごと外す。
+  document.getElementById('title').style.display = 'none';
   if (Q.get('hud') === '0') document.getElementById('hud').style.display = 'none';
   if (Q.get('map') === '1') ui.toggleMap({ x: qf('x', 0), z: qf('z', 0), yaw: qf('yaw', 0) });
 }
