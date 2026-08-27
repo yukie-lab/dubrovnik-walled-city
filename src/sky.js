@@ -44,16 +44,28 @@ export function sunState(time) {
 
   // 太陽光の色: 白昼の白 → 深い黄金 → 沈む寸前の橙紅。
   // 色相スカラーの補間は緑を通るので、必ず RGB で混ぜる。
-  const sunDay = new THREE.Color().setHSL(0.115, 0.25, 0.96);
-  const sunGold = new THREE.Color().setHSL(0.075, 0.55, 0.68);
-  // 金 → 燠(おき)の二段。一段だけだと日没最後の 25 分が同じ色で凍る。
-  // 0.025/0.90/0.42 は linear B/R 0.053 = 1500K 未満。実在の日没の太陽は
-  // 最も赤くて 1800〜2000K(B/R 0.12〜0.18)。しかも日没時は直射:天空が 1:1 に
-  // なるので、画面の光の半分がこの単色赤になり、逃げ場が無くなっていた。
-  const sunEmber = new THREE.Color().setHSL(0.045, 0.62, 0.50);
-  const sunCol = sunDay.lerp(sunGold, Math.max(warm, dusk * 0.85))
-    .lerp(sunEmber, smoothstep(7, 0.2, el) * (1 - night))
-    .multiplyScalar(1 - night * 0.95);
+  // 太陽の色は「大気を通ってきた結果」であって、手で置いた三色の補間ではない。
+  // 二段の HSL 補間では warm が am 6.85(el 7.5°)で頭打ちになり、そこから
+  // 日没までの 40 分が同じ色で凍る。到達点の sunGold 自体が B/R 0.589 ≒ 3900K で、
+  // それ以上暖かくなれなかった(実測 t3gold で B/R 0.496 = 約 3300K。
+  // 実在の el 4.7°・am 10.9 の太陽は 2855K で B/R 0.119)。
+  //
+  // 波長別 Beer–Lambert に置き換える。Rayleigh(Bodhaine)+ 海洋性エアロゾル
+  // (Ångström AOD550=0.10)+ オゾン(Chappuis 0.32cm)で 5772K の黒体を減衰させ、
+  // CIE 1931 で積分して sRGB リニアへ落とした結果に、1% 以内で一致する二定数:
+  //   τ_G − τ_R = 0.058 / τ_B − τ_R = 0.215(am 1 あたり)
+  // 検算: am 2.82 → B/R 0.676(分光の真値 0.696) / am 10.93 → 0.118(真値 0.119)。
+  //
+  // **色度だけを持たせ、輝度は sunIntensity に任せる**(輝度 1 に正規化)。
+  // 以前は色の暗さが二つ目の減衰として効き、黄金時間の直射を 0.62 倍していた。
+  // am は Kasten–Young なので el < 0 で単調性を失う(el −14° で 0.30)。
+  // dAM を max(0, …) で守らないと、夜に太陽が青くなる。
+  const dAM = Math.max(0, am - 1);
+  const sunCol = new THREE.Color(1, Math.exp(-0.058 * dAM), Math.exp(-0.215 * dAM));
+  {
+    const yq = 0.2126 * sunCol.r + 0.7152 * sunCol.g + 0.0722 * sunCol.b;
+    sunCol.multiplyScalar((1 - night * 0.95) / Math.max(yq, 1e-4));
+  }
   // 直射:天空 ≒ 6:1。ここが 1:3 だと影が埋まり、面の向きが読めない
   // (曇天のライティングになる)。地中海の光は「硬い」。
   // 日向の石灰岩(アルベド 0.62)が ACES のショルダーに入る強さ。
@@ -65,10 +77,32 @@ export function sunState(time) {
   // 空の色(RGB 補間)
   // setHSL はワーキング空間(リニア)に直接書く。0.71 は「sRGB 0.71」ではなく
   // 「リニア 0.71」= ほぼ白。空が街より明るい無彩色になっていた。
+  // **天空の明るさは太陽高度そのもの。** 晴天の全天拡散照度は sin(el) にほぼ比例する
+  // (ASHRAE の晴天モデルで el 61°:20.6°:4.7° = 1 : 0.40 : 0.10)。
+  // これまで高度追随は hemiSky にだけ pow(sin el, 0.45) で掛かっており、
+  // IBL と天蓋は満額のままだった。黄金時間には IBL が半球光の 2.66 倍になり、
+  // **影を落とさない第二の太陽**として立面の日向:日陰を 2.73:1 に潰していた
+  // (実在は 11.7:1)。三経路が同じ空を別の明るさで数えないよう、
+  // 高度追随は色そのものに一度だけ掛ける。
+  // 床 0.085 は市民薄明の残光(日没時の天空はまだ正午の 1/12 ある)。
+  const skyLevel = Math.max(0.085, Math.max(Math.sin(elR), 0));
+  // 天頂の青は高度追随の対象。**水平線の焼けは対象外** — 日没の水平線は
+  // その瞬間の空で最も明るい部分で、正午の天頂と同程度の輝度がある。
+  // 焼けの重みは dusk(高度の窓)ではなく warm(大気路程)で駆動する。
+  // dusk は「日没後に天頂が菫になる」ほうの仕事だけを残す(sky.js の下)。
+  const violet = smoothstep(2, -8, el);        // 地球影とヴィーナスベルト — 日没後に始まる
   const zenith = new THREE.Color().setHSL(0.632, lerp(0.74, 0.86, hi), lerp(0.222, 0.160, hi))
-    .lerp(new THREE.Color().setHSL(0.68, 0.45, 0.16), dusk);
+    .multiplyScalar(skyLevel)
+    .lerp(new THREE.Color().setHSL(0.68, 0.45, 0.16).multiplyScalar(Math.max(skyLevel, 0.12)), violet);
   const horizon = new THREE.Color().setHSL(0.600, lerp(0.62, 0.72, hi), lerp(0.420, 0.330, hi))
-    .lerp(new THREE.Color().setHSL(0.072, 0.68, 0.55), dusk);
+    .multiplyScalar(skyLevel)
+    // 実在の日没の水平線は 2000〜2500K で、彩度 0.68 明度 0.55 では
+    // AgX を通ると彩度 0.06 の淡いピンクに潰れる。色度をもっと深くする。
+    // 焼けにも部分的な高度追随を掛ける。実在の日没の水平線は正午の水平線の
+    // 0.6〜0.8 倍で、**上回ることはない**。skyLevel をそのまま掛けると 0.34 倍まで
+    // 落ちて焼けが消えるので、床 0.42 を与える。
+    .lerp(new THREE.Color().setHSL(0.062, 0.86, 0.42)
+      .multiplyScalar(Math.max(skyLevel, 0.42)), warm);
   if (night > 0) {
     // 0.94 / 0.85 で打ち止めると、夕焼けの橙が真夜中まで 15% 残り、
     // 夜の霧まで橙になって「遠いものほど暖かく明るい夜」になる。1.0 まで振り切る。
@@ -92,7 +126,12 @@ export function sunState(time) {
 
   // 環境光(空からの半球)— 夕は空の琥珀が影にも染みる。青すぎる影は嘘。
   // 日陰は空の色で満たされる。灰へ寄せると影が無彩色になり石が発泡スチロールに見える。
-  const hemiSky = zenith.clone().lerp(horizon, lerp(0.42, 0.14, dusk))
+  // 半球光は方位を持てない = 天球の**平均**でなければならない。太陽側の焼けた
+  // 水平線(horizon)だけを混ぜると、日没に「日陰まで橙」になる(実測 影の B/R 0.35)。
+  // 実在の夕方の日陰が青いのは、日陰の壁が見ているのが反太陽側の空だから。
+  // 方位の差は IBL(light.js の env 球)が担い、半球光は環の平均を担う。
+  const horizonRing = horizon.clone().lerp(horizonFar, 0.65);
+  const hemiSky = zenith.clone().lerp(horizonRing, lerp(0.42, 0.14, dusk))
     .lerp(new THREE.Color(0xd9c49c), 0.03 + 0.03 * smoothstep(10, 55, el))
     // 重み 0.05 では実測 B/R が 3.53 にしかならず(目標は 1.8)、青すぎる天空光を
     // urbanTint と bounceRad の暖色で打ち消す構造になっていた。打ち消し量が
@@ -101,12 +140,11 @@ export function sunState(time) {
     // 中和 0.30 だと分光比 (1,1.39,1.86) までしか青くならず、実測の日陰は
     // 色相 61〜186°(緑〜無彩)。実在のアドリア海の日陰が青いのは、開けた
     // 天空の相関色温度が 12,000〜16,000K あるから。緑を落として青を通す。
-    .lerp(new THREE.Color(0xc9c6c0), 0.22 * (1 - dusk * 0.70))
-    // **天空光が太陽高度に追随していなかった。** 半球光の輝度は 07:24〜19:30 を
-    // 通して 0.318〜0.359 でほぼ一定なのに、直射は 12.9 → 0.06 まで落ちる。
-    // 結果、日向:日陰が 8.9:1 → 1.3:1 に潰れ、夕方の絵が全部「曇天」になる。
-    // 比が 1.3:1 になった時点で、それは太陽のある晴天ではない。
-    .multiplyScalar(Math.pow(clamp(Math.sin(el * DEG), 0.02, 1), 0.45))
+    // 中和 0.22 は天空光の R を 2.19 倍にし、リニアで B/R 4.52 → 2.19 まで
+    // 削っていた。AgX はさらに彩度の高い青を中和するので、画面に出る落ち影の
+    // B/R は 0.835 = **昼の影が青くない**。光源側で振っておかないと出ない。
+    .lerp(new THREE.Color(0xbfc6cc), 0.09 * (1 - dusk * 0.70))
+    // 高度追随は zenith/horizon に掛かった(上)。ここで二度掛けない。
     .multiplyScalar(lerp(1.0, 1.05, dusk) * (1 - night * 0.80) + night * 0.46);   // 日没時の空全体は暗くならない(水平線が燃えるぶん明るい)
   // 夜は天頂が真っ暗(sRGB 10,16,38)なので、掛け算だけでは環境光がゼロになる。
   // 街灯だけで照らされた街は、灯の届かない所が「穴」になって奥行きが消える。
@@ -115,7 +153,25 @@ export function sunState(time) {
   // 地面バウンスは半球光の「下半分」ではなく、別の照り返しライトが担う。
   // ここを暖褐色にすると、垂直面の日陰が全時刻で暖色に固定される。
   // 夜に地面色が空色の 3 倍あると上下が逆転する(無照明の石畳が空より明るい)
-  const hemiGround = new THREE.Color().setHSL(0.075, 0.07, lerp(0.28, 0.030, Math.max(dusk * 0.7, night))); // 石とテラコッタの照り返し(夜は空より暗く)
+  // 地面バウンス = 地面のアルベド × その時刻に地面が受けた放射照度 / π。
+  // 以前は dusk/night のランプで駆動していたので、水平面の直射が正午の 1/55 に
+  // 落ちる黄金時間でも 0.55 倍にしか落ちなかった。結果、**昼の全時刻で半球光の
+  // 下半分が上半分より明るく**(1.12〜1.89 倍)、日陰の垂直面は輝度の 65% を
+  // 暖色から受け、光と影の色相差が 2° に潰れていた。
+  // 正午の実測値(0.281)を固定点にする — いま最も正しい t2noon の絵は動かさない。
+  const GHI_NOON = 16.5;                          // 正午の水平面全天照度(直射 15.36 + 天空 1.11)
+  const skyHorizE = (0.2126 * hemiSky.r + 0.7152 * hemiSky.g + 0.0722 * hemiSky.b) * 4.4;
+  // 夜は太陽ではなく街灯が地面を照らす。ここを 0 にすると夜の軒下が穴になる。
+  const ghi = sunIntensity * Math.max(Math.sin(elR), 0) + skyHorizE + night * 0.55;
+  const dirF = clamp(sunIntensity * Math.max(Math.sin(elR), 0) / Math.max(ghi, 1e-4), 0, 1);
+  // 地面を照らしている光の色度(直射と天空の混合)。日没には橙、正午には白に近い。
+  const groundLit = sunCol.clone().multiplyScalar(dirF)
+    .add(hemiSky.clone().multiplyScalar(1 - dirF));
+  const glY = 0.2126 * groundLit.r + 0.7152 * groundLit.g + 0.0722 * groundLit.b;
+  if (glY > 1e-5) groundLit.multiplyScalar(1 / glY);
+  const hemiGround = groundLit
+    .multiply(new THREE.Color(0.62, 0.545, 0.455))   // 石灰岩とテラコッタの平均アルベド
+    .multiplyScalar(0.281 / 0.545 * clamp(ghi / GHI_NOON, 0, 1));
 
   // 夜は霧を天頂側へ寄せる。水平線由来のままだと、遠い海が赤紫になる。
   // 霧の輝度は現状維持(SKY_GAIN をそのまま掛けると遠景が乳白になる)
@@ -127,13 +183,20 @@ export function sunState(time) {
   // 天蓋は太陽から 90° の方向で horizonFar 77% : horizon 23% を混ぜるのに、
   // 霧は 5:5 で作っていた。同じ方向を見ているのに霧のほうが明るく暖かい側を
   // 2 倍多く含み、水平線が消える(実測 海 V78% / 空 V80%)。比を合わせる。
-  const fogCol = horizon.clone().lerp(horizonFar, 0.68)
-    .lerp(zenith, lerp(0.0, 0.72, night)).multiplyScalar(SKY_GAIN * 1.00);
+  // 霧色は二色になった(方位依存)。太陽側 = horizon、反対側 = horizonFar。
+  // 天頂を昼にも 0.28 混ぜる — 遠景が実際に載る仰角(+6°、h=0.10)では
+  // 天蓋の horizW = pow(1-0.10, 3.2) = 0.717 で、天頂が 28% を占める。
+  // 昼の天頂重みが 0.0 だったので、1.5km 先の山が **その上の空より 38% 明るい**
+  // という逆転が起きていた(散乱光が空の放射輝度を上回ることはない)。
+  const fogMix = lerp(0.28, 0.72, night);
+  const fogCol = horizon.clone().lerp(zenith, fogMix).multiplyScalar(SKY_GAIN);
+  const fogFar = horizonFar.clone().lerp(zenith, fogMix).multiplyScalar(SKY_GAIN);
   const warmK = warm;
 
   return {
     time: t, el, az, dir, dusk, night, glow,
-    sunCol, sunIntensity, zenith, horizon, horizonFar, hemiSky, hemiGround, fogCol, warm: warmK, am,
+    sunCol, sunIntensity, zenith, horizon, horizonFar, hemiSky, hemiGround, fogCol, fogFar, warm: warmK, am,
+    ghi,                       // 水平面の全天照度 — 露出の測光はこれで行う
     starAlpha: smoothstep(-2.5, -8, el),
   };
 }
@@ -151,7 +214,11 @@ vec3 skyRadiance(vec3 d, vec3 zen, vec3 hor, vec3 horFar, vec3 sunDir, vec3 sunC
   vec3 horiz = mix(horFar, hor, smoothstep(-0.4, 0.9, sunAmt));
   vec3 col = mix(zen, horiz, horizW);
   float disc = smoothstep(0.99996, 0.999985, sunAmt);
-  float halo = pow(clamp(sunAmt, 0.0, 1.0), 34.0) * 0.55 + pow(clamp(sunAmt, 0.0, 1.0), 140.0) * 5.0;
+  // 暈の裾 pow(...,34) は半値角 10.6° の巨大な光の輪。逆光のストラドゥンで
+  // 画面の 11.2% を「Y>0.75 かつ彩度<0.06」の無彩の白にしていた。
+  // 実在の太陽の光冠は 2〜3°。円盤(disc)は残す — 太陽を直接見た画素が
+  // 白いのは正しい。裾だけを締める。
+  float halo = pow(clamp(sunAmt, 0.0, 1.0), 34.0) * 0.30 + pow(clamp(sunAmt, 0.0, 1.0), 140.0) * 3.0;
   col += sunCol * (halo * (0.5 + dusk * 1.2) + disc * mix(600.0, 46.0, dusk)) * sunK;
   float ember = pow(clamp(sunAmt * 0.5 + 0.5, 0.0, 1.0), 7.0) * horizW * dusk;
   col += sunCol * ember * 0.5;

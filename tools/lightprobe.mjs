@@ -53,11 +53,18 @@ for (const t of times) {
     // three の getIBLIrradiance は PI × (roughness=1 の畳み込み) = ∫L cosθ dω。
     // 拡散 IBL は uSunAmt=0 で焼いてある(light.js)ので、太陽芯は入れない。
     const eu = L.envUniforms;
+    const sd = eu.uSunDir.value;
+    const sm = (a, b, x) => { const u = Math.max(0, Math.min(1, (x - a) / (b - a))); return u * u * (3 - 2 * u); };
     const envRad = (dx, dy, dz) => {
-      const zen = eu.uZenith.value, hor = eu.uHorizon.value, gnd = eu.uGround.value;
-      const k = dy > 0 ? Math.pow(dy, 0.6) : Math.pow(-dy, 0.5);
-      const a = dy > 0 ? hor : hor, b = dy > 0 ? zen : gnd;
-      return [a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k];
+      const zen = eu.uZenith.value, hoS = eu.uHorizon.value, hoF = eu.uHorizonFar.value, gnd = eu.uGround.value;
+      const w = sm(-0.4, 0.9, dx * sd.x + dy * sd.y + dz * sd.z);
+      const hr = hoF.r + (hoS.r - hoF.r) * w, hg = hoF.g + (hoS.g - hoF.g) * w, hb = hoF.b + (hoS.b - hoF.b) * w;
+      if (dy > 0) {
+        const hw = Math.pow(1 - Math.min(1, dy), 3.2);
+        return [zen.r + (hr - zen.r) * hw, zen.g + (hg - zen.g) * hw, zen.b + (hb - zen.b) * hw];
+      }
+      const k = Math.pow(-dy, 0.5);
+      return [hr + (gnd.r - hr) * k, hg + (gnd.g - hg) * k, hb + (gnd.b - hb) * k];
     };
     // フィボナッチ球で ∫L·max(0,N·d) dω を積分(4096 方向)
     const iblAt = (nx, ny, nz) => {

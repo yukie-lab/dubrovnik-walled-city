@@ -269,13 +269,19 @@ const GradeShader = {
       // 明部だけを白へ寄せるニー。AgX の上端 3 段が丸ごと空いていた。
       // 混合の幅が狭い(0.80→1.0)と、局所傾きが 1.50 になり「圧縮」ではなく
       // 「伸長」になる。AgX が寝かせた上端 3 段を叩き起こして 255 に貼り付ける。
-      { float kn = smoothstep(0.82, 1.10, dot(c.rgb, vec3(0.2126, 0.7152, 0.0722)));
+      // 入口 0.82 では局所傾きが c=0.85 で 1.58 = 圧縮ではなく **伸長**。
+      // ブルームが 0.85 まで運んだものを 255 に貼り付ける増幅器になっていた。
+      { float kn = smoothstep(0.90, 1.12, dot(c.rgb, vec3(0.2126, 0.7152, 0.0722)));
         c.rgb = mix(c.rgb, 1.0 - (1.0 - c.rgb) * (1.0 - c.rgb) * 1.05, kn); }
       lum2 = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
       // 日陰は「青い」のではなく「彩度が低くて少し青い」。ここを一律に持ち上げると
       // 石灰岩の日陰が濡れたスレートになる。明るいほど彩度を許す。
       // 上限 1.44 は「すでに暖色に転んだ影の彩度」を 1.3 倍に増幅していた。
       float satW = mix(0.88, 1.30, smoothstep(0.045, 0.40, lum2)) * (1.0 - 0.35 * smoothstep(0.80, 0.98, lum2));
+      // 中間視(プルキンエ)。錐体が働かなくなる夜は彩度が落ちる。ここに夜の項が
+      // 無かったので、月光の赤瓦が正午より赤い(彩度 0.650 対 0.507)という
+      // 逆転が起きていた。灯そのものの emissive は下げない — 反射光側だけ。
+      satW *= 1.0 - 0.30 * uNight;
       c.rgb = max(mix(vec3(lum2), c.rgb, satW), vec3(0.0));
       vec2 d = vUv - 0.5;
       c.rgb *= 1.0 - 0.10 * smoothstep(0.24, 0.72, dot(d, d) * 2.0);
@@ -531,6 +537,10 @@ function frame(now) {
   // 閾値は OutputPass 前 = リニア。日向の石灰岩が 1.5 前後なので、
   // そこを少し超えた所(反射・水面のきらめき)だけが滲む。
   bloom.threshold = lerp(5.60, 0.40, Math.max(sun.dusk * 0.6, sun.night));
+  // 半径 0.35 は最下位ミップまで届き、太陽から 250px の空まで乳白の膜を作る
+  // (実測 t1am で太陽から 260px の空が Y0.637・彩度 0.003)。昼は締める。
+  // 夜の街灯の滲みはこの半径で成立しているので、夜側は動かさない。
+  bloom.radius = lerp(0.18, 0.40, Math.max(sun.dusk * 0.6, sun.night));
   grade.uniforms.uTime.value = state.elapsed;
   grade.uniforms.uDusk.value = duskDay;
   grade.uniforms.uNight.value = sun.night;
