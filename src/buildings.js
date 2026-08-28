@@ -349,9 +349,15 @@ export function makeBuildings(plan, tex) {
     h.plaster = !h.monument && !h.garden && !h.stradunFront
       && hash2((h.x * 5) | 0, (h.z * 5 + 3) | 0) < 0.34;
     const t = h.seed;
-    if (h.plaster) tint.setHSL(0.099 + (t - 0.5) * 0.042, 0.16 + t * 0.11, 0.775 + (t - 0.5) * 0.15, THREE.SRGBColorSpace);
-    else if (t > 0.9) tint.setHSL(0.038 + t * 0.026, 0.26, 0.735 + (t - 0.9) * 0.85, THREE.SRGBColorSpace);
-    else tint.setHSL(0.096 + (t - 0.5) * 0.050, 0.13 + t * 0.12, 0.742 + (t - 0.5) * 0.19, THREE.SRGBColorSpace);
+    // **街全部が同じ石**でできていることが、この街の統一の正体。
+    // tex.js は石ひとつの色相を ±0.3° に固定しているのに、家ごとの頂点色が
+    // 22.1°〜43.6° に散らしてこの規約を破っていた(実測 一枚の絵の中で
+    // 右のファサード 37.8° / アーケード 31.3° / 桃色の分岐 22.1° = 三つの石)。
+    // 色相は 35.3°±2.2° に固定し、彩度の振れも 1/3 に詰める。
+    // **明度の振れ(±0.095)は残す** — 街の情報はそこにある。
+    if (h.plaster) tint.setHSL(0.098, 0.15 + t * 0.05, 0.775 + (t - 0.5) * 0.15, THREE.SRGBColorSpace);
+    else if (t > 0.9) tint.setHSL(0.098, 0.19 + t * 0.04, 0.735 + (t - 0.9) * 0.85, THREE.SRGBColorSpace);
+    else tint.setHSL(0.098 + (t - 0.5) * 0.012, 0.16 + t * 0.05, 0.742 + (t - 0.5) * 0.19, THREE.SRGBColorSpace);
     houseBody(P, N, U, C, I, h, tint, A, S, skyAt);
   }
   const bodyGeo = new THREE.BufferGeometry();
@@ -411,11 +417,17 @@ export function makeBuildings(plan, tex) {
         vec2 mUv = vMapUv + wv;
         vec4 sd = texture2D(map, mUv);
         if (vPlas > 0.5) sd = texture2D(uPlasMap, mUv * uPlasScale);
-        // 同じマップを 1/7 と 1/23 の尺で引き、22m と 74m のうねりを重ねる。
-        // 追加のテクスチャは要らず、タイリングの拍だけが消える。
-        float mv1 = texture2D(map, vMapUv * 0.145 + vec2(0.37, 0.11)).g;
-        float mv2 = texture2D(map, vMapUv * 0.043 + vec2(0.71, 0.53)).g;
-        sd.rgb *= 1.0 + 0.17 * (mv1 - 0.5) + 0.11 * (mv2 - 0.5);
+        // 一枚の壁に「二色目」を置く唯一の機構。ここが空回りしていた。
+        // 変調源に石テクスチャ自身の .g を使っていたが、sRGB 復号後の実測は
+        // **平均 0.4651 / SD 0.0837**。式は 0.5 中心を仮定しているので中心が
+        // 0.035 ずれ、(a) 一度も明るくせず常に暗くするだけ、(b) 振幅は ±2.3%
+        // = ΔL* 0.7 = **1 段の 1/14** しか出ていなかった。4m の石の端から端まで
+        // 0.15 段 = 一筆で塗り終わる面。
+        // 0〜1 を使い切る値ノイズの二層に差し替える(68m と 21m、約分できない)。
+        float lf = wnNoise(vMapUv * 0.047 + 5.1) * 0.60 + wnNoise(vMapUv * 0.155 + 19.3) * 0.40;
+        sd.rgb *= 1.0 + 0.36 * (lf - 0.5);
+        // 雨に洗われた面は寒色へ、庇の下と風下は暖色へ。**色相は動かさず色温度だけ。**
+        sd.rgb *= mix(vec3(1.020, 1.000, 0.955), vec3(0.975, 0.995, 1.030), lf);
         diffuseColor *= sd;`)
       .replace('#include <normal_fragment_maps>', `
         vec3 mapN = (vPlas > 0.5 ? texture2D(uPlasNrm, (vMapUv + wv) * uPlasScale) : texture2D(normalMap, vNormalMapUv + wv)).xyz * 2.0 - 1.0;
@@ -970,8 +982,10 @@ export function makeBuildings(plan, tex) {
     return mergeGeoSimple(parts);
   })();
   // 枠は塗装ではなく石。周囲と同じ色で、仕上げの滑らかさだけが違う。
+  // 框は一枚石。切石のテクスチャ(coverM 3.2)を UV 0..1 の面に貼ると、
+  // 幅 0.17m の縦枠に 3.2m 分の目地が入って 13.8mm の縞になる。
   const frameMat = new THREE.MeshStandardMaterial({
-    map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+    map: tex.dressed.map, normalMap: tex.dressed.normalMap,
     color: 0xb3aa98, roughness: 0.70, envMapIntensity: 0.55,
   });
   // 窓の寸法はこの 2 式だけで決める(枠・ガラス・鎧戸・夜の灯り・雨だれが同じ形になる)
@@ -1163,7 +1177,7 @@ export function makeBuildings(plan, tex) {
     return mergeGeoSimple([l, r, m]);
   })();
   const doorFrameMat = new THREE.MeshStandardMaterial({
-    map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+    map: tex.dressed.map, normalMap: tex.dressed.normalMap,   // 戸口枠も一枚石
     color: 0xb3aa98, roughness: 0.70, envMapIntensity: 0.55,
   });
   const doorLeafMat = new THREE.MeshStandardMaterial({
@@ -1352,7 +1366,7 @@ export function makeBuildings(plan, tex) {
         tint(leaf, [0.235, 0.135, 0.085]), tint(jamb, [0.22, 0.13, 0.08]), tint(sill, W)]);
     })();
     const arMat = new THREE.MeshStandardMaterial({
-      map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+      map: tex.dressed.map, normalMap: tex.dressed.normalMap,   // 迫石も一枚石
       color: 0xa9a08e, roughness: 0.66, envMapIntensity: 0.5, vertexColors: true,
     });
     const arMesh = new THREE.InstancedMesh(arGeo, arMat, shops.length);
@@ -1581,8 +1595,10 @@ export function makeBuildings(plan, tex) {
   {
     const plinthGeo = new THREE.BoxGeometry(1, 0.40, 0.13);
     plinthGeo.translate(0, 0.20, 0.065);
+    // 巾木は高さ 0.40m の帯に 3.2m 分が縦 8 倍圧縮で入り、段高 0.26m の切石が
+    // 33mm の現代の煉瓦になっていた。巾木も一枚石の見付として扱う。
     const plinthMat = new THREE.MeshStandardMaterial({
-      map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+      map: tex.dressed.map, normalMap: tex.dressed.normalMap,
       color: 0xb3aa98, roughness: 0.80, envMapIntensity: 0.35,
     });
     const pm = new THREE.InstancedMesh(plinthGeo, plinthMat, plinths.length);
@@ -1661,7 +1677,7 @@ export function makeBuildings(plan, tex) {
         const sg = mergeGeoSimple(bits);
         sg.computeVertexNormals();
         const smat = new THREE.MeshStandardMaterial({
-          map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+          map: tex.dressed.map, normalMap: tex.dressed.normalMap,   // 街路に面した框石
           color: 0xb0a795, roughness: 0.82, envMapIntensity: 0.35,
         });
         bakeSkyVis(sg, skyAt0, { offsetY: 0.3 });

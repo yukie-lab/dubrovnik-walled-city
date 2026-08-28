@@ -125,10 +125,52 @@ export function makeStepPool(tex) {
     stepMap.repeat.set(0.55, 0.16);   // 踏面は幅 2.9m × 奥行 0.5m。等方の repeat だと石目が 6:1 に伸びる
     const stepNrm = tex.paving.normalMap.clone();
     stepNrm.repeat.set(0.55, 0.16);
+    const stepRgh = tex.paving.roughnessMap.clone();
+    stepRgh.repeat.set(0.55, 0.16);
     const mat = new THREE.MeshStandardMaterial({
-      map: stepMap, normalMap: stepNrm,
+      map: stepMap, normalMap: stepNrm, roughnessMap: stepRgh,
+      vertexColors: true,
       roughness: 0.70, metalness: 0, envMapIntensity: 0.55,
     });
+    // 段は箱で、踏面・蹴上・小口が同じ頂点色を共有していた。結果、連続する
+    // 二つの踏面の輝度差が 0.3% しかなく(実測 headroom 0.065 = 32枚の最小値)、
+    // 光が作る線だけが段を読ませていた。**石が段を作る**ようにする。
+    {
+      const nrm = geo.attributes.normal, cnt = nrm.count;
+      const fc = new Float32Array(cnt * 3);
+      for (let i = 0; i < cnt; i++) {
+        const ny = nrm.getY(i);
+        // 踏面 1.00 / 蹴上・小口 0.90 / 下面 0.80。光がどうであろうと段が読める。
+        const v = ny > 0.5 ? 1.0 : ny < -0.5 ? 0.80 : 0.90;
+        fc[i * 3] = v; fc[i * 3 + 1] = v; fc[i * 3 + 2] = v;
+      }
+      geo.setAttribute('color', new THREE.BufferAttribute(fc, 3));
+    }
+    // 摩耗した段鼻は磨かれて丸く、そこだけが空を拾う。幾何は触らず材質で作る。
+    {
+      const prevOBC = mat.onBeforeCompile;
+      mat.onBeforeCompile = (sh, r) => {
+        if (prevOBC) prevOBC.call(mat, sh, r);
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\n varying vec3 vStepL; varying vec3 vStepN;')
+          .replace('#include <begin_vertex>', '#include <begin_vertex>\n vStepL = position; vStepN = normal;');
+        sh.fragmentShader = sh.fragmentShader
+          .replace('#include <common>', '#include <common>\n varying vec3 vStepL; varying vec3 vStepN;')
+          .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+            float isTread = step(0.5, vStepN.y);
+            // 幅方向の中央ほど踏まれる(端 20% は靴が通らない)
+            float wearC = 1.0 - smoothstep(0.12, 0.44, abs(vStepL.x));
+            // 段鼻と後端の丸み。どちら向きに昇る段でも同じに効くよう両端を取る。
+            float nose = smoothstep(0.34, 0.50, abs(vStepL.z));
+            float w = isTread * max(wearC, nose);
+            roughnessFactor *= mix(1.0, 0.60, w);`)
+          .replace('#include <color_fragment>', `#include <color_fragment>
+            diffuseColor.rgb *= mix(1.0, 0.93, step(0.5, vStepN.y)
+              * (1.0 - smoothstep(0.12, 0.44, abs(vStepL.x))));`);
+      };
+      const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
+      mat.customProgramCacheKey = () => key + '|stepwear';
+    }
     // 路地の段は常に日陰側にある。天空可視率が無いと蹴上だけが青く浮く。
     if (skyAt) { bakeSkyVisInstanced(geo, items, skyAt, { offsetY: 0.25 }); patchSkyVisInstanced(mat); }
     const mesh = new THREE.InstancedMesh(geo, mat, items.length);
@@ -561,17 +603,21 @@ export function makeGround(plan, tex, stepPool) {
   // 広場
   for (const p of plan.PLAZAS) {
     // 舗装を羽根ぶん広げると街路と重なり、床が 1m 浮く。広場は素の矩形のまま。
-    const g = new THREE.PlaneGeometry(p.x1 - p.x0, p.z1 - p.z0, 2, 2);
+    // 3m ごとに割る。9 頂点のままだと bakeSkyVis の標本が四隅と中央しか無く、
+    // 建物際まで同じ明るさの板になる(磨いた材質は天空可視率で艶が決まる)。
+    const segX = Math.max(2, Math.ceil((p.x1 - p.x0) / 3));
+    const segZ = Math.max(2, Math.ceil((p.z1 - p.z0) / 3));
+    const g = new THREE.PlaneGeometry(p.x1 - p.x0, p.z1 - p.z0, segX, segZ);
     g.rotateX(-Math.PI / 2);
     g.translate((p.x0 + p.x1) / 2, p.y + 0.02, (p.z0 + p.z1) / 2);
     const uv = g.attributes.uv, pos = g.attributes.position;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / tex.stradun.coverM, pos.getZ(i) / tex.stradun.coverM);
     const colors = new Float32Array(pos.count * 3).fill(0.80);
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    // 広場はストラドゥンほど磨かれていない(摩耗した不規則な敷石)。
-    // 磨いた材質に入れると、水平面が天頂の青を拾って「青い舗石」になる。
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / tex.paving.coverM, pos.getZ(i) / tex.paving.coverM);
-    paveGeoms.push(g);
+    // ルジャ・ピレ・オノフリオはストラドゥンの床がそのまま広がった一枚の面。
+    // 残りは摩耗した不規則な敷石(磨いた材質に入れると天頂の青を拾う)。
+    const cm = p.polished ? tex.stradun.coverM : tex.paving.coverM;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / cm, pos.getZ(i) / cm);
+    (p.polished ? stradunGeoms : paveGeoms).push(g);
   }
   // イエズス会の大階段(幅広の儀典階段)
   {
@@ -623,8 +669,16 @@ export function makeGround(plan, tex, stepPool) {
       const prevOBC = stradunMat.onBeforeCompile;
       stradunMat.onBeforeCompile = (sh, r) => {
         if (prevOBC) prevOBC.call(stradunMat, sh, r);
-        sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_end>',
-          '#include <lights_fragment_end>\n  reflectedLight.directSpecular = min(reflectedLight.directSpecular, vec3(3.2));');
+        // チャンネルごとに min で切ると、暖色の太陽では R から順に頭打ちになり、
+        // 三つとも 3.2 に揃った時点で **磨石を走る照りが色を失う**(実測 逆光の朝で
+        // 「Y>0.75 かつ彩度<0.06」の無彩の白が 11.0%)。丈は同じだけ切るが、
+        // 三色の比は保つ。太陽の色をした照りは、白い舌ではなく金の帯になる。
+        sh.fragmentShader = sh.fragmentShader.replace('#include <lights_fragment_end>', `
+          #include <lights_fragment_end>
+          { vec3 sp = reflectedLight.directSpecular;
+            float pk = max(max(sp.r, sp.g), sp.b);
+            if (pk > 3.2) sp *= 3.2 / pk;
+            reflectedLight.directSpecular = sp; }`);
       };
     }
     // 700年の靴に磨かれた石。鏡面に太陽が映らなければ「照り」は出ない。

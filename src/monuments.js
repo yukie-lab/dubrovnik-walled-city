@@ -100,13 +100,13 @@ export function makeMonuments(plan, tex) {
   const P = [], N = [], U = [], C = [], I = [];
   const darkGeos = [];   // 鐘室などの暗い開口
   const leadGeos = [];   // 鉛葺き(ドーム・尖塔)
-  const um = 1 / tex.wallStoneWarm.coverM;
+  const um = 1 / tex.monumentStone.coverM;
   const tintC = new THREE.Color();
   // CylinderGeometry の u は周長全体で 0→1。そのまま appendGeo に渡すと、
   // 周長 31.7m の水盤で石が横 16m・縦 0.26m に伸びる(異方比 61:1)。実寸へ直す。
   // (appendGeo が UV を 2 倍するので、あらかじめ 1/2 して打ち消す)
   function cylUV(g, r, h) {
-    const cm = tex.wallStoneWarm.coverM ?? 3.2;
+    const cm = tex.monumentStone.coverM ?? 3.2;
     const CU = 2 * Math.PI * r / cm / 2, CV = h / cm / 2;
     const uv = g.attributes.uv;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * CU, uv.getY(i) * CV);
@@ -176,7 +176,7 @@ export function makeMonuments(plan, tex) {
     // BoxGeometry の UV は面ごとに 0..1 正規化。そのまま ×2 で流すと石の目が
     // 部材の大きさと無関係になり、0.13m の稜に石が 49 個並ぶ。実寸へ直す。
     {
-      const cm = tex.wallStoneWarm.coverM ?? 3.2, uv = g.attributes.uv;
+      const cm = tex.monumentStone.coverM ?? 3.2, uv = g.attributes.uv;
       const F = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];   // +x -x +y -y +z -z
       for (let fi = 0; fi < 6; fi++) {
         for (let k = 0; k < 4; k++) {
@@ -259,7 +259,7 @@ export function makeMonuments(plan, tex) {
       // そのままだと切石が柱身を輪切りにし、煙突の積みブロックに見える。
       const sh = new THREE.CylinderGeometry(colR * 0.86, colR, colH, 20);
       {
-        const cm = tex.wallStoneWarm.coverM ?? 3.2, uv = sh.attributes.uv;
+        const cm = tex.monumentStone.coverM ?? 3.2, uv = sh.attributes.uv;
         for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getY(i) * colH / cm / 2, uv.getX(i) * 0.5);
       }
       sh.translate(p2[0], yT + 0.34 + colH / 2, p2[1]);
@@ -968,7 +968,7 @@ export function makeMonuments(plan, tex) {
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
   const stoneMat = new THREE.MeshStandardMaterial({
-    map: tex.wallStoneWarm.map, normalMap: tex.wallStoneWarm.normalMap,
+    map: tex.monumentStone.map, normalMap: tex.monumentStone.normalMap,
     normalScale: new THREE.Vector2(1.7, 1.7),
     // color を省くと白(1,1,1)。民家には tint が掛かっているので、記念建築だけが
     // 白いプラスチックに見えていた。実物のコルチュラ石は暖かい生成り。
@@ -1032,7 +1032,7 @@ export function makeMonuments(plan, tex) {
     return mat;
   };
   const colMat = stretchShaft(new THREE.MeshStandardMaterial({
-    map: tex.wallStoneWarm.map, normalMap: tex.wallStoneWarm.normalMap,
+    map: tex.monumentStone.map, normalMap: tex.monumentStone.normalMap,
     color: 0xc8bfa8, roughness: 0.62, envMapIntensity: 0.6,
   }));
   const cols = new THREE.InstancedMesh(colGeo, colMat, colPositions.length);

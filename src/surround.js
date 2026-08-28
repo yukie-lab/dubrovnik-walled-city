@@ -299,7 +299,7 @@ export function makeSurround(plan, tex) {
           const mg = new THREE.BoxGeometry(1.5, 1.7, 0.8);
           mg.rotateY(Math.atan2(mx, mz));
           mg.translate(bx2, ringY, bz2);
-          push(mg, 1.04);
+          push(mg, 1.0);   // 頂点色は 1.0 を超えない(色度は material.color が決める)
         }
       }
     }
@@ -312,8 +312,15 @@ export function makeSurround(plan, tex) {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+    // color も envMapIntensity も normalScale も無い = アルベド 1.0・環境 1.0・法線 1.0。
+    // 城壁本体(walls.js)は color 0xc9c0ad / envMapIntensity 0.55 / normalScale で、
+    // **同じ石灰岩が一枚の絵の中で 0.71 対 0.12 = 2.5 段に割れていた**
+    // (実測 t1am で要塞 Y 0.709 > 日向の積雲 Y 0.674 — 石が雲より明るい)。
+    // 城壁と一字一句同じにする。
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
-      map: tex.fortStone.map, normalMap: tex.fortStone.normalMap, vertexColors: true, roughness: 0.9,
+      map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
+      normalScale: new THREE.Vector2(1.35, 1.35),
+      color: 0xc9c0ad, vertexColors: true, roughness: 0.88, envMapIntensity: 0.55,
     }));
     m.castShadow = true;
     group.add(tagMesh(m, 'surround.lovrijenac', { solid: true, masonry: true, groundContact: true }));

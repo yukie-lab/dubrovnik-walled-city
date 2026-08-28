@@ -1721,7 +1721,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   geo.setIndex(I);
   const mat = new THREE.MeshStandardMaterial({
     map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
-    normalScale: new THREE.Vector2(1.7, 1.7),
+    normalScale: new THREE.Vector2(1.35, 1.35),   // 粒を細かくしたぶん強度を落とす(tex.js の fortStone)
     // color を省くと白(アルベド 1.0)。日向と日陰の差が 3/255 しか出ず、
     // 要塞の面の向きが読めなくなる。実物のコルチュラ石は生成り。
     color: 0xc9c0ad,
@@ -1734,11 +1734,22 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // 4.2m 周期のタイリングが城壁の大面で露骨に見える(最大特徴 0.42m)。
   // 同じマップを 1/7・1/23 の尺で引いて低周波のうねりを重ねる。テクスチャ追加なし。
   mat.onBeforeCompile = (sh) => {
-    sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>', `
+    sh.fragmentShader = sh.fragmentShader
+      .replace('#include <common>', `#include <common>
+        float wnHash(vec2 p){ return fract(sin(dot(p, vec2(41.3, 289.1))) * 43758.5453); }
+        float wnNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(wnHash(i), wnHash(i + vec2(1,0)), f.x),
+                     mix(wnHash(i + vec2(0,1)), wnHash(i + vec2(1,1)), f.x), f.y); }`)
+      .replace('#include <map_fragment>', `
       #include <map_fragment>
-      float wv1 = texture2D(map, vMapUv * 0.145 + vec2(0.29, 0.67)).g;
-      float wv2 = texture2D(map, vMapUv * 0.043 + vec2(0.83, 0.19)).g;
-      diffuseColor.rgb *= 1.0 + 0.19 * (wv1 - 0.5) + 0.13 * (wv2 - 0.5);`);
+      // 変調源が石テクスチャ自身の .g だった。実測 平均 0.4406 / SD 0.0760 なので
+      // (wv-0.5) は 0 を中心にせず、合成振幅は ±1.7%(1σ)= **一律 1.9% の減光**。
+      // 城壁は画面の最大 44% を占める面で、そこに 3〜30m 尺の調子の起伏が無かった。
+      // 0〜1 を使い切る値ノイズの二層へ(89m と 27m)。
+      float lf = wnNoise(vMapUv * 0.047 + 3.7) * 0.60 + wnNoise(vMapUv * 0.155 + 23.9) * 0.40;
+      diffuseColor.rgb *= 1.0 + 0.38 * (lf - 0.5);
+      // 海に向いた面は塩と雨で白茶け、陸側は暖色の汚れが残る。色温度だけ動かす。
+      diffuseColor.rgb *= mix(vec3(1.022, 1.000, 0.950), vec3(0.972, 0.994, 1.034), lf);`);
   };
   mat.customProgramCacheKey = () => 'fortMacro';
   const skyAt = sharedSkyVis || makeSkyVis(plan);
@@ -1828,7 +1839,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   })();
   const merlonMat = new THREE.MeshStandardMaterial({
     map: tex.fortStone.map, normalMap: tex.fortStone.normalMap, roughness: 0.88,
-    normalScale: new THREE.Vector2(1.7, 1.7), color: 0xc9c0ad,
+    normalScale: new THREE.Vector2(1.35, 1.35),   // 粒を細かくしたぶん強度を落とす(tex.js の fortStone) color: 0xc9c0ad,
     envMapIntensity: 0.55,
   });
   // 天空可視率が無いと、日陰のメルロンだけが胸壁と違う色で塗装金属に見える。

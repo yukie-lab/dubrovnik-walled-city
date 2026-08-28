@@ -43,6 +43,26 @@ function heightToNormal(src, strength = 2.0) {
   return c;
 }
 
+// 低周波の値ノイズ。**石を跨ぐ尺度**の斑をつくるためだけに使う。
+// 石ひとつの中で色相を動かすのは禁止(パッチワークの色砂岩になる)が、
+// 「雨に洗われて白茶けた面」と「風下に汚れが溜まった面」が同じ壁に同居するのは
+// 実在する。それは石より大きい尺度の話なので、ここで作る。
+// cells は一辺の格子数。整数なのでタイルの継ぎ目で必ず値が一致する。
+function lfNoise(seedA, cells) {
+  const h = (i, j) => {
+    const ii = ((i % cells) + cells) % cells, jj = ((j % cells) + cells) % cells;
+    const v = Math.sin(ii * 127.1 + jj * 311.7 + seedA) * 43758.5453;
+    return v - Math.floor(v);
+  };
+  return (fx, fy) => {
+    const i = Math.floor(fx), j = Math.floor(fy);
+    const u = fx - i, v = fy - j;
+    const su = u * u * (3 - 2 * u), sv = v * v * (3 - 2 * v);
+    return (h(i, j) * (1 - su) + h(i + 1, j) * su) * (1 - sv)
+      + (h(i, j + 1) * (1 - su) + h(i + 1, j + 1) * su) * sv;
+  };
+}
+
 // 筆致: 領域に半透明の色斑を重ねる(絵具の厚み)
 function dabs(ctx, x0, y0, w, h, n, rng, hue, sat, lit, spread, alpha = 0.10) {
   for (let i = 0; i < n; i++) {
@@ -72,6 +92,11 @@ function limestoneWall(rng, { size = 1024, coverM = 3.2, courseM = 0.26, tone = 
   hctx.fillStyle = '#787878'; hctx.fillRect(0, 0, size, size);
 
   const courseH = courseM * px;
+  // 彩度の低周波。石灰岩は「方解石の中性〜寒色の地」に「酸化鉄と地衣の暖色の染み」が
+  // 乗った物で、雨に洗われた面は彩度 6〜8%、庇の下や風下は 18〜22%。
+  // 街中の石が一律 15〜17% だと、青い天空光がどの面でも同じ暖色に吸われ、
+  // 日陰の立面が無彩の灰色の板になる(実測 彩度 0.018)。
+  const lfS = lfNoise(17.3, 6), lfS2 = lfNoise(91.7, 2);
   let y = 0, row = 0;
   while (y < size + courseH) {
     const ch = courseH * (0.85 + rng() * 0.3);
@@ -81,7 +106,8 @@ function limestoneWall(rng, { size = 1024, coverM = 3.2, courseM = 0.26, tone = 
       // 石ひとつ: 明度だけを振る。色相 ±0.3° / 彩度 ±1.5% に固定。
       const litBase = 71 + tone * 3 + (rng() - 0.5) * 12;   // 目地が太くなるぶん石の振れは詰める
       const hueBase = 42 + (rng() - 0.5) * 0.6;
-      const satBase = 16 + (rng() - 0.5) * 3;
+      const nq = (lfS(x / size * 6, y / size * 6) * 0.55 + lfS2(x / size * 2, y / size * 2) * 0.45) - 0.5;
+      const satBase = clamp(16 + (rng() - 0.5) * 3 + nq * 15, 7, 25);
       ctx.fillStyle = `hsl(${hueBase},${satBase}%,${litBase}%)`;
       // 目地の **色** 側だけ 2px 固定で取り残されていた(320px/m で実寸 6mm)。
       // 高さ側は 12mm 取ってあるのに、色はミップ 1 段で 1px、2 段で消える。
@@ -93,8 +119,11 @@ function limestoneWall(rng, { size = 1024, coverM = 3.2, courseM = 0.26, tone = 
       // 骨材の粒。大きな染みだけでは「塗った壁」で、掠め光で面が読めない
       // (実測 局所SD r=2 が 0.005〜0.009 = 石の面そのものに情報がゼロ)。
       // 半径 1.2〜2.3px = 実寸 4〜7mm の粒を面積比で撒く。
-      dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, Math.round(bw * ch / 900), rng,
-        hueBase, satBase, litBase, 1.1, 0.055);
+      // 骨材は **法線だけでなく色にも** 要る。高さ側 /150 に対し色側 /900 = 6:1 で、
+      // 太陽が高い正午は法線が寄与しないので、面のアルベドに何も無い状態になっていた
+      // (実測 単一ブロック内 SD 0.0064 = 相対 4.2%)。足りないのは振幅ではなく密度。
+      dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, Math.round(bw * ch / 60), rng,
+        hueBase, satBase, litBase, 1.0, 0.035);
       // 高さ: 石面はわずかに膨らみ、目地が薄く沈む
       const bump = 168 + rng() * 52;   // 目地(地=140)より高く = 8mm の溝が出る
       // 1.5px 固定の目地は実寸 4.7mm。ミップ 1 段で消えて、街全体の法線が死ぬ。
@@ -111,9 +140,11 @@ function limestoneWall(rng, { size = 1024, coverM = 3.2, courseM = 0.26, tone = 
       hctx.beginPath(); hctx.rect(x + jw, y + jw, bw - jw * 2, ch - jw * 2); hctx.clip();
       // 振幅は「粒」であって「水玉」ではない。±20/255 を法線強度 2.6 で
       // 起こすと法線が ±0.22 振れ、1 個ずつの丸い凸として見えてしまう。
-      for (let k = 0; k < Math.round(bw * ch / 150); k++) {
-        const gx = x + rng() * bw, gy2 = y + rng() * ch, gr = 0.5 + rng() * 1.1;
-        const v = bump + (rng() < 0.5 ? -1 : 1) * (2 + rng() * 5);
+      // 密度 /150 = 粒の間隔 5.7cm・径 4〜7mm は「骨材」ではなく打ち出しの水玉。
+      // 掠め光で点々と読め、高い太陽では消える。数を 6 倍にして振幅を半分にする。
+      for (let k = 0; k < Math.round(bw * ch / 26); k++) {
+        const gx = x + rng() * bw, gy2 = y + rng() * ch, gr = 0.4 + rng() * 0.9;
+        const v = bump + (rng() < 0.5 ? -1 : 1) * (1.2 + rng() * 2.2);
         hctx.fillStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
         hctx.beginPath();
         hctx.ellipse(gx, gy2, gr, gr * (0.7 + rng() * 0.6), rng() * 3.14, 0, 7);
@@ -148,7 +179,12 @@ function fortStone(rng, { size = 1024, coverM = 4.2 }) {
   const [hc, hctx] = canvas(size);
   const px = size / coverM;
   ctx.fillStyle = 'hsl(42,14%,44%)'; ctx.fillRect(0, 0, size, size);   // 目地は影
-  hctx.fillStyle = '#888'; hctx.fillRect(0, 0, size, size);
+  // **目地は必ず沈む。** 地 136 に対し石が 120〜190 だったので、石の 22.9% が
+  // 目地より低く、その石では目地が「隆起した明るいリッジ」になっていた
+  // (実測 wall の歪度が 16 行中 13 行で正 = 明るい目地 = バスルームタイル)。
+  // 地を石の下限より下に置く。差 10/255 × strength 2.4 で実効 8mm の溝。
+  hctx.fillStyle = '#6e6e6e'; hctx.fillRect(0, 0, size, size);
+  const lfF = lfNoise(53.9, 6), lfF2 = lfNoise(203.1, 2);
   let y = 0;
   while (y < size + px) {
     const ch = (0.30 + rng() * 0.20) * px;
@@ -158,23 +194,38 @@ function fortStone(rng, { size = 1024, coverM = 4.2 }) {
       // 要塞の石も単一素材。色相は動かさず、明度だけ。
       const lit = rng() < 0.05 ? 58 + rng() * 5 : 69 + (rng() - 0.5) * 10;
       const jw2 = Math.max(2.4, 0.014 * px);
-      ctx.fillStyle = `hsl(${42 + (rng() - 0.5) * 0.8},${15 + rng() * 3}%,${lit}%)`;
+      const nqf = (lfF(x / size * 6, y / size * 6) * 0.55 + lfF2(x / size * 2, y / size * 2) * 0.45) - 0.5;
+      // 海風と雨に洗われた面は白茶け、風下は汚れが溜まる。彩度だけを低周波で振る。
+      const satF = clamp(15 + rng() * 3 + nqf * 13, 7, 25);
+      ctx.fillStyle = `hsl(${42 + (rng() - 0.5) * 0.8},${satF}%,${lit}%)`;
       // 色側の目地も高さ側と同じ幅にする(3px 固定ではミップで消えていた)
       ctx.fillRect(x + jw2 * 0.5, y + jw2 * 0.5, bw - jw2, ch - jw2);
       dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, 6, rng, 34, 12, lit, bw * 0.14, 0.12);
-      dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, Math.round(bw * ch / 1100), rng, 34, 12, lit, 1.1, 0.05);
+      dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, Math.round(bw * ch / 70), rng, 34, 12, lit, 1.0, 0.032);
       const bump = 120 + rng() * 70;
       hctx.fillStyle = `rgb(${bump},${bump},${bump})`;
       hctx.fillRect(x + jw2, y + jw2, bw - jw2 * 2, ch - jw2 * 2);
       // 要塞石にも骨材。城壁は画面を占める面積がいちばん大きい。
       hctx.save();
       hctx.beginPath(); hctx.rect(x + jw2, y + jw2, bw - jw2 * 2, ch - jw2 * 2); hctx.clip();
-      for (let k = 0; k < Math.round(bw * ch / 190); k++) {
-        const gx = x + rng() * bw, gy2 = y + rng() * ch, gr = 0.5 + rng() * 1.2;
-        const v = bump + (rng() < 0.5 ? -1 : 1) * (3 + rng() * 6);
+      // 等方の丸い粒を 5.7cm 間隔・径 4〜14mm で撒くと、それは骨材ではなく
+      // **打ち出しの板金**になる(全部同じ大きさ・全部同じ形・全部凸)。
+      // 石工が石を仕上げるときの跡は方向を持つ — 一つの石の中では向きが揃い、
+      // 石が変われば向きも変わる。長軸 8〜25mm の短い線分にして、
+      // 数を 7 倍・振幅を半分にする。
+      // 向きの揃った長い線分だけにすると、石ではなく **木肌** に見える。
+      // 実物のビシャン叩きは「向きの揃った短い打痕」と「等方の骨材」の混合。
+      // 7 割を短い打痕(5〜13mm)、3 割を等方の粒にする。振幅は浅く。
+      const ang0 = rng() * Math.PI;
+      for (let k = 0; k < Math.round(bw * ch / 20); k++) {
+        const gx = x + rng() * bw, gy2 = y + rng() * ch;
+        const dir = rng() < 0.7;
+        const gl = (dir ? 0.005 + rng() * 0.008 : 0.0015 + rng() * 0.0025) * px;
+        const v = bump + (rng() < 0.5 ? -1 : 1) * (0.9 + rng() * 1.8);
         hctx.fillStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
         hctx.beginPath();
-        hctx.ellipse(gx, gy2, gr, gr * (0.7 + rng() * 0.6), rng() * 3.14, 0, 7);
+        hctx.ellipse(gx, gy2, gl, dir ? Math.max(0.42, gl * 0.30) : gl * (0.7 + rng() * 0.6),
+          dir ? ang0 + (rng() - 0.5) * 0.55 : rng() * 3.14, 0, 7);
         hctx.fill();
       }
       hctx.restore();
@@ -184,18 +235,59 @@ function fortStone(rng, { size = 1024, coverM = 4.2 }) {
   }
   dabs(ctx, 0, 0, size, size, 160, rng, 34, 10, 44, px * 0.16, 0.05);
   // 下部の潮の帯りは幾何(頂点色)で付けるのでテクスチャは中立に保つ
-  return { map: toTex(c), normalMap: toTex(heightToNormal(hc, 2.8), { srgb: false }), coverM };
+  // 目地を深くし、粒を細かくしたぶん、法線の強度は落とす(walls.js の
+  // normalScale と合わせて 4.76 → 3.24 = 68%)。目地は強くなり、粒は柔らかくなる。
+  return { map: toTex(c), normalMap: toTex(heightToNormal(hc, 2.4), { srgb: false }), coverM };
+}
+
+// 框・迫石・窓台・巾木・柱 — **一枚石の見付**。目地は入らない。
+// これらは BoxGeometry の面ごとに UV 0..1 なので、幅 0.17m の縦枠の正面に
+// 3.2m 分の切石が丸ごと入り、段高 0.26m が 13.8mm の縞に潰れていた
+// (= 石ではなく段ボールの小口)。**四つ目の仕上げ**はここで作る。
+// 目地の無い細かい肌なので、どの UV 尺で貼っても破綻しない。
+function dressedFace(rng, { size = 512, coverM = 0.9 } = {}) {
+  const [c, ctx] = canvas(size);
+  const [hc, hctx] = canvas(size);
+  const px = size / coverM;
+  ctx.fillStyle = 'hsl(41,15%,66%)'; ctx.fillRect(0, 0, size, size);
+  hctx.fillStyle = '#8c8c8c'; hctx.fillRect(0, 0, size, size);
+  // 低周波のむら(一枚石の中の色の差)。周期は面より大きくならないよう 2 格子。
+  const lfD = lfNoise(311.5, 4);
+  for (let gy = 0; gy < 4; gy++) for (let gx = 0; gx < 4; gx++) {
+    const v = lfD(gx + 0.5, gy + 0.5);
+    ctx.fillStyle = `rgba(${v > 0.5 ? '255,250,238' : '96,88,72'},${Math.abs(v - 0.5) * 0.10})`;
+    ctx.fillRect(gx * size / 4 - 2, gy * size / 4 - 2, size / 4 + 4, size / 4 + 4);
+  }
+  // 骨材。磨いた見付なので浅く細かい。
+  dabs(ctx, 0, 0, size, size, Math.round(size * size / 90), rng, 41, 14, 66, 1.0, 0.030);
+  dabs(ctx, 0, 0, size, size, Math.round(size * size / 2600), rng, 38, 16, 58, 2.2, 0.045);
+  // ノミの跡。向きは 1 枚の中で揃える(一枚石だから)。
+  const ang = rng() * Math.PI;
+  for (let k = 0; k < Math.round(size * size / 26); k++) {
+    const gx = rng() * size, gy = rng() * size;
+    const gl = (0.004 + rng() * 0.006) * px;
+    const v = 140 + (rng() < 0.5 ? -1 : 1) * (1.0 + rng() * 2.0);
+    hctx.fillStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
+    hctx.beginPath();
+    hctx.ellipse(gx, gy, gl, Math.max(0.42, gl * 0.28), ang + (rng() - 0.5) * 0.5, 0, 7);
+    hctx.fill();
+  }
+  return { map: toTex(c), normalMap: toTex(heightToNormal(hc, 1.1), { srgb: false }), coverM };
 }
 
 // ---------------------------------------------------------------- 舗装 ----
 // ストラドゥン: 鏡のように磨かれた石灰岩の長板。roughnessMap で中央ほど磨く。
-function stradunPaving(rng, { size = 1024, coverM = 6 }) {
+// **床は画面でいちばんカメラに近い面**(足元 1.6m)なのに、テクセル密度が
+// 街でいちばん粗かった(170.7 px/m。ファサードは 320、要塞石は 243.8)。
+// タイルの周期(coverM)を詰めると反復が見えるので、解像度のほうを上げる。
+function stradunPaving(rng, { size = 2048, coverM = 6 }) {
   const [c, ctx] = canvas(size);
   const [hc, hctx] = canvas(size);
   const [rc, rctx] = canvas(size);
   const px = size / coverM;
-  ctx.fillStyle = 'hsl(35,14%,41%)'; ctx.fillRect(0, 0, size, size);   // 目地の細い影(石 L=70 に対し 25〜30 の差)
-  hctx.fillStyle = '#999'; hctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = 'hsl(35,14%,28%)'; ctx.fillRect(0, 0, size, size);   // 目地の細い影(石 L=55 に対し ΔL 27)
+  // 地 153 に対し石が 150〜180 で、石の 10% が目地より低かった(明るい目地)。
+  hctx.fillStyle = '#8a8a8a'; hctx.fillRect(0, 0, size, size);
   rctx.fillStyle = '#b4b4b4'; rctx.fillRect(0, 0, size, size);   // 目地はざらつく
   // 長板 1.1×0.55(通りを横切る向きに敷かれる)
   let y = 0, rowk = 0;
@@ -206,13 +298,48 @@ function stradunPaving(rng, { size = 1024, coverM = 6 }) {
       const bw = 1.05 * px * (0.85 + rng() * 0.3);
       // ストラドゥンは磨き上げた単一の石灰岩。版ごとに色を散らすのは嘘で、
       // 「明度がばらけた市松」に見える。振れ幅は ΔL* < 4 に抑える。
-      const lit = 70 + (rng() - 0.5) * 3.4 + (rng() < 0.10 ? -6 : 0);   // 1割だけ沈んだ石
+      // **磨いた石は「暗くて光る」。** L=70 は摩耗舗石(61)より 9 ポイント明るく、
+      // 画面で最も明るい面(中央値 0.640)になっていた。拡散の一部が鏡面ローブへ
+      // 移るぶん磨石は暗くなるのが物理で、上に鏡面の帯を置く余白もそこで生まれる。
+      // **磨いた床は摩耗した床より暗い。** 62 は摩耗舗石(58)よりまだ明るく、
+      // 「磨いた床が街でいちばん白い」という逆転が残っていた(実測 逆光の朝で
+      // 無彩の白が 7.4% → 11.0% に増えた原因)。粗い床の下へ回す。
+      const lit = 55 + (rng() - 0.5) * 3.4 + (rng() < 0.10 ? -6 : 0);   // 1割だけ沈んだ石
       ctx.fillStyle = `hsl(${40 + (rng() - 0.5) * 2},${22 + rng() * 3}%,${lit}%)`;
-      ctx.fillRect(x + 1, y + 1, bw - 2, ch - 2);
+      // 目地が色側 2px 固定(= ミップ1段で1px、2段で消える)。実寸は 11.7mm と
+      // 正しいのに、テクセル幅が足りず 9.6m 先で目地が消えていた。実寸から引く。
+      const jp = Math.max(3.4, 0.012 * px);            // 実寸 12mm
+      ctx.fillRect(x + jp * 0.5, y + jp * 0.5, bw - jp, ch - jp);
       dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, 5, rng, 40, 14, lit + 2, bw * 0.10, 0.05);
+      // 骨材の粒。磨いた石なので壁より疎く、浅く — 見えるのではなく掠め光で読める。
+      dabs(ctx, x + 2, y + 2, bw - 4, ch - 4, Math.round(bw * ch / 700), rng, 40, 14, lit, 0.9, 0.030);
       const bump = 150 + rng() * 30;
       hctx.fillStyle = `rgb(${bump},${bump},${bump})`;
-      hctx.fillRect(x + 1, y + 1, bw - 2, ch - 2);
+      hctx.fillRect(x + jp, y + jp, bw - jp, ch - jp);
+      // 版は平らな板ではない。700 年の靴で **中央が皿状に窪む**(6〜9mm)。
+      // 完全な平面鏡は「映るものが動かない鏡」= 一様に少し明るい面にしかならない。
+      // 窪みがあると、映った空と立面が縦に裂けて長い筋になる。
+      {
+        const dg = hctx.createRadialGradient(x + bw / 2, y + ch / 2, 2, x + bw / 2, y + ch / 2, bw * 0.62);
+        dg.addColorStop(0, `rgba(0,0,0,${0.030 + rng() * 0.016})`);   // 中央が沈む
+        dg.addColorStop(0.78, 'rgba(0,0,0,0)');
+        dg.addColorStop(1, 'rgba(255,255,255,0.020)');                // 縁だけ残る
+        hctx.fillStyle = dg; hctx.fillRect(x + jp, y + jp, bw - jp, ch - jp);
+      }
+      // 骨材。皿のグラデの上に置くので、値の置換ではなく半透明の加減算で。
+      hctx.save();
+      hctx.beginPath(); hctx.rect(x + jp, y + jp, bw - jp, ch - jp); hctx.clip();
+      for (let k = 0; k < Math.round(bw * ch / 300); k++) {
+        const gx = x + rng() * bw, gy2 = y + rng() * ch;
+        const gr = (0.0012 + rng() * 0.0026) * px;      // 実寸 1.2〜3.8mm
+        const up = rng() < 0.5;
+        hctx.fillStyle = up ? `rgba(255,255,255,${0.010 + rng() * 0.020})`
+          : `rgba(0,0,0,${0.008 + rng() * 0.016})`;
+        hctx.beginPath();
+        hctx.ellipse(gx, gy2, gr, gr * (0.7 + rng() * 0.6), rng() * 3.14, 0, 7);
+        hctx.fill();
+      }
+      hctx.restore();
       // 磨き: 石の中央は滑らか(暗)・縁と目地はざらつく(明)。
       // three は roughnessMap の G を読む。赤だけに書くと roughness=0 の
       // 完全な鏡になり、石畳が濡れたプラスチックになる。
@@ -230,6 +357,22 @@ function stradunPaving(rng, { size = 1024, coverM = 6 }) {
     }
     y += ch; rowk++;
   }
+  // 磨きが **版ごとの放射グラデ** だけだと、磨きの周期が板の周期(1.05m)に縛られ、
+  // 掠め角の照りが板を跨いで繋がらず点々で終わる。実物のストラドゥンは
+  // 通りの軸に沿った「歩行帯」が版を跨いで磨かれている。その帯を上から掛ける。
+  rctx.globalCompositeOperation = 'multiply';
+  for (let i = 0; i < 7; i++) {
+    const cx = rng() * size, hw = px * (0.55 + rng() * 0.45);   // 帯幅 1.1〜2.0m
+    const g3 = rctx.createLinearGradient(cx - hw, 0, cx + hw, 0);
+    g3.addColorStop(0, 'rgba(255,255,255,0)');
+    // 帯を暗くしすぎると実効 roughness が 0.073 の完全な鏡になり、逆光の朝に
+    // 画面の 8.8% が白へ貼り付く(第1パスの 6.2% からの退行)。帯の役目は
+    // 「磨きが版を跨いで通りの軸に沿う」ことであって、鏡を強くすることではない。
+    g3.addColorStop(0.5, `rgba(84,84,84,${0.18 + rng() * 0.20})`);
+    g3.addColorStop(1, 'rgba(255,255,255,0)');
+    rctx.fillStyle = g3; rctx.fillRect(0, 0, size, size);
+  }
+  rctx.globalCompositeOperation = 'source-over';
   const fix = (cv) => { const cx = cv.getContext('2d'); cx.globalCompositeOperation = 'source-over'; return cv; };
   return {
     map: toTex(c), normalMap: toTex(heightToNormal(hc, 2.6), { srgb: false }),
@@ -238,13 +381,14 @@ function stradunPaving(rng, { size = 1024, coverM = 6 }) {
 }
 
 // 路地・広場の摩耗した敷石(マット・不規則)
-function wornPaving(rng, { size = 1024, coverM = 5 }) {
+function wornPaving(rng, { size = 2048, coverM = 5 }) {
   const [c, ctx] = canvas(size);
   const [hc, hctx] = canvas(size);
   const px = size / coverM;
   const [rc2, rctx2] = canvas(size);
-  ctx.fillStyle = 'hsl(37,16%,40%)'; ctx.fillRect(0, 0, size, size);   // 目地は沈む
-  hctx.fillStyle = '#909090'; hctx.fillRect(0, 0, size, size);
+  ctx.fillStyle = 'hsl(37,16%,38%)'; ctx.fillRect(0, 0, size, size);   // 目地は沈む
+  // 地 144 に対し石が 130〜185 で、石の 25.5% が目地より低かった。
+  hctx.fillStyle = '#787878'; hctx.fillRect(0, 0, size, size);
   rctx2.fillStyle = '#ececec'; rctx2.fillRect(0, 0, size, size);       // 目地はざらつく
   let y = 0, rowk = 0;
   while (y < size + px) {
@@ -254,14 +398,32 @@ function wornPaving(rng, { size = 1024, coverM = 5 }) {
       const bw = 0.62 * px * (0.75 + rng() * 0.6);
       // 明度 67 = rgb 191 = 反射率 0.70。日向の石灰岩の反射率は 0.42〜0.55 で、
       // 実測は平坦画素率 81.3% = 画面の 8 割が情報ゼロの白になっていた。
-      const lit = 61 + (rng() - 0.5) * 11 + (rng() < 0.12 ? -7 : 0);
+      // 石ひとつごとの明度の振れが ΔL 18 で、ファサード(12)より広かった。
+      // 結果、広場が「版ごとにランダムに着色された市松」= 近年敷き直した床に見える。
+      // ストラドゥンは tex.js の規約どおり ΔL<4 に抑えてあり、同じ判断を広げる。
+      // 失った変化は「石を跨ぐ尺度」(摩耗の帯・水溜まりの跡)が担う。
+      const lit = 58 + (rng() - 0.5) * 5 + (rng() < 0.10 ? -5 : 0);
       ctx.fillStyle = `hsl(${37 + (rng() - 0.5) * 4},${18 + rng() * 5}%,${lit}%)`;
-      ctx.fillRect(x + 1, y + 1, bw - 2, ch - 2);
+      const jp2 = Math.max(3.2, 0.010 * px);           // 実寸 10mm
+      ctx.fillRect(x + jp2 * 0.5, y + jp2 * 0.5, bw - jp2, ch - jp2);
       dabs(ctx, x + 1, y + 1, bw - 2, ch - 2, 4, rng, 38, 12, lit, bw * 0.11, 0.05);
-      dabs(ctx, x + 1, y + 1, bw - 2, ch - 2, Math.round(bw * ch / 1400), rng, 38, 12, lit, 1.0, 0.045);
+      dabs(ctx, x + 1, y + 1, bw - 2, ch - 2, Math.round(bw * ch / 180), rng, 38, 12, lit, 1.0, 0.030);
       const bump = 130 + rng() * 55;
       hctx.fillStyle = `rgb(${bump},${bump},${bump})`;
-      hctx.fillRect(x + 1, y + 1, bw - 2, ch - 2);
+      hctx.fillRect(x + jp2, y + jp2, bw - jp2, ch - jp2);
+      // 摩耗した敷石にも骨材。高さ側に一粒も無く、手のひらが何にも引っかからなかった。
+      hctx.save();
+      hctx.beginPath(); hctx.rect(x + jp2, y + jp2, bw - jp2, ch - jp2); hctx.clip();
+      for (let k = 0; k < Math.round(bw * ch / 180); k++) {
+        const gx = x + rng() * bw, gy2 = y + rng() * ch;
+        const gr = (0.0014 + rng() * 0.0032) * px;     // 実寸 1.4〜4.6mm
+        const v = bump + (rng() < 0.5 ? -1 : 1) * (1.4 + rng() * 2.6);
+        hctx.fillStyle = `rgb(${v | 0},${v | 0},${v | 0})`;
+        hctx.beginPath();
+        hctx.ellipse(gx, gy2, gr, gr * (0.7 + rng() * 0.6), rng() * 3.14, 0, 7);
+        hctx.fill();
+      }
+      hctx.restore();
       // 摩耗した舗石は「わずかに照る所とざらつく所の斑」であって一様マットではない。
       // roughnessMap はこれまでストラドゥンにしか無かった。
       const rg2 = rctx2.createRadialGradient(x + bw / 2, y + ch / 2, 2, x + bw / 2, y + ch / 2, bw * 0.55);
@@ -274,7 +436,8 @@ function wornPaving(rng, { size = 1024, coverM = 5 }) {
     y += ch; rowk++;
   }
   dabs(ctx, 0, 0, size, size, 110, rng, 40, 10, 50, px * 0.10, 0.045);
-  return { map: toTex(c), normalMap: toTex(heightToNormal(hc, 3.4), { srgb: false }),
+  // 舗石の目地は 6〜10mm しか沈まない。強度 3.4 は正午に目地の縁を白く跳ねさせる。
+  return { map: toTex(c), normalMap: toTex(heightToNormal(hc, 2.6), { srgb: false }),
     roughnessMap: toTex(rc2, { srgb: false }), coverM };
 }
 
@@ -737,6 +900,10 @@ export function makeTextures() {
   return {
     wallStone: limestoneWall(rng, {}),
     wallStoneWarm: limestoneWall(rng, { tone: 1 }),
+    // 記念建築(スポンザ・レクトル館・大聖堂)の切石は民家より大きい。
+    // 実物の段高は 0.40〜0.60m、長さ 1.2〜2.0m。民家と同じ 0.26m で積むと、
+    // 街でいちばん規律の効いた建物が隣の家と同じ石割りになる。
+    monumentStone: limestoneWall(rng, { coverM: 5.0, courseM: 0.46, tone: 1 }),
     fortStone: fortStone(rng, {}),
     stradun: stradunPaving(rng, {}),
     paving: wornPaving(rng, {}),
@@ -750,6 +917,7 @@ export function makeTextures() {
     needle: needleTex(rng, {}),
     grime: grimeTex(rng, {}),
     plaster: plasterTex(rng, {}),
+    dressed: dressedFace(rng, {}),
     streak: streakTex(rng, {}),
     louver: louverTex(rng, {}),
     clock: clockFace(),
