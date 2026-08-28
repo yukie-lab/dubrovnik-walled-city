@@ -448,8 +448,16 @@ function roofTiles(rng, { size = 512, coverM = 2 }) {
   const [c, ctx] = canvas(size);
   const [hc, hctx] = canvas(size);
   const px = size / coverM;
-  const tileW = 0.18 * px, rowH = 0.34 * px;
-  ctx.fillStyle = 'hsl(21,42%,46%)'; ctx.fillRect(0, 0, size, size);
+  // 働き幅 180mm は実物のクパ・カナリツァ(155〜185mm)に合っている。
+  // 働き長さは 0.34 → 0.30(直った UV スケールで斜面上 318mm。実物 290〜330mm)。
+  // **地図は「形と素地」、色はインスタンス側が持つ。**
+  // 地の彩度 42% は、家ごとの色(彩度 31〜60%)に **掛けられる**。
+  // 赤い地図 × 赤い個体色は R/G を二乗し、書かれた色相幅 14.5° を 3.9° に潰し、
+  // 青チャンネルをリニア 0.0024(石灰岩の 1/100)まで落としていた。
+  // 実測: 地図だけなら h 50.3°/R/G 1.75、個体色だけなら h 54.7°/1.80。
+  //       掛けた瞬間に h 35.9°/R/G 3.31 — 橙ではなく朱になる。
+  const tileW = 0.18 * px, rowH = 0.30 * px;
+  ctx.fillStyle = 'hsl(24,15%,70%)'; ctx.fillRect(0, 0, size, size);
   hctx.fillStyle = '#666'; hctx.fillRect(0, 0, size, size);
   for (let y = 0; y < size + rowH; y += rowH) {
     for (let x = 0; x < size + tileW; x += tileW) {
@@ -463,9 +471,9 @@ function roofTiles(rng, { size = 512, coverM = 2 }) {
       hctx.fillStyle = 'rgba(0,0,0,0.6)';
       hctx.fillRect(x + jx, y + jy + rowH - 4.5, tileW, 4.5);
       // 色: 一枚ごとの窯むら(帯のコントラストは弱く — 強いと波板になる)
-      const lit = 46 + (rng() - 0.5) * 15;
-      const hue = 19 + (rng() - 0.5) * 8;
-      const sat = 40 + (rng() - 0.5) * 14;
+      const lit = 70 + (rng() - 0.5) * 16;
+      const hue = 24 + (rng() - 0.5) * 14;
+      const sat = 15 + (rng() - 0.5) * 12;
       ctx.fillStyle = `hsl(${hue},${sat}%,${lit}%)`;
       ctx.fillRect(x + jx, y + jy, tileW, rowH - 1);
       const cg = ctx.createLinearGradient(x + jx, 0, x + jx + tileW, 0);
@@ -478,7 +486,8 @@ function roofTiles(rng, { size = 512, coverM = 2 }) {
       ctx.fillStyle = cg;
       ctx.fillRect(x + jx, y + jy, tileW, rowH - 1);
       // 段の重なり(下端の濃い影 — 横の律動が瓦を瓦にする)
-      ctx.fillStyle = `rgba(50,24,16,${0.42 + rng() * 0.18})`;
+      // 段の下端の影は buildings.js の谷影と **二回** 引かれていた。地図側は微かに。
+      ctx.fillStyle = `rgba(50,24,16,${0.18 + rng() * 0.12})`;
       ctx.fillRect(x + jx, y + jy + rowH - 4.5, tileW, 4.5);
       ctx.fillStyle = 'rgba(255,225,200,0.16)';
       ctx.fillRect(x + jx, y + jy + 0.5, tileW, 1.6);

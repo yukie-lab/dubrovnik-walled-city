@@ -229,17 +229,35 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
 // ---- 屋根のシェーダ注入 ----------------------------------------------------
 function patchRoofMaterial(mat, coverM) {
   mat.onBeforeCompile = (shader) => {
-    shader.uniforms.uRowH = { value: 0.36 };
+    shader.uniforms.uRowH = { value: 0.15 };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', `#include <common>
         attribute float aSeed;
         varying float vSeed;
         varying vec2 vTileUv;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        // 何百年ぶんの沈み。**棟がいちばん下がり、軒と妻の端では 0** になる形にすると、
+        // 鼻隠し・軒天・妻の三角・棟瓦の取り合いを一切変えずに屋根だけがうねる。
+        //   t = position.x ∈ [-0.5, 0.5](棟方向)、端で (1-4t²) = 0
+        //   s = 1 - 2|position.z| (棟で 1、軒で 0)
+        {
+          float st = 1.0 - 4.0 * position.x * position.x;
+          float ss = max(0.0, 1.0 - 2.0 * abs(position.z));
+          float wob = sin(position.x * 11.0 + aSeed * 6.2832);
+          transformed.y -= (0.040 + 0.022 * wob) * st * ss;
+        }`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
         vSeed = aSeed;
         // 実寸 UV: インスタンスのスケールで補正(瓦が伸びない)
         vec2 instScale = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[2].xyz));
-        vTileUv = uv * instScale / ${coverM.toFixed(2)};
+        // **斜面は z 方向に D/2 しか張らないのに、uv.y は 0..1 を張る。**
+        // そのため x は 1 単位 = 2m、y は 1 単位 = 1m の非等方(実測 2.000 / 1.000)。
+        // 結果、瓦の働き長さが 181mm(実物 290〜330mm)に潰れ、さらに下の
+        // シェーダの縞(0.36/0.185 を「m」のつもりで書いてある)が実寸 383/370mm
+        // になって、アルベドの目と 2.06〜2.12 倍の **二重の格子** を作っていた。
+        // 城壁から屋根海を見る 72〜149m の帯は、まさに偽の 370mm の縞しか
+        // 見えない距離帯。y を半分にして等方に戻す。
+        vTileUv = uv * vec2(instScale.x, instScale.y * 0.5) / ${coverM.toFixed(2)};
         #ifdef USE_NORMALMAP
           vNormalMapUv = vTileUv;   // 法線マップも実寸 UV で引く(生の uv だと色と 2〜3 倍ずれる)
         #endif`);
@@ -251,24 +269,41 @@ function patchRoofMaterial(mat, coverM) {
       .replace('#include <map_fragment>', `
         vec4 sampledDiffuseColor = texture2D(map, vTileUv);
         // 列ごとの焼きむら(瓦は一列ずつ違う窯から来た)
-        float row = floor(vTileUv.y / 0.36 + vSeed * 7.0);
+        // 一度に葺くのは 1 列ではなく 4〜6 段。窯むらはその単位で変わる。
+        float row = floor(vTileUv.y / 0.375 + vSeed * 7.0);
         float rj = hashR(vec2(row, vSeed * 91.0));
-        sampledDiffuseColor.rgb *= 0.82 + rj * 0.34;
-        sampledDiffuseColor.r *= 0.96 + rj * 0.10;
+        float rh = hashR(vec2(row * 3.7, vSeed * 17.0));
+        // リニア空間の乗算スカラーは **色度を変えない**。窯むらとは本来
+        // 「窯の中の位置で酸化/還元が変わった」ことで、赤紫〜黄土へ色相が回る。
+        // チャンネルごとに違う量を掛けて、明度だけでなく色相も動かす。
+        sampledDiffuseColor.rgb *= vec3(0.90 + rj * 0.18,
+                                        0.87 + rj * 0.22 + (rh - 0.5) * 0.09,
+                                        0.84 + rj * 0.26 + (rh - 0.5) * 0.20);
         // 瓦の谷の陰。屋根の海を上から見るとき、これが無いと赤い板になる。
         // 垂直な鼻隠し(小口)には谷影も稜も掛けない — 掛けると軒に黒帯が出る
         float faceUp = step(0.30, abs(vNormal.y));
-        float vv = fract(vTileUv.y / 0.36);
-        sampledDiffuseColor.rgb *= mix(1.0, 0.66 + 0.34 * smoothstep(0.0, 0.30, vv), faceUp);
-        // 丸瓦の稜(半円の重ねが作る縦の縞)
-        float uu = fract(vTileUv.x / 0.185);
-        // 丸瓦の稜。ここが弱いと屋根が「オレンジの板」になる。
-        sampledDiffuseColor.rgb *= mix(1.0, 0.76 + 0.26 * sin(uu * 3.14159), faceUp);
+        // 段の重なりの影。地図側でも引いていたので **同じ横線が二回** 出ていた。
+        // 地図側を微かにしたぶん、こちらは据え置き。周期は 1 段 = 0.30m。
+        float vv = fract(vTileUv.y / 0.15);
+        sampledDiffuseColor.rgb *= mix(1.0, 0.70 + 0.30 * smoothstep(0.0, 0.32, vv), faceUp);
+        // クパ・カナリツァは「幅の広い凹んだ溝瓦」と「幅の狭い高い丸瓦」の交互。
+        // 対称な半正弦は同じ山が並ぶだけで、これはトタンの波板の断面。
+        // 1 モジュール 180mm を 丸 76mm(0.42)+ 溝 104mm に割り、非対称にする。
+        float uu = fract(vTileUv.x / 0.09);
+        float crown = sin(clamp(uu / 0.42, 0.0, 1.0) * 3.14159);
+        float chan = max(0.0, 1.0 - abs((uu - 0.71) / 0.29));
+        float prof = uu < 0.42 ? (0.76 + 0.36 * crown) : (0.64 + 0.14 * chan);
+        sampledDiffuseColor.rgb *= mix(1.0, prof, faceUp);
+        // 縞は fract/sin なのでミップに落ちない。遠景でエイリアスになるので、
+        // 画素あたりの UV の伸び(fwidth)で振幅を殺す。1 命令。
+        float lodK = 1.0 - smoothstep(0.35, 1.1, length(fwidth(vTileUv)) / 0.09);
+        sampledDiffuseColor.rgb = mix(texture2D(map, vTileUv).rgb, sampledDiffuseColor.rgb, lodK);
         // 補修の継ぎ当て(明るい新品の区画がまだらに)
         // 葺き替えの継ぎ当ては、瓦の列(0.185 × 0.36m)にスナップし、
         // 縁を段々にする。軸に平行な長方形は付箋にしか見えない。
-        vec2 tile = vTileUv / vec2(0.185, 0.36);
-        vec2 cell = floor(tile / vec2(5.0, 3.0) + vSeed * 13.0);
+        vec2 tile = vTileUv / vec2(0.09, 0.15);
+        // 一度に葺く単位は百枚 = 約 3.5m 角。5×3 枚(0.45×0.45m)は付箋。
+        vec2 cell = floor(tile / vec2(18.0, 12.0) + vSeed * 13.0);
         float pj = hashR(cell + vSeed * 7.7);
         float edge = hashR(floor(tile) + cell * 3.1);        // 瓦 1 枚単位で縁を崩す
         if (pj > 0.93 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.80, 0.44, 0.30), 0.38);
@@ -447,19 +482,35 @@ export function makeBuildings(plan, tex) {
   {
     // 単位屋根: x∈[-0.5,0.5] 棟, z∈[-0.5,0.5], y∈[0,1]。軒の張り出しは スケール側で吸収。
     const p = [], n = [], u = [], idx = [];
-    // 南斜面
-    p.push(-0.5, 1, 0, 0.5, 1, 0, 0.5, 0, 0.5, -0.5, 0, 0.5);
-    // 北斜面
-    p.push(0.5, 1, 0, -0.5, 1, 0, -0.5, 0, -0.5, 0.5, 0, -0.5);
+    // **一斜面が四角一枚だった。平面は、定義上、うねれない。**
+    // 手で伏せた瓦の屋根は波打ち、棟の線も軒の線もまっすぐではない。
+    // 何百年ぶんの沈みを置く場所を作るために、棟方向 6 × 勾配方向 2 に割る。
+    // 三角は 586 × +80 = 47k 増(全体 3.0M に対し 1.6%)、draw call は不変。
+    const NS = 8, NT = 3;
+    const slope = (sgn) => {
+      const i0 = p.length / 3;
+      for (let j = 0; j <= NT; j++) for (let k = 0; k <= NS; k++) {
+        const t = -0.5 + k / NS, q = j / NT;            // q: 0 = 棟, 1 = 軒
+        p.push(sgn > 0 ? t : -t, 1 - q, sgn * 0.5 * q);
+        u.push(t + 0.5, 1 - q);   // 元の 4 頂点版と同じ向き(北斜面は x=+0.5 側が u=0)
+      }
+      for (let j = 0; j < NT; j++) for (let k = 0; k < NS; k++) {
+        const a = i0 + j * (NS + 1) + k, b = a + 1, c = a + NS + 1, d = c + 1;
+        idx.push(a, c, d, a, d, b);
+      }
+    };
+    slope(1); slope(-1);
     // 単位形状の勾配は dy/dz = 1/0.5 = 2。法線は (0, 0.5, ±1) の正規化。
     // 0.55/0.84 は 33° 相当で、実勾配 17〜24° と 10〜16° ずれ、両斜面の N·L が
     // ほぼ同じになって屋根の海が平板になる(インスタンスの非一様スケールは
     // normalMatrix が補正するので、基準法線さえ正しければよい)。
+    // **基準法線は斜面ごとに一つのまま。** 沈みから頂点法線を計算し直すと、
+    // 南北二斜面の N·L 比 1.50(真昼の屋根の海に「折り目」を作っている唯一の物)が
+    // 崩れる。沈みは position だけを動かす。
     const nrmS = [0, 0.4472, 0.8944], nrmN = [0, 0.4472, -0.8944];
-    for (let k = 0; k < 4; k++) n.push(...nrmS);
-    for (let k = 0; k < 4; k++) n.push(...nrmN);
-    u.push(0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0);
-    idx.push(0, 3, 2, 0, 2, 1, 4, 7, 6, 4, 6, 5);
+    const nSlope = (NS + 1) * (NT + 1);
+    for (let k = 0; k < nSlope; k++) n.push(...nrmS);
+    for (let k = 0; k < nSlope; k++) n.push(...nrmN);
     // 軒先の小口(瓦の厚み)と軒天。ここに濃い陰が入るかどうかで、
     // 屋根が「載っている」か「紙が浮いている」かが決まる。
     const FA = 0.05;   // 単位高さでの鼻隠しの深さ(実寸 0.05〜0.09m。0.16 だと 0.30m の黒帯になる)
@@ -512,7 +563,13 @@ export function makeBuildings(plan, tex) {
   }
   const roofMat = new THREE.MeshStandardMaterial({
     map: tex.roof.map, normalMap: tex.roof.normalMap,
-    roughness: 0.82, metalness: 0, envMapIntensity: 0.40,   // 釉なし多孔質の素焼き
+    // 家の本体(buildings.js の bodyMat)は 0.60 で「日陰の主光源は IBL。
+    // ここを絞ると影が黒紙になる」と書いてある。屋根だけ 0.40 だったので、
+    // 太陽項がほぼゼロの夜に屋根が青い IBL を本体より 33% 少なく受け、
+    // 石が青灰に落ちるなかで瓦だけが煉瓦色で残っていた(実測 夜の相対彩度
+    // C/L が 正午 0.69 → 夜 1.33 と **倍近く増える**逆転)。
+    // 釉なし多孔質の鏡面の弱さは roughness 0.82 が担当する量で、環境の重みではない。
+    roughness: 0.82, metalness: 0, envMapIntensity: 0.62,   // 釉なし多孔質の素焼き
   });
   patchRoofMaterial(roofMat, tex.roof.coverM);
   const roofHouses = plan.houses.filter(h => !h.garden);
@@ -533,16 +590,27 @@ export function makeBuildings(plan, tex) {
       // 実物のドゥブロヴニクの屋根は「一色の赤」ではなく、明度の幅が非常に広い
       // モザイク(新瓦の橙 〜 地衣類に覆われた灰褐色)。彩度を上げるより
       // 明度の幅を広げるほうが、写真の印象に近づく。
+      // 四段が (明度, 彩度) の **完全に単調な一本の対角線** だった(実測 586 個の
+      // r(L*,C*) = +0.769)。古い瓦は「暗く」なるだけで決して「淡く」ならず、
+      // 「明るくて鈍い瓦」= 褪せた薔薇色が 586 軒中 **0 軒**。色相の幅も
+      // 17.6°〜25.9° の 8.3° しかなく、画面の軒間σh° は 6.6°(= 一つの橙)。
+      // 明度と彩度を独立に動かし、色相の幅を倍にする。
+      // 構成比は史実に合わせる — 1991-92 年の砲撃で屋根の約 7 割が壊れ、
+      // 90 年代に葺き替えられた。**新瓦が多数派で、古い屋根が点々と混じる。**
       let hueR, satR, litR;
-      if (r < 0.30) { hueR = 0.049; satR = 0.60; litR = 0.520; }        // 1990年代の後の新瓦
-      else if (r < 0.62) { hueR = 0.055; satR = 0.50; litR = 0.455; }   // 中庸
-      else if (r < 0.86) { hueR = 0.062; satR = 0.41; litR = 0.415; }   // 褪せ・薔薇色の古瓦
-      else { hueR = 0.072; satR = 0.31; litR = 0.360; }                 // 最古・地衣類
+      // 屋根は「一段暗く、一段強い色」。海に対する輝度比が 0.82 まで上がると、
+      // 補色の主役が入れ替わって屋根が支える側になる(目標 0.65〜0.72)。
+      if (r < 0.40) { hueR = 0.043; satR = 0.80; litR = 0.515; }        // 1992 年以後の新瓦 — 明るく濃い橙
+      else if (r < 0.62) { hueR = 0.056; satR = 0.67; litR = 0.462; }   // 中庸
+      else if (r < 0.88) { hueR = 0.072; satR = 0.52; litR = 0.482; }   // 褪せた薔薇 — **明るくて鈍い**
+      else { hueR = 0.080; satR = 0.42; litR = 0.392; }                 // 地衣類・灰の煉瓦
       // offsetHSL は色空間引数を取れず、必ずワーキング空間(リニア)で働く。
       // 暗い瓦ほど揺らぎが 3 倍強く効き、彩度が二峰に割れる。sRGB のまま足す。
       const r2 = hash2((h.z * 7) | 0, (h.x * 11) | 0);
-      col.setHSL(hueR + (h.seed - 0.5) * 0.026, Math.max(0.04, satR - r2 * 0.055),
-        litR + (h.seed - 0.5) * 0.095, THREE.SRGBColorSpace);
+      // 色相と明度に **同じ h.seed** を使っていたので両者が完全相関し(実測 0.880)、
+      // 「暗くて黄色い瓦」「明るくて赤い瓦」が原理的に存在しなかった。別の種にする。
+      col.setHSL(hueR + (h.seed - 0.5) * 0.048, Math.max(0.04, satR - r2 * 0.055),
+        litR + (r2 - 0.5) * 0.105, THREE.SRGBColorSpace);
       roofs.setColorAt(i, col);
       seeds[i] = h.seed;
     });
@@ -554,8 +622,16 @@ export function makeBuildings(plan, tex) {
   // ===== 妻壁(火返し)— 屋根の海を家1軒(4.5〜6m)の粒に刻む石のフィン。
   // これが無いと軒線が10m以上つながり、屋根が「1枚の大きな面」に見える。
   {
-    const P = [], N = [], U = [], IDX = [];
-    const T = 0.26, RISE = 0.22, DROP = 0.30;
+    const P = [], N = [], U = [], C = [], IDX = [];
+    // 単色 0xa9a08d(L*61 の新品の石灰岩)を捨て、家ごとの煤けた頂点色にする。
+    // メッシュは 1 枚のままなので draw call は増えない。
+    let finTint = [0.34, 0.32, 0.29];
+    // RISE 0.22 は屋根面より 22cm 立ち上がり、日を受ける白い天端を作る。
+    // 実測: 屋根に左右を挟まれた画素の 42〜67% がこのフィンで、L* は屋根より
+    // 明るい。**四つの視点のうち三つで、谷のほうが屋根より明るかった**
+    // (黄金時間では谷 55.1 対 屋根 24.3 = 谷が 2.3 倍明るい)。
+    // 記憶は逆 — 「屋根と屋根のあいだはほとんど見えない黒い線。その黒があるから橙が輝く」。
+    const T = 0.26, RISE = 0.10, DROP = 0.30;
     // 巻きは「与えた外向き」に合わせる。巻きから法線を決めていたので、
     // 棟が z 方向の家(全体の約 1/4)ではフィンの全面が内向きになり、
     // 背面カリングで外から消えていた — 石が在るのに見えない、の正体。
@@ -571,6 +647,7 @@ export function makeBuildings(plan, tex) {
       const nl = Math.hypot(nx, ny, nz) || 1; nx /= nl; ny /= nl; nz /= nl;
       for (const v of vs) P.push(v[0], v[1], v[2]);
       for (let k = 0; k < 4; k++) N.push(nx, ny, nz);
+      for (let k = 0; k < 4; k++) C.push(finTint[0], finTint[1], finTint[2]);
       U.push(...uv);
       IDX.push(i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3);
     };
@@ -582,6 +659,12 @@ export function makeBuildings(plan, tex) {
       const halfS = ((zAx ? h.w : h.d) + 0.70) / 2;   // 勾配方向の半長
       const n = 6;
       const pw2 = hash2((h.x * 3.7) | 0, (h.z * 3.7) | 0);
+      {
+        // 火返しは煤と雨で黒ずむ。屋根より必ず暗く(目標 L* 25〜35)。
+        const tc = new THREE.Color().setHSL(0.070 + pw2 * 0.030, 0.06 + h.seed * 0.08,
+          0.30 + pw2 * 0.12, THREE.SRGBColorSpace);
+        finTint = [tc.r, tc.g, tc.b];
+      }
       // 屋根の海の骨格は瓦の色ではなく **白い石の妻壁** が作る。フィンが
       // 屋根の 31% にしか付かず、残りは妻が赤い瓦の三角で終わっていた。
       if (pw2 > 0.62) continue;
@@ -684,11 +767,12 @@ export function makeBuildings(plan, tex) {
     g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
     g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
+    g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
     g.setIndex(IDX);
     const fmat = new THREE.MeshStandardMaterial({
       map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
-      normalScale: new THREE.Vector2(1.7, 1.7),
-      color: 0xa9a08d, roughness: 0.84, metalness: 0, envMapIntensity: 0.55,
+      normalScale: new THREE.Vector2(1.35, 1.35),
+      vertexColors: true, roughness: 0.84, metalness: 0, envMapIntensity: 0.55,
     });
     // 16,992 三角の大面。天空可視率が無いと、屋根の海の中でここだけスレート緑灰になる。
     bakeSkyVis(g, skyAt0, { offsetY: 0.2 });
@@ -702,20 +786,72 @@ export function makeBuildings(plan, tex) {
   // 半割(thetaLength = π)の樋にしていたので、底が無い「開いた筒」だった。
   // 棟は視線より下にあることが多く、斜め上から覗くと中が見える(実測 s09 で
   // 1 視点あたり 4,500px)。丸のまま棟に半分埋める — 下半分は屋根の中。
-  const ridgeGeo = new THREE.CylinderGeometry(0.125, 0.125, 1, 7, 1, false);
+  // 7 角では見えている上半分に 51° 刻みの面が並び、太陽から外れた面が平均を下げる。
+  // 長さ分割 1 では「継ぎ目の無い塩ビ管」。棟瓦は 400mm の半円筒を重ねて伏せる物で、
+  // **重ね目が棟の表情のすべて**。三角は 586 × +40 = 23k 増、draw call は不変。
+  const ridgeGeo = new THREE.CylinderGeometry(0.125, 0.125, 1, 10, 5, false);
+  {
+    // 分割ごとに半径を刻んで、瓦一枚ずつの重なりを出す
+    const pos = ridgeGeo.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i);                       // -0.5..0.5(回転前は長さ方向)
+      const k = Math.round((y + 0.5) * 5);
+      const rk = 1 + (k % 2 === 0 ? 0.055 : -0.03);
+      pos.setX(i, pos.getX(i) * rk); pos.setZ(i, pos.getZ(i) * rk);
+    }
+    ridgeGeo.computeVertexNormals();
+  }
   ridgeGeo.rotateZ(Math.PI / 2);
-  const ridgeMat = new THREE.MeshStandardMaterial({ color: 0xa05a38, roughness: 0.82, envMapIntensity: 0.40 });
+  // color 0xa05a38 と setColorAt の HSL が **両方掛かり**、実効アルベドが
+  // sRGB(84,17,2) = L* 16.9 の「乾いた血の色」になっていた。正午の太陽高度 61° で、
+  // 真上を向く棟が 20° の斜面より 2 段暗いのは光の理屈に合わない。
+  // 色は個体色だけが持つ。地図も与える(棟だけ無地だった)。
+  const ridgeMat = new THREE.MeshStandardMaterial({
+    map: tex.roof.map, normalMap: tex.roof.normalMap,
+    roughness: 0.84, envMapIntensity: 0.62,
+  });
+  // 屋根が沈むのに棟だけ真っ直ぐだと、棟が空中に残る。同じ式を掛ける。
+  // 棟瓦はワールド寸法なので、単位空間の沈み量に roofH を掛ける必要がある。
+  {
+    const rh = new Float32Array(roofHouses.length);
+    roofHouses.forEach((h, i) => { rh[i] = h.roofH; });
+    ridgeGeo.setAttribute('aRoofH', new THREE.InstancedBufferAttribute(rh, 1));
+    const prevOBC = ridgeMat.onBeforeCompile;
+    ridgeMat.onBeforeCompile = (sh, r) => {
+      if (prevOBC) prevOBC.call(ridgeMat, sh, r);
+      sh.vertexShader = sh.vertexShader
+        .replace('#include <common>', '#include <common>\n attribute float aRoofH; attribute float aSeedR;')
+        .replace('#include <begin_vertex>', `#include <begin_vertex>
+          { float st = 1.0 - 4.0 * position.x * position.x;
+            transformed.y -= (0.040 + 0.022 * sin(position.x * 11.0 + aSeedR * 6.2832)) * st * aRoofH; }`);
+    };
+    ridgeMat.customProgramCacheKey = () => 'ridgeSag';
+  }
   const ridges = new THREE.InstancedMesh(ridgeGeo, ridgeMat, roofHouses.length);
   {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
+    const seedsR = new Float32Array(roofHouses.length);
+    roofHouses.forEach((h, i) => { seedsR[i] = h.seed; });
+    ridgeGeo.setAttribute('aSeedR', new THREE.InstancedBufferAttribute(seedsR, 1));
     roofHouses.forEach((h, i) => {
       dummy.position.set(h.x, h.eaves + h.roofH + 0.02, h.z);
       dummy.rotation.set(0, h.ridgeAxis === 'z' ? Math.PI / 2 : 0, 0);
-      dummy.scale.set((h.ridgeAxis === 'z' ? h.d : h.w) + 0.4, 1, 1);
+      dummy.scale.set((h.ridgeAxis === 'z' ? h.d : h.w) + 0.10, 1, 1);   // 0.4 だと両妻から 0.20m ずつ飛び出す
       dummy.updateMatrix();
       ridges.setMatrixAt(i, dummy.matrix);
-      col.setHSL(0.050, 0.58, 0.34, THREE.SRGBColorSpace);   // 棟瓦は一種類。ここが揃うと屋根が締まる
+      // 棟瓦は屋根と同じ窯の瓦を伏せたもの。**独立の色ではない。**
+      // 586 軒すべてに同じ HSL を配っていたので、暗い古屋根には明るすぎる棒が、
+      // 明るい新屋根には暗すぎる棒が載っていた(t3gold で棟 L*39 対 屋根 L*10.9)。
+      const rr = hash2((h.x * 3) | 0, (h.z * 3) | 0);
+      const rr2 = hash2((h.z * 7) | 0, (h.x * 11) | 0);
+      let hR, sR, lR;
+      if (rr < 0.40) { hR = 0.043; sR = 0.80; lR = 0.515; }
+      else if (rr < 0.62) { hR = 0.056; sR = 0.67; lR = 0.462; }
+      else if (rr < 0.88) { hR = 0.072; sR = 0.52; lR = 0.482; }
+      else { hR = 0.080; sR = 0.42; lR = 0.392; }
+      col.setHSL(hR + (h.seed - 0.5) * 0.048 - 0.004, Math.max(0.04, sR - rr2 * 0.055) * 0.94,
+        (lR + (rr2 - 0.5) * 0.105) * 0.90, THREE.SRGBColorSpace);
       ridges.setColorAt(i, col);
     });
   }
