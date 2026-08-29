@@ -34,7 +34,10 @@ const out = await page.evaluate(() => {
         rc.set(new THREE.Vector3(x, gy + 1.6, z), new THREE.Vector3(dir, 0, 0));
         rc.far = 14;
         const hit = rc.intersectObjects(W.solids, true).filter(h => h.distance > 0.05);
-        half.push(hit.length ? hit[0].distance : 14);
+        // 当たらなかった側を 14m として平均に混ぜると、交差点や広場に開く
+        // station が中央値を汚す(alleyN0 が「幅 17.16m」になっていた)。
+        // 当たらなかった station はその路地の統計から捨てる。
+        half.push(hit.length ? hit[0].distance : null);
       }
       // 壁の高さ: 路地の床から、両側の家の軒までの高さ
       let h = 0;
@@ -42,14 +45,21 @@ const out = await page.evaluate(() => {
         if (Math.abs(b.x - x) < b.w * 0.5 + 2.5 && Math.abs(b.z - z) < b.d * 0.5 + 2.5)
           h = Math.max(h, b.eaves - gy);
       }
-      stations.push({ z, x, w: half[0] + half[1], h, y: gy });
+      if (half[0] === null || half[1] === null) continue;      // 壁が無い = 交差点・広場
+      // 空のリボンは **目線から** 実際に抜けた角度で測る。床から測り、しかも
+      // bbox 内の最高軒を h に使うと系統的に過小になる(実測 22° に対し 16.3° を出す)。
+      const EY = 1.6;
+      const aL = Math.atan2(h - EY, half[0]), aR = Math.atan2(h - EY, half[1]);
+      const openDeg = (Math.PI - aL - aR) * 180 / Math.PI;
+      stations.push({ z, x, w: half[0] + half[1], h, y: gy, open: openDeg });
     }
+    if (!stations.length) continue;
     const wAvg = stations.reduce((a, b) => a + b.w, 0) / stations.length;
     const hAvg = stations.reduce((a, b) => a + b.h, 0) / stations.length;
     const ys = stations.map(s2 => s2.y);
     rows.push({ name: s.id, L, plan_w: s.w, w: wAvg, h: hAvg, ratio: hAvg / Math.max(wAvg, 0.01),
       // 空のリボンの半角: atan((w/2)/h)。両側で 2 倍。
-      sky: 2 * Math.atan((wAvg / 2) / Math.max(hAvg, 0.01)) * 180 / Math.PI,
+      sky: stations.map(s2 => s2.open).sort((a, b) => a - b)[stations.length >> 1],
       rise: Math.max(...ys) - Math.min(...ys) });
   }
   // 生活の痕跡: life 群の中身を路地の近くで数える

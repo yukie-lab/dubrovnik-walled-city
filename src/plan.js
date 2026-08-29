@@ -500,11 +500,33 @@ function buildHouses(northXs, southXs, streets) {
         for (let r = 0; r < nRows; r++) {
           const zc = zA + sideSign * rowD * (r + 0.5);
           // 一列を家々に分割
+          // 南の路地は 4 点の折れ線で ±0.65m 振れる(plan.js:169)。列の右端 x1 は
+          // 路地の **始点** の x から決まっているので、余りを最後の家に吸わせると、
+          // 路地が家の側へ振れている z では壁が路地の中へ入る(実測 alleyS1 で
+          // 足元の通行幅が 0.06m まで潰れた)。この列の z 範囲で路地の中心線が
+          // 最も家に寄る位置を取り直す。
+          let x1r = x1;
+          const aRight = gi === edges.length - 2 ? null : alleys[gi];
+          if (aRight && aRight.pts.length > 2) {
+            for (let k = 0; k <= 6; k++) {
+              const zz = zA + sideSign * rowD * (r + k / 6);
+              x1r = Math.min(x1r, alleyXAt2(aRight, zz) - aw1 / 2 - 0.1);
+            }
+          }
           let x = x0;
           const isStradunFace = band.stradunRow && r === 0;
-          while (x < x1 - 3.2) {
+          while (x < x1r - 3.0) {
             const w = isStradunFace ? 5.4 + rng() * 2.2 : 4.2 + rng() * 3.2;
-            const wReal = Math.min(w, x1 - x);
+            let wReal = Math.min(w, x1r - x);
+            // 左詰めで割ると、余り(0〜3.2m)は街区の構造上 **必ず列の +x 端**、
+            // つまり次の路地の西側に落ちる。そこが未建築のまま残り、plan.js の
+            // 庭塀補完が厚 0.5m・高さ最大 10.83m の「目の無い板」でそれを塞ぐ。
+            // garden は buildings.js:916 の `if (h.garden) continue;` で
+            // 窓・扉・縦樋・巾木・軒・屋根をすべて失うので、路地の立面 278m が
+            // 板になっていた。北の路地の西壁が東壁より系統的に貧しい(扉 4 対 8、
+            // 縦樋 0 対 7、街灯が全部東側)のは、この一箇所の詰め方が原因。
+            // 残りが 1 軒に足りないなら、この家を端まで伸ばす。
+            if (x1r - (x + wReal) < 3.2) wReal = x1r - x;
             if (wReal < 3.0) break;
             const cx = x + wReal / 2;
             // 城壁の外に家を建てない。北西の帯は wall のポリラインが内側へ

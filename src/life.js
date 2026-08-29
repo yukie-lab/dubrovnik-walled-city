@@ -60,7 +60,11 @@ export function makeLife(plan, tex, stepPool) {
     const halfCross = (h) => (alongZ ? h.w : h.d) / 2;
     const n = alongZ ? 7 + (rng() * 5 | 0) : Math.max(6, Math.round((uMax - uMin) / 14));
     for (let i = 0; i < n; i++) {
-      const u = lerp(uMin + 6, uMax - 6, rng());
+      // 一様乱数で位置を振ると、拒否条件(頭上 2.9m・隣と 2.4m・両側の家の有無)を
+      // 通った紐が偏って残る。実測 alleyN2 の 72.5m に **2 本だけ**、しかも
+      // z=-50.8 と -55.3 の 4.4m 間隔で奥に密集し、手前 45m はゼロだった。
+      // 層化抽出にすれば、同じ本数でも路地の全長に散る。
+      const u = lerp(uMin + 6, uMax - 6, (i + 0.35 + rng() * 0.30) / n);
       const av = avAt(u);
       const near = plan.houses.filter(h => Math.abs(uOf(h) - u) < halfAlong(h) + 1);
       const lo = near.filter(h => vOf(h) < av && av - vOf(h) < 9);
@@ -381,18 +385,30 @@ export function makeLife(plan, tex, stepPool) {
       && z > h.z - h.d / 2 - 1.1 && z < h.z + h.d / 2 + 1.1);
     for (const s2 of plan.streets) {
       if (s2.kind === 'port') continue;
-      const [x0, z0] = s2.pts[0], [x1, z1] = s2.pts[1];
+      // 折れ線の路地で pts[1] を終点にすると、南の 4 点折れ線では第一区間しか
+      // 見ないので、灯が手前 34% にしか立たない。
+      const [x0, z0] = s2.pts[0], [x1, z1] = s2.pts[s2.pts.length - 1];
       const L = Math.hypot(x1 - x0, z1 - z0);
       const dx = (x1 - x0) / L, dz = (z1 - z0) / L;
       const nx = -dz, nz = dx;
-      const gap = s2.kind === 'alley' ? 15 : 17;
+      // 実在の階段路地の吊り灯は 8〜12m に 1 基。15 だと実測 18m に 1 基になり、
+      // 光源の間に「何も無い」区間ができる(夜の路地の 40.8% が L*<5 だった)。
+      const gap = s2.kind === 'alley' ? 11 : 17;
       let side = 1;
       for (let d = 7; d < L - 4; d += gap * (0.82 + rng() * 0.4)) {
         const t = d / L;
-        const cx = lerp(x0, x1, t) + nx * (s2.w / 2 - 0.06) * side;
-        const cz = lerp(z0, z1, t) + nz * (s2.w / 2 - 0.06) * side;
+        // 折れ線に沿って中心を取り直す。直線の弦で置くと、振れた路地では
+        // 壁座が石の中か路地の真ん中に来る。
+        const bz = lerp(z0, z1, t);
+        const bx = (s2.kind === 'alley' && plan.alleyXAt) ? plan.alleyXAt(s2, bz) : lerp(x0, x1, t);
+        // 壁面は設計中心 ±(w/2 + 0.16)。設計幅そのままだと壁座の裏が壁から
+        // 0.19m 手前に浮く(実測 46 基すべてで 0.19m、分散ゼロ)。
+        const cx = bx + nx * (s2.w / 2 + 0.10) * side;
+        const cz = bz + nz * (s2.w / 2 + 0.10) * side;
         const gy = plan.groundAt(cx, cz, 200).y;
-        if (hasWall(cx, cz)) lamps.push({ x: cx, z: cz, y: gy + 3.2, rotY: Math.atan2(-nx * side, -nz * side), seed: rng() });
+        // 46 基すべてが床上ぴったり 3.20m だった。取り付く石の段は家ごとに
+        // 違うので、実在の吊り灯は 2.9〜4.2m に散る。
+        if (hasWall(cx, cz)) lamps.push({ x: cx, z: cz, y: gy + 3.05 + rng() * 0.95, rotY: Math.atan2(-nx * side, -nz * side), seed: rng() });
         side = -side;
       }
     }
@@ -666,7 +682,9 @@ export function makeLife(plan, tex, stepPool) {
     // ストラドゥン(1人/9m)と東西の街路
     for (const s2 of plan.streets) {
       if (s2.kind === 'alley') continue;
-      const [x0, z0] = s2.pts[0], [x1, z1] = s2.pts[1];
+      // 折れ線の路地で pts[1] を終点にすると、南の 4 点折れ線では第一区間しか
+      // 見ないので、灯が手前 34% にしか立たない。
+      const [x0, z0] = s2.pts[0], [x1, z1] = s2.pts[s2.pts.length - 1];
       const L = Math.hypot(x1 - x0, z1 - z0);
       // プリイェコは実物では旧市街でいちばん人と卓の出る通り。22m に 1 人では
       // 「住んでいる部分」が無人に見える。岸壁も同じ(100m に 4 人だった)。

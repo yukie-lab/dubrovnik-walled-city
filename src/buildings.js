@@ -418,13 +418,13 @@ export function makeBuildings(plan, tex) {
     sh.uniforms.uBounce = bounceRad;
     sh.uniforms.uGroundY = groundRefY;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; varying float vPlas; varying float vSky; varying float vBnc; uniform float uGroundY;')
+      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; varying float vPlas; varying float vSky; varying float vBnc; varying float vUp; uniform float uGroundY;')
       .replace('#include <begin_vertex>', '#include <begin_vertex>\n vPlas = aPlas; vSky = aSky;\n vBnc = clamp(0.75 - normal.y * 0.35, 0.25, 1.0) * exp(-max(position.y - uGroundY, 0.0) / 2.4);');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform sampler2D uPlasMap; uniform sampler2D uPlasNrm; uniform float uPlasScale;
         uniform vec3 uUrban; uniform vec3 uBounce;
-        varying float vPlas; varying float vSky; varying float vBnc;
+        varying float vPlas; varying float vSky; varying float vBnc; varying float vUp;
         float wnHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float wnNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
           return mix(mix(wnHash(i), wnHash(i + vec2(1,0)), f.x),
@@ -461,6 +461,22 @@ export function makeBuildings(plan, tex) {
         // 0〜1 を使い切る値ノイズの二層に差し替える(68m と 21m、約分できない)。
         float lf = wnNoise(vMapUv * 0.047 + 5.1) * 0.60 + wnNoise(vMapUv * 0.155 + 19.3) * 0.40;
         sd.rgb *= 1.0 + 0.36 * (lf - 0.5);
+        // 第三層。上の二層は周期 68m と 21m で、**腕の届く壁が張る 3m では
+        // どちらも直流になって消える**。第5パスが空で見つけたのと同じ故障
+        // (支配周期 13° は視野 12〜18° の路地の帯では直流になる)。実測でも
+        // 局所 SD 8px は日陰の三時刻で 0.53〜0.61 L* = 弁別閾未満で、
+        // 直射のある正午だけ 2.03 — いまの肌理は法線マップ頼りで、
+        // 「太陽が床を照らして跳ね返る時だけ」現れる光依存の肌理だった。
+        // 路地の視野に入る 2.4m と 0.9m を足す。湿気も雨だれも縦に走るので、
+        // 垂直の周期は水平の 1/3。
+        float hf = wnNoise(vMapUv * vec2(0.42, 1.25) + 31.7) * 0.62
+                 + wnNoise(vMapUv * vec2(1.10, 3.30) + 57.3) * 0.38;
+        sd.rgb *= 1.0 + 0.22 * (hf - 0.5);
+        // 上り湿気。実在の路地壁は下 1.2〜1.6m が必ず暗い — 目が歩く高さにある
+        // 唯一の縦の階調。乾かない壁だけが湿るので、天空可視率で門を掛ける
+        // (= 開けた広場やストラドゥンの正面には出ない。第2パスの石を守る)。
+        float damp = smoothstep(1.65, 0.0, vUp) * smoothstep(0.38, 0.18, vSky) * (0.55 + 0.45 * hf);
+        sd.rgb *= mix(vec3(1.0), vec3(0.60, 0.645, 0.60), damp * 0.55);
         // 雨に洗われた面は寒色へ、庇の下と風下は暖色へ。**色相は動かさず色温度だけ。**
         sd.rgb *= mix(vec3(1.020, 1.000, 0.955), vec3(0.975, 0.995, 1.030), lf);
         diffuseColor *= sd;`)
@@ -935,6 +951,18 @@ export function makeBuildings(plan, tex) {
       else if (isAlley && !isCourt) nCols = Math.max(1, Math.round(wallLen / 4.2));
       else nCols = Math.max(1, Math.floor(wallLen / (isCourt ? 3.0 : 2.15)));
       const groundY = f.groundY ?? (h.yBase + HOUSE_BASE_BURY);
+      // f.groundY は面の中点 1 点で測ったスカラー。路地は勾配 25% で登るので、
+      // 面長 8.5m では 2.1m の落差を 1 つの高さで代表している。巾木は石ごとに
+      // 地面を測り直しているのに(下の emit)、扉と地上階の窓だけがそれをせず、
+      // 実測で敷居が p25 で 0.13m 舗装に埋まり、p75 で 0.43m 宙に浮いていた
+      // (最大 0.66m)。同じ解決を開口にも与える。
+      const groundAtOpening = (px, pz) => {
+        const g3 = plan.groundAt(px, pz);
+        const ty = plan.surfaceAt(px, pz);
+        const dg = (g3 && g3.y !== undefined) ? g3.y - ty : -1;
+        const onPaving = f.paved || (h.monument && dg > 0.08 && dg < 0.24);
+        return onPaving ? Math.max(g3 && g3.y !== undefined ? g3.y : groundY, ty) : ty;
+      };
       // 階高 3.05m、窓台 0.95m。上に 0.5m 以上の壁が残らない割付は構造的に嘘。
       // 幅 0.22m では「全市が同じ階高」になる。実際の町家は 2.8〜3.4m に散る。
       const fh = h.monument ? 5.2 : 2.80 + h.seed * 0.58;
@@ -967,7 +995,10 @@ export function makeBuildings(plan, tex) {
       // (実測: 扉枠・扉葉・縦樋と 1,900 箇所で重なり、Z ファイティングも出た)。
       const doorCuts = [];
       // 縦樋(角と 10m ごと)— 使われている建物にしか付かないもの
-      if (!isAlleyFace(f) && !h.monument) {
+      // 路地面を除外していたので、路地の壁に垂直線が一本も無かった(実測
+      // alleyN2 の左壁 0 本・右壁 7 本、右の 7 本は court/street と判定された面)。
+      // 実物では雨は必ず路地へ落とす。切石の無地の壁に律を与える唯一の物。
+      if (!h.monument) {
         // 縦樋は隣家との境(= 立面の端)に降りる。壁の真ん中に樋は立たない。
         const nPipe = wallLen > 7.5 ? 2 : 1;
         for (let q = 0; q < nPipe; q++) {
@@ -1019,7 +1050,7 @@ export function makeBuildings(plan, tex) {
             // 通りの規律が命 — 間引かない
           } else {
             if (isGround && !doorPlaced && cix === ((nCols / 2) | 0) && f.kind !== 'plaza' && !isCourt) {
-              doors.push({ x: wx, z: wz, y: groundY, rotY, seed: s, arch: h.stradunFront });
+              doors.push({ x: wx, z: wz, y: isAlleyFace(f) ? groundAtOpening(wx, wz) : groundY, rotY, seed: s, arch: h.stradunFront });
               doorCuts.push({ c: off * wallLen * spread, half: 1.15 });
               doorPlaced = true;
               continue;
