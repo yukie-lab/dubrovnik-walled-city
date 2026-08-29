@@ -212,14 +212,24 @@ vec3 skyRadiance(vec3 d, vec3 zen, vec3 hor, vec3 horFar, vec3 sunDir, vec3 sunC
   float sunAmt = clamp(dot(d, sunDir), -1.0, 1.0);
   float horizW = pow(1.0 - clamp(h, 0.0, 1.0), 3.2);
   vec3 horiz = mix(horFar, hor, smoothstep(-0.4, 0.9, sunAmt));
-  vec3 col = mix(zen, horiz, horizW);
+  // 位相関数と水平線の無彩化は天蓋と同じにする。映り込みが元と違う形をしていたら、
+  // それは水平線で必ず段になって出る(海/空 0.95 はキャンペーン中で最も薄い関係)。
+  // 位相関数は「その方向の空の放射輝度」そのものの性質なので、映り込みにも要る。
+  // 一方、水平線の無彩化と逆転層の蓋は **観測者から水平線までの長い水平経路**
+  // の効果で、反射線にまで掛けると二重計上になる(実測: 掛けたところ海の
+  // B/R が 2.073 → 1.936 に動き、保護対象の海を動かしてしまった)。天蓋だけに置く。
+  float ph = mix(1.0, 0.75 * (1.0 + sunAmt * sunAmt), 0.40 * pow(1.0 - horizW, 3.0));
+  vec3 col = mix(zen * ph, horiz, horizW);
   float disc = smoothstep(0.99996, 0.999985, sunAmt);
   // 暈の裾 pow(...,34) は半値角 10.6° の巨大な光の輪。逆光のストラドゥンで
   // 画面の 11.2% を「Y>0.75 かつ彩度<0.06」の無彩の白にしていた。
   // 実在の太陽の光冠は 2〜3°。円盤(disc)は残す — 太陽を直接見た画素が
   // 白いのは正しい。裾だけを締める。
-  float halo = pow(clamp(sunAmt, 0.0, 1.0), 34.0) * 0.30 + pow(clamp(sunAmt, 0.0, 1.0), 140.0) * 3.0;
-  col += sunCol * (halo * (0.5 + dusk * 1.2) + disc * mix(600.0, 46.0, dusk)) * sunK;
+  // 裾は天蓋と同じく「暖色への混色」。ここは唯一の呼び出し元 sea.js:292 が
+  // sunK=0 を渡すので現状どの画素にも出ないが、写しが食い違ったままにはしない。
+  float sA = clamp(sunAmt, 0.0, 1.0);
+  col = mix(col, col * 0.55 + sunCol * 0.42, pow(sA, 34.0) * (0.35 + dusk * 0.55) * sunK);
+  col += sunCol * (pow(sA, 140.0) * 5.0 * (0.5 + dusk * 1.2) + disc * mix(600.0, 46.0, dusk)) * sunK;
   float ember = pow(clamp(sunAmt * 0.5 + 0.5, 0.0, 1.0), 7.0) * horizW * dusk;
   col += sunCol * ember * 0.5;
   return col;
@@ -240,7 +250,7 @@ const SKY_FRAG = /* glsl */`
 varying vec3 vDir;
 uniform vec3 uZenith, uHorizon, uHorizonFar, uSunDir, uSunCol;
 uniform float uSkyGain;
-uniform float uDusk, uNight, uStarAlpha, uTime;
+uniform float uDusk, uNight, uStarAlpha, uTime, uSunEl;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){
@@ -276,7 +286,21 @@ void main() {
   // 水平線の靄は太陽側で厚く暖かい
   float horizW = pow(1.0 - clamp(h, 0.0, 1.0), 3.2);
   vec3 horiz = mix(uHorizonFar, uHorizon, smoothstep(-0.4, 0.9, sunAmt));
-  vec3 col = mix(uZenith, horiz, horizW);
+  // 単一散乱の位相関数。同じ仰角でも、太陽から 30° と 100° では実在の空の
+  // 輝度が 3〜4 倍違う。それが「空が丸い」ことを見せている当のもの。
+  // これが無いので、仰角 40〜84° の空は全方位で 0.3 L* しか変わらない
+  // = 天頂から 40° までが物理的に一枚の色見本だった。
+  // (1+cos^2) の球面平均は 4/3。0.75 を掛けて **総量は 1 のまま** 分配だけ変える。
+  // 強さは上限ではなく安全弁 — 1.0 にすると太陽から 90° の空が 25% 暗くなり、
+  // 山/空 0.96(v4_srd 正午)が 1.0 を跨いで第4パスの成果が折れる。
+  // 仰角で立ち上げる。欠陥が実測されたのは天頂(仰角 40° と 84° で 0.3 L*、
+  // 弁別閾の 1/3 = 空の上半分が物理的に一枚の色見本)であって低空ではない。
+  // 物理でもある:大気路程が長い水平線方向では多重散乱が位相関数を等方に均すので、
+  // 単一散乱の非対称は天頂ほど強く出る(効きは経路長に対して超線形)。
+  // 一次で掛けると仰角 13〜21.5° の空が 3.6% 暗くなり、第4パスが 1.41 → 0.96 まで
+  // 詰めた「山/空」(v4_srd 正午)が 1.00 を跨ぐ。三乗ならそこは 1% で済む。
+  float ph = mix(1.0, 0.75 * (1.0 + sunAmt * sunAmt), 0.40 * pow(1.0 - horizW, 3.0));
+  vec3 col = mix(uZenith * ph, horiz, horizW);
 
   // 塗られた大気: 低周波の筆むら(彩度と明度がわずかに揺れる)
   // atan(d.x, d.z) は方位 180°(±π)で値が 2π 飛ぶ。それを直接 noise に
@@ -284,35 +308,115 @@ void main() {
   // (夜ほど目立つ — 露出が上がって ±3.7% の段差が読めるようになる)。
   // 方位を「円周上の点」として渡せば周期性が保たれ、切れ目そのものが消える。
   // 半径に高度を混ぜると、高さ方向にも模様が変わる。
-  vec3 brushP = d * 4.4 + vec3(0.0, uTime * 0.004, 0.0);
+  // 大気の不均一は「水平に広く、垂直に薄い」— 境界層のエアロゾルは水平 15〜20°・
+  // 垂直 4〜6° の層をなす。等方 (d*4.4) では支配周期が 13° になり、視野が
+  // 12〜18° しかない路地と広場の空の帯では **その成分がまるごと直流になって消える**。
+  // 実測 resid: v8_luza_t2noon 0.774 / v1_stradun_t2noon 0.757(弁別閾 1 L* 未満)。
+  vec3 brushP = d * vec3(3.4, 13.0, 3.4) + vec3(0.0, uTime * 0.012, 0.0);
   float brushK = smoothstep(0.97, 0.70, d.y);
   float brush = fbm3(brushP);
-  col *= 1.0 + (brush - 0.5) * 0.075 * brushK;
-  // 加算のむらは夜に効きすぎる(空が暗いので相対的に強く出て、星が霞に沈む)。
-  col += (fbm3(brushP * 3.1 + 7.7) - 0.5) * 0.022 * brushK * mix(1.0, 0.32, uNight);
+  float fine  = fbm3(brushP * 3.1 + 7.7);
+  // 加算のむらは「絶対量」だった。空のゲイン前輝度は天頂で 0.090(正午)→
+  // 0.0007(夜)と 130 倍動くので、同じ 0.022 が ±12% → ±950% に化けていた。
+  // 夜空一面の灰色の斑(レンズの汚れに見えるもの)はこれ。比例させれば時刻に
+  // よらず同じ強さの筆になり、mix(1.0,0.32,uNight) の逃げも要らなくなる。
+  float mK = ((brush - 0.5) * 0.62 + (fine - 0.5) * 0.38) * 0.115 * brushK;
+
+  // 靄の層。振幅の小さい平滑な noise は、どれだけ足しても弁別閾に届かない。
+  // 絵具になるには **縁** が要る。閾値で層を切り出し、明るい側と暗い側を
+  // 同じ幅の smoothstep で対にする — fbm3 は 0.5 を中心にほぼ対称なので、
+  // (up - dn) の平均は構造的にゼロ。空の平均輝度は動かない(山/空・海/空を守る)。
+  float ci = brush * 0.62 + fine * 0.38;
+  float gate = smoothstep(0.05, 0.30, d.y);          // 水平線帯には触れない
+  float up = smoothstep(0.50, 0.70, ci);
+  float dn = smoothstep(0.50, 0.30, ci);
+  // 層は色度が抜ける(多重散乱で白む)。ただし白ませるだけだと空の平均彩度が
+  // 下がり、山と空の色相差(v4_srd 正午で 0.72)が痩せる。層の切れ間では逆に
+  // 混合係数を負にして色度を伸ばす — mix の外挿。輝度は t に依らず保存される
+  // (自分の輝度への混合なので (1-t)Y + tY = Y)。彩度も平均でゼロ和になる。
+  mK += (up - dn) * 0.34 * gate;
+  col *= 1.0 + mK;
+  // AgX は明るい画素ほど彩度を落とす。筆と靄の層で持ち上げた画素はそのぶん
+  // 色度が抜け、空クラスの平均 B/R が下がって、水平線で海と空の色相差が痩せる
+  // (実測 v3_roofs 正午で 1.794 → 1.704)。持ち上げた量に比例して色度を先に
+  // 伸ばして相殺する。混合係数が負の外挿でも、自分の輝度まわりなので
+  // 輝度は厳密に保存される((1-t)Y + tY = Y)。暗くした側は AgX が彩度を
+  // 落とさないので触らない。
+  col = mix(col, vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), -max(mK, 0.0) * 1.50);
+
+  // 水平線の無彩化と、沈降逆転の蓋。
+  // 実測 C*(0)/C*(30) = 0.63。八月のアドリア海(視程 20〜40km)は多重散乱で
+  // 水平線がほぼ無彩に抜け、この比は 0.30〜0.40。いまは水平線が濃すぎる。
+  // 無彩化は自分の輝度への混合なので、ここでも明度は動かない。
+  float wash = smoothstep(0.105, 0.0, d.y);          // 仰角 6° → 0°
+  col = mix(col, vec3(dot(col, vec3(0.2126, 0.7152, 0.0722))), wash * 0.32);
+  // 海洋境界層の上端(1100m、17.5km 先 = 仰角 3.6°)。実在の水平線が持つ、
+  // 0.8° でぼけた一段。単調な pow ではこの段は原理的に作れない。
+  col *= mix(1.0, 1.045, smoothstep(0.077, 0.052, d.y));
+
+  // 地球影とヴィーナスベルト。日没直後、**反太陽側の低空** に二段が立つ:
+  // 下が地球の影(青灰の一段暗い帯)、その上が桃色の帯。天頂ではない。
+  // sunState の violet(sky.js:93)は天頂に掛かっていて、しかも t3gold(el+4.7)
+  // では smoothstep が 0、t4dusk(el-14.3)では night=1 の上書きで消えるので、
+  // 定点のどこでも一度も効いていない。影の上端の仰角 ≒ 太陽の伏角。
+  // 窓は el -2°〜-8°(19:55〜20:25)。四つの定点時刻ではすべて厳密に 0 なので、
+  // 採点表のどの数字も動かさない — 歩いている人だけが見る。
+  float win = smoothstep(2.0, -1.0, uSunEl) * (1.0 - smoothstep(-6.0, -11.0, uSunEl));
+  if (win > 0.001) {
+    float anti = clamp(-sunAmt, 0.0, 1.0);
+    float elDeg = degrees(asin(clamp(d.y, -1.0, 1.0)));
+    float top = -uSunEl;
+    float sh = 1.0 - smoothstep(top - 1.5, top + 1.5, elDeg);
+    float belt = smoothstep(top - 1.5, top + 1.5, elDeg) * (1.0 - smoothstep(top + 7.0, top + 16.0, elDeg));
+    col = mix(col, col * 0.62, sh * anti * win);
+    col += vec3(0.055, 0.017, 0.026) * belt * anti * win;
+  }
 
   // 太陽の暈と光芒
   // 実視直径 0.53°。radiance 2.6 では日向の石より少し明るいだけで、
   // 画面に一度も白が生まれない。空はシーンで最も明るい面であるべき。
   float disc = smoothstep(0.99996, 0.999985, sunAmt);
-  float halo = pow(clamp(sunAmt, 0.0, 1.0), 34.0) * 0.55 + pow(clamp(sunAmt, 0.0, 1.0), 140.0) * 5.0;
+  // pow(cosθ,34) の半値角は 11.5°。実在の太陽の光冠は 2〜3° なのに、
+  // 直径 27° の白い輪が空に乗っていた。07:54 で画面の 29% を占める空が
+  // 「石灰岩と同じ明るさで、しかも B/R 1.10 = ほぼ無彩」になっていた原因。
+  // 裾は **加算の白をやめ、暖色への混色にする** — 空の色を消さずに焼ける。
+  float sA = clamp(sunAmt, 0.0, 1.0);
+  // 実在の太陽の光冠は半値角 2〜3°。pow(cosθ,140) は 5.7° を振幅 5.0 で加算し、
+  // その外を pow(cosθ,34) = 半値角 11.5° が 0.55 で覆っていたので、暈は
+  // **直径 27°** あった。07:54 の空(画面の 29%)が日向の石灰岩と同じ明るさで、
+  // しかも B/R 1.10 = ほぼ無彩の白い穴になっていたのはこれ。
+  float aur = pow(sA, 900.0) * 3.2;                  // 半値角 2.25°
+  // ただし大気路程が伸びる薄暮には、実際に暈は大きく広がる。広い裾は uDusk の
+  // 窓に閉じ込め、昼は狭い核だけ残す。加算の白ではなく暖色への混色にすることで、
+  // 焼けても空の色度が消えない。
+  float veil = pow(sA, 34.0) * uDusk * uDusk;
+  col = mix(col, col * 0.55 + uSunCol * 0.42, clamp(veil * 0.85, 0.0, 1.0));
   // 地平の太陽は R だけが飽和して赤橙になる。600 のままだと 3ch とも振り切れ、
   // 沈む太陽が白い円盤になって色を失う。
-  col += uSunCol * (halo * (0.5 + uDusk * 1.2) + disc * mix(600.0, 46.0, uDusk));
+  col += uSunCol * (aur * (0.5 + uDusk * 1.2) + disc * mix(600.0, 46.0, uDusk));
 
   // 沈んだ太陽の残照(地平線に琥珀の帯)
   float ember = pow(clamp(sunAmt * 0.5 + 0.5, 0.0, 1.0), 7.0) * horizW * uDusk;
   col += uSunCol * ember * 0.5;
 
   // 星(薄暮から)
+  // d.xz/(d.y+0.35) は水平線に近づくほどセルを圧縮するので、立体角あたりの
+  // セル数が増える。実測 1000deg² あたり 低空 18 個 / 天頂 3 個 — 実在とは
+  // 上下が逆で、しかも天頂が 6 倍足りない(航海薄明の限界等級 4.5 等 = 約 19 個、
+  // 大気減光で低空はその半分以下)。方向ベクトルの 3 次元格子なら立体角一様。
   if (uStarAlpha > 0.002 && d.y > 0.02) {
-    vec2 sp = d.xz / (d.y + 0.35) * 34.0;
-    vec2 cellId = floor(sp);
-    float s = hash(cellId);
-    if (s > 0.986) {
-      vec2 pos = fract(sp) - 0.5;
-      float star = smoothstep(0.09, 0.0, length(pos)) * smoothstep(0.986, 0.999, s);
-      col += vec3(0.9, 0.94, 1.0) * star * uStarAlpha * (0.6 + 0.4 * sin(uTime * 2.0 + s * 40.0));
+    vec3 ci = floor(d * 58.0);                        // セル ≒ 0.99°
+    float sel = hash3(ci + 11.3);
+    if (sel > 0.9835) {                               // 1.65% ≒ 17 個/1000deg²
+      vec3 jit = vec3(hash3(ci + 3.1), hash3(ci + 5.9), hash3(ci + 7.7)) - 0.5;
+      vec3 ctr = normalize((ci + 0.5 + jit * 0.75) / 58.0);
+      // 等級分布 N(<m) ∝ 10^(0.44m)。べき 2.6 で「たまに明るいのが混じる」。
+      float mag = pow(hash3(ci + 23.7), 2.6);
+      // 大気減光 τ=0.28/気柱。低空の星は暗く、数も減って見える。
+      float ext = exp(-0.28 * (1.0 / max(d.y, 0.09) - 1.0));
+      float rad = mix(0.00055, 0.00170, mag);
+      float star = smoothstep(rad, 0.0, length(d - ctr)) * mix(0.22, 1.0, mag) * ext;
+      col += vec3(0.9, 0.94, 1.0) * star * uStarAlpha * (0.72 + 0.28 * sin(uTime * 2.0 + sel * 40.0));
     }
   }
   col *= uSkyGain;      // 空は HDR。ここを 1.0 のままにすると空が街より暗くなる
@@ -322,9 +426,12 @@ void main() {
 
 // ---------------------------------------------------------------- 雲 ----
 const CLOUD_VERT = /* glsl */`
-attribute vec4 aRect;      // アトラスUV(x,y,w,h)
+attribute vec4 aRect;      // アトラスUV(x,y,w,h)。w<0 で左右反転
 attribute float aShade;
+attribute float aRot;      // 板の傾き(±8°)。同じ判子が水平のまま並ぶのを崩す
+uniform vec3 uSunDir; uniform float uFogD;
 varying vec2 vUv; varying float vShade; varying vec3 vWorld;
+varying vec2 vSun, vLocal; varying float vFog;
 void main() {
   vUv = vec2(aRect.x + uv.x * aRect.z, aRect.y + uv.y * aRect.w);
   vShade = aShade;
@@ -335,16 +442,27 @@ void main() {
   vec3 up = vec3(0.0, 1.0, 0.0);
   float sx = length(vec3(instanceMatrix[0]));
   float sy = length(vec3(instanceMatrix[1]));
-  vec3 wp = c.xyz + right * position.x * sx + up * position.y * sy;
+  float cr = cos(aRot), sr = sin(aRot);
+  vec2 pr = vec2(position.x * cr - position.y * sr, position.x * sr + position.y * cr);
+  vLocal = pr;                                  // -0.5 … +0.5
+  // 板の中での太陽の向き。ビルボードは Y 軸まわりにしか回らないので、
+  // 板の右方向 right と world up の 2 成分だけで太陽を表せる。
+  vSun = normalize(vec2(dot(uSunDir, right), uSunDir.y) + vec2(1e-6));
+  vec3 wp = c.xyz + right * pr.x * sx + up * pr.y * sy;
   vWorld = wp;
+  // 空気遠近。FogExp2 と同じ式・同じ密度を使う — 別の値を入れると、
+  // 同じ距離で山と雲が食い違う(山/空 0.96 の余裕では即座に露見する)。
+  float dz = length(cameraPosition - wp) * uFogD;
+  vFog = 1.0 - exp(-dz * dz);
   gl_Position = projectionMatrix * viewMatrix * vec4(wp, 1.0);
 }
 `;
 const CLOUD_FRAG = /* glsl */`
 varying vec2 vUv; varying float vShade; varying vec3 vWorld;
+varying vec2 vSun, vLocal; varying float vFog;
 uniform sampler2D uTex;
-uniform vec3 uLit, uShadow;
-uniform float uOpacity;
+uniform vec3 uLit, uShadow, uSunDir, uSunCol, uHaze, uHazeFar;
+uniform float uOpacity, uDusk;
 void main() {
   vec4 t = texture2D(uTex, vUv);
   if (t.a < 0.01) discard;
@@ -355,8 +473,31 @@ void main() {
   // 雲体は t.r 0.80〜1.00 にしか存在しない。smoothstep(0.10,0.92) だと
   // そこは全域 0.95〜1.0 に飽和し、uLit と uShadow の 5.2:1 が一度も使われず、
   // 雲が「白い平たいレンズ」になる(実測 雲の頂:底 = 1.08:1)。
-  float litF = smoothstep(0.76, 1.0, t.r);
+  // アトラスの t.r は「上から照らされた雲」を焼き込んだ上下ランプ。太陽高度
+  // 4.7° の黄金時間にそれを使うと、頂が輝き腹が陰る = 実在と 12 倍逆さになる
+  // (水平な雲頂が受ける放射照度は、太陽に正対する鉛直面の tan(4.7°)=0.082 倍)。
+  // 板の中の太陽方向にそって陰影を付け直す。正午は太陽がほぼ真上なので lam は
+  // 上下ランプとほぼ一致し、いまの絵(雲ΔL* 25.7)が保たれる。
+  float dens = smoothstep(0.76, 1.0, t.r);      // アトラスは「厚み」として使う
+  float lam  = dot(vSun, vLocal) * 2.0;
+  // 足し算にすると、薄い縁(dens≈0)まで太陽側というだけで完全に照らされ、
+  // 雲がまるごと白く飛ぶ(実測 正午の空クラスの Y が 5.0% 上がり、B/R が
+  // 1.794 → 1.671 に落ちて水平線で海と空の色相差が痩せた)。掛け算にすれば、
+  // 「太陽を向いていて、かつ光学的に厚い」ところだけが白くなる。
+  float litF = smoothstep(-0.30, 0.35, lam) * (0.32 + 0.68 * dens);
   vec3 col = mix(uShadow, uLit, litF) * (0.92 + vShade * 0.16);
+  // 逆光の銀の縁。薄い縁ほど光が抜ける。いま完全に無い。
+  vec3 vd = normalize(vWorld - cameraPosition);
+  float rim = smoothstep(0.55, 0.08, t.a) * pow(clamp(dot(vd, uSunDir), 0.0, 1.0), 6.0);
+  col += uSunCol * rim * 1.6 * (0.25 + uDusk * 0.75);
+  // 空気遠近。900m で 30%・2400m で 93% 霞むはずの雲だけが霧の外にいたので、
+  // 遠近の違う板が同じ白で並び、雲の帯が「天井」に見えていた。
+  // 色だけを沈める — アルファを霞ませると輪郭が痩せてシルエットが溶ける。
+  // 係数 0.40。シーンの ρ は「1km で残存 54%」の様式化された近景の霞で、実在の
+  // 八月のアドリア(視程 20〜40km)より一桁濃い。雲のいる 0.9〜3.4km では既に
+  // 飽和しているので、全量掛けると遠い雲が消えて構図の奥行きがむしろ減る
+  // (実測 t3gold 雲被覆 17.8% → 1.4%)。ρ は山と揃えたまま、量だけを絞る。
+  col = mix(col, mix(uHazeFar, uHaze, smoothstep(-0.4, 0.9, dot(vd, uSunDir))), vFog * 0.40);
   gl_FragColor = vec4(col, t.a * uOpacity);
 }
 `;
@@ -370,6 +511,7 @@ export function makeSky(tex) {
     uSkyGain: { value: SKY_GAIN },
     uSunCol: { value: new THREE.Color() },
     uDusk: { value: 0 }, uNight: { value: 0 }, uStarAlpha: { value: 0 }, uTime: { value: 0 },
+    uSunEl: { value: 0 },
   };
   const dome = new THREE.Mesh(
     new THREE.SphereGeometry(3600, 40, 24),
@@ -383,8 +525,16 @@ export function makeSky(tex) {
   const cloudUniforms = {
     uTex: { value: tex.clouds }, uLit: { value: new THREE.Color(1, 1, 1) },
     uShadow: { value: new THREE.Color(0.6, 0.62, 0.7) }, uOpacity: { value: 1 },
+    uSunDir: skyUniforms.uSunDir,        // 天蓋と同じ参照 — 太陽は世界に一つ
+    uSunCol: skyUniforms.uSunCol,
+    uHaze: { value: new THREE.Color() }, uHazeFar: { value: new THREE.Color() },
+    uDusk: { value: 0 }, uFogD: { value: 0.00072 },
   };
-  const N = 14;
+  // N は描画呼び出しに影響しない(InstancedMesh 1 個)。14 では、時刻で数を
+  // 変えたときに海側・陸側・頭上のどれかが必ず空になる。仰角 7〜45°・全方位に
+  // 散らすと一視点(画角 50〜54°)に入る枚数が減るので、実在の被覆率に届かせるには
+  // 総数が要る。板 30 枚 = 120 頂点。
+  const N = 30;
   const cGeo = new THREE.PlaneGeometry(1, 1);
   const cMat = new THREE.ShaderMaterial({
     uniforms: cloudUniforms, vertexShader: CLOUD_VERT, fragmentShader: CLOUD_FRAG,
@@ -395,20 +545,41 @@ export function makeSky(tex) {
   clouds.renderOrder = -9;
   const rects = new Float32Array(N * 4);
   const shades = new Float32Array(N);
+  const rots = new Float32Array(N);
   const cloudState = [];
   const dummy = new THREE.Object3D();
   for (let i = 0; i < N; i++) {
-    const a = (i / N) * Math.PI * 2 + (i % 3) * 0.35;
-    const r = 900 + (i % 5) * 380;
-    const y = 260 + (i % 4) * 90 + (i % 3) * 40;
-    const w = 420 + (i % 4) * 210, h = w * (0.42 + (i % 3) * 0.06);
+    // 方位。等間隔リング + (i%3)*0.35 では、旗竿(v8 ルジャ)や鐘楼(v1)の
+    // 真後ろ・画面の中央縦線の上に毎回同じ雲が来る。黄金比の低食い違い列で散らし、
+    // 陸側(北 = スルジの稜線)へ寄せる:八月の海面 25℃ の上の気層は安定で
+    // 外海に積雲は立たず、海風が入ってから 412m の稜線の上に収束して並ぶ。
+    // いまは逆で、v4_srd(北)が四時刻とも雲ゼロ、外海の v5_sea に 5〜6% ある。
+    const u = (i * 0.6180339887 + 0.31) % 1;
+    const wsym = Math.sign(u - 0.5) * Math.pow(Math.abs(u - 0.5) * 2, 1.15) * 0.5;
+    const a = -Math.PI / 2 + wsym * Math.PI * 2;              // 北 = -π/2
+    // r と y がどちらも i%4 / i%5 で回っていたので、14 枚すべてが仰角
+    // 4.1〜39.5° の一本の環に収まり、路地から見上げるリボン(40〜60°)は
+    // 四時刻とも完全に雲ゼロ、v5_sea では逆に全部が画面上端で切れていた。
+    // 大きさ・距離・高度の相関を互いに素な周期で切る。
+    const r = 900 + ((i * 3) % 5) * 620;
+    const y = 300 + ((i * 5) % 7) * 155;
+    const w = 380 + ((i * 7) % 4) * 190;
+    // 縦横比 0.42〜0.54 は積雲を煎餅にする(塊ひとつが 2.3:1〜3.0:1)。puff は 1:1。
+    const h = w * (0.62 + (i % 3) * 0.09);
     cloudState.push({ a, r, y, w, h, speed: 0.0016 + (i % 3) * 0.0009 });
-    rects[i * 4] = (i % 2) * 0.5; rects[i * 4 + 1] = ((i >> 1) % 2) * 0.5;
-    rects[i * 4 + 2] = 0.5; rects[i * 4 + 3] = 0.5;
+    // アトラス 4 セルを周期 4 で回していたので、同じ輪郭が画面に 3〜4 回出る。
+    // 幅に負号を許して左右反転させれば、テクスチャ 1024² のまま 8 通りになる。
+    const mir = (i % 3 === 0) ? -1 : 1;
+    const cell = (i * 3) % 4;
+    rects[i * 4] = (cell % 2) * 0.5 + (mir < 0 ? 0.5 : 0);
+    rects[i * 4 + 1] = ((cell >> 1) % 2) * 0.5;
+    rects[i * 4 + 2] = 0.5 * mir; rects[i * 4 + 3] = 0.5;
     shades[i] = (i % 5) / 5;
+    rots[i] = (((i * 13) % 7) - 3) * 0.045;                   // ±7.7°
   }
   cGeo.setAttribute('aRect', new THREE.InstancedBufferAttribute(rects, 4));
   cGeo.setAttribute('aShade', new THREE.InstancedBufferAttribute(shades, 1));
+  cGeo.setAttribute('aRot', new THREE.InstancedBufferAttribute(rots, 1));
   group.add(tagMesh(clouds, 'sky.clouds', { thin: true, reason: '雲は板', noCollide: true, backdrop: true }));
 
   function update(sun, elapsed, camPos) {
@@ -420,25 +591,56 @@ export function makeSky(tex) {
     skyUniforms.uDusk.value = sun.dusk;
     skyUniforms.uNight.value = sun.night;
     skyUniforms.uStarAlpha.value = sun.starAlpha;
+    skyUniforms.uSunEl.value = sun.el;
     skyUniforms.uTime.value = elapsed;
 
     // 雲の色: 昼は白/灰青、夕は上面が琥珀・底が灰紫、夜は沈黙
     // 空は uSkyGain 倍で描かれるのに、雲はその係数を掛けずに 0.84 で頭打ちだった。
     // 逆光では「空より暗い雲」= 太陽の暈の上に灰色の楕円が数珠つなぎに浮く。
     // 日向の雲の頂は、日向の石灰岩(シーンリニア 3.4)と同じ明るさまで上げる。
+    // sunCol は輝度 1 に正規化済みで、白との lerp も輝度 1 同士。だから lit の
+    // 輝度は昼のあいだ **常に 4.03 で凍っていた** — 法線日射が正午の 0.30 倍
+    // しかない 19:18 の雲(L*97.4)が、正午の雲(L*92.0)より明るくなる。
+    // 実際に届いている直射に繋ぐ。指数 0.45 と定数は「正午で現行と一致する」
+    // よう解いた(sunIntensity 18.19 で係数 1.000)。
+    const litK = 0.03 + 0.97 * Math.pow(clamp(sun.sunIntensity / 18.19, 0, 1), 0.45);
     const lit = new THREE.Color().copy(sun.sunCol).lerp(new THREE.Color(1, 1, 1), 1 - sun.dusk * 0.75);
-    lit.multiplyScalar((1 - sun.night * 0.85) * SKY_GAIN * 1.55);
-    const shadow = new THREE.Color().copy(sun.zenith).lerp(new THREE.Color(0.42, 0.45, 0.55), 0.35);
-    shadow.multiplyScalar((1 - sun.night * 0.8) * SKY_GAIN * 1.15);
+    lit.multiplyScalar(SKY_GAIN * 1.55 * litK);
+    // 雲の底は下半球しか見ていない面。照らしているのは天空光と地面の照り返しで、
+    // 太陽ではない。定数の明るい灰 (0.42,0.45,0.55) を 0.35 で混ぜ、さらに
+    // (1-night*0.8) の床 0.20 を残していたので、天頂がどれだけ暗くなっても
+    // 雲底は中明度から下がらず、航海薄明に雲が空の 4.6 倍・街灯に照らされた
+    // 石灰岩の 5.6 倍明るい白い板になっていた。正午でも雲の最暗部(p5 63.6)が
+    // 同じ帯の空(p50 62.4)を上回り、**雲のどこにも空より暗い場所が無い**。
+    // 0.20 は「正午の雲底 2500cd/m² 対 仰角 20° の空 7000cd/m² = 0.36」から。
+    const shadow = sun.hemiSky.clone().multiplyScalar(0.55)
+      .add(sun.hemiGround.clone().multiplyScalar(0.45))
+      .multiplyScalar(SKY_GAIN * 0.20 * (1 - sun.night * 0.55));
     cloudUniforms.uLit.value.copy(lit);
     cloudUniforms.uShadow.value.copy(shadow);
-    cloudUniforms.uOpacity.value = 0.88 - sun.night * 0.45;
+    // 光学的に厚いものが空を隠す。薄めても、空より明るいうちは空に近づくだけだった。
+    cloudUniforms.uOpacity.value = 0.94;
+    cloudUniforms.uHaze.value.copy(sun.fogCol);
+    cloudUniforms.uHazeFar.value.copy(sun.fogFar);
+    cloudUniforms.uDusk.value = sun.dusk;
+    // light.js:282 と同一の式・同一の定数。別の値を入れると同じ距離で山と雲が食い違う。
+    cloudUniforms.uFogD.value = lerp(0.00062, 0.00072, sun.dusk * (1 - sun.night)) * lerp(1, 0.72, sun.night);
 
+    // 積雲は海陸風の熱対流。日射の **積算** に遅れて立ち上がり、日没前に崩れる。
+    // 太陽高度で駆動すると朝夕が対称になり、いま正しい t3gold の逆光が崩れるので、
+    // 必ず時刻で駆動する。08:36 に立ち上がり 13:30 前後で最大、20:48 に消える。
+    // これが無いので、四時刻の雲は画素単位で同じ配置・同じ被覆率だった
+    // (SHOT では elapsed が 40 に固定されるので位相も完全に一致する)。
+    const conv = 0.10 + 0.90 * Math.pow(Math.max(0, Math.sin(Math.PI * clamp((sun.time - 8.0) / 14.0, 0, 1))), 1.0);
+    const nAct = Math.round(lerp(3, N, conv));      // t1am 5 / t2noon 20 / t3gold 15 / t4dusk 8
+    const grow = lerp(0.66, 1.0, conv);             // Cu humilis → mediocris
     for (let i = 0; i < N; i++) {
       const s = cloudState[i];
       const a = s.a + elapsed * s.speed;
       dummy.position.set(Math.cos(a) * s.r + camPos.x * 0.7, s.y, Math.sin(a) * s.r + camPos.z * 0.7);
-      dummy.scale.set(s.w, s.h, 1);
+      // 非活性は面積ゼロ。InstancedMesh なので描画呼び出しは 1 のまま動かない。
+      const k = i < nAct ? grow : 0;
+      dummy.scale.set(s.w * k, s.h * k, 1);
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
       clouds.setMatrixAt(i, dummy.matrix);

@@ -634,7 +634,7 @@ function cloudAtlas(rng, { size = 1024 }) {
       const u = x / cell, v = 1 - y / cell; // v: 0=下
       let d = 0;
       for (const b of blobs) {
-        const dd = Math.hypot(u - b.x, (v - b.y) * 1.25);
+        const dd = Math.hypot(u - b.x, (v - b.y) * 0.85);   // 1.25 は塊を UV 上で潰し、スプライト側の 0.42 と二段で積雲を煎餅にしていた
         d += Math.max(0, 1 - dd / b.r) * 0.9;
       }
       if (v < flat) d *= Math.max(0, 1 - (flat - v) * 9); // 平底
