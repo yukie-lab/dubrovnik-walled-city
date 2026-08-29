@@ -1,31 +1,26 @@
-import { installDomShim } from './structure/domshim.mjs';
-installDomShim();
-import { collectObjects, buildTriangles, Grid } from './structure/geom.mjs';
-const { buildWorld } = await import('../src/world.js');
-const w = buildWorld({});
-const objs = collectObjects(w.root);
-const partsOf = new Map();
-for (const o of objs) if (o.mesh?.geometry?.userData?.parts) partsOf.set(o, o.mesh.geometry.userData.parts);
-const rayTri=(ox,oy,oz,dx,dy,dz,t)=>{ const e1=[t[3]-t[0],t[4]-t[1],t[5]-t[2]],e2=[t[6]-t[0],t[7]-t[1],t[8]-t[2]];
-  const px=dy*e2[2]-dz*e2[1],py=dz*e2[0]-dx*e2[2],pz=dx*e2[1]-dy*e2[0];
-  const det=e1[0]*px+e1[1]*py+e1[2]*pz; if(Math.abs(det)<1e-12) return -1; const inv=1/det;
-  const tx=ox-t[0],ty=oy-t[1],tz=oz-t[2]; const u=(tx*px+ty*py+tz*pz)*inv; if(u<0||u>1)return -1;
-  const qx=ty*e1[2]-tz*e1[1],qy=tz*e1[0]-tx*e1[2],qz=tx*e1[1]-ty*e1[0];
-  const v=(dx*qx+dy*qy+dz*qz)*inv; if(v<0||u+v>1)return -1; return (e2[0]*qx+e2[1]*qy+e2[2]*qz)*inv; };
-for (const arg of process.argv.slice(2)) {
-  const [x, z] = arg.split(',').map(Number);
-  const hits = [];
-  for (const o of objs) {
-    if (o.backdrop || o.isPoints) continue;
-    const { tris } = buildTriangles([o], {});
-    const ps = partsOf.get(o);
-    for (let i = 0; i < tris.length; i++) {
-      const d = rayTri(x, 60, z, 0, -1, 0, tris[i]);
-      if (d > 0) { let pn='-'; if(ps) for(const q of ps) if(i>=q.from&&i<q.to) pn=q.name;
-        hits.push({ y: 60 - d, tag: o.tag, pn }); }
-    }
+// ブラウザ側で Raycaster を飛ばし、当たった物の名前とワールド座標を返す。
+//   node tools/_ray.mjs "<query>" x,y [x,y …]
+import puppeteer from 'puppeteer-core';
+const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+const q = process.argv[2];
+const pts = process.argv.slice(3).map(s => s.split(',').map(Number));
+const b = await puppeteer.launch({ executablePath: CHROME, headless: 'new',
+  args: ['--headless=new', '--use-angle=metal', '--window-size=1640,1060'] });
+const p = await b.newPage();
+await p.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
+await p.goto(`http://localhost:8765/index.html?shot=1&hud=0${q}`, { waitUntil: 'domcontentloaded' });
+await p.waitForFunction('window.__READY === true', { timeout: 40000 });
+await new Promise(r => setTimeout(r, 1200));
+console.log(await p.evaluate((PTS) => {
+  const w = window.__world, T = w.THREE;
+  const rc = new T.Raycaster();
+  const out = [];
+  for (const [sx, sy] of PTS) {
+    rc.setFromCamera(new T.Vector2(sx / 1600 * 2 - 1, -(sy / 1000 * 2 - 1)), w.camera);
+    const hits = rc.intersectObject(w.scene, true).filter(h => h.object.isMesh || h.object.isInstancedMesh);
+    const l = hits.slice(0, 3).map(h => `${h.object.name || '?'}@${h.distance.toFixed(1)}m (${h.point.x.toFixed(1)},${h.point.y.toFixed(2)},${h.point.z.toFixed(1)})`);
+    out.push(`(${sx},${sy}) ${l.join('  |  ') || '—'}`);
   }
-  hits.sort((a,b)=>b.y-a.y);
-  console.log(`(${x}, ${z})`);
-  for (const h of hits.slice(0, 30)) console.log(`   y=${h.y.toFixed(2)}  ${h.tag}/${h.pn}`);
-}
+  return out.join('\n');
+}, pts));
+await b.close();
