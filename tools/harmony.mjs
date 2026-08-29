@@ -34,7 +34,11 @@ const COL = {
 };
 
 const views = [], times = [];
-for (const raw of readFileSync(root + 'tools/campaign.txt', 'utf8').split('\n')) {
+// 定点の定義ファイル。campaign.txt はキャンペーン全体で凍結されているので、
+// パス固有の診断視点は --views で別ファイルを渡す(採点表は定点のまま)。
+const vfArg = process.argv.indexOf('--views');
+const VIEWFILE = vfArg >= 0 ? process.argv.splice(vfArg, 2)[1] : 'tools/campaign.txt';
+for (const raw of readFileSync(root + VIEWFILE, 'utf8').split('\n')) {
   const line = raw.replace(/\s+#.*$/, '').trim();
   const m = line.match(/^(view|time)\s+(\S+)\s+(.+)$/);
   if (!m) continue;

@@ -1,0 +1,11 @@
+# 第6パス「体験としての路地」の診断視点。
+# campaign.txt(凍結)とは別。採点表は定点 8 つのまま。
+time t1am    7.90
+time t2noon  12.87
+time t3gold  19.30
+time t4dusk  21.20
+# 名前   x:z:yaw:pitch:extra
+view a1_mouth  -98.4:-3:0:0.10:&fov=44
+view a2_deep   -98.4:-22:0:0.10:&fov=44
+view a3_up     -98.4:-22:0:0.85:&fov=44
+view a4_back   -98.4:-22:3.1416:0.05:&fov=44
