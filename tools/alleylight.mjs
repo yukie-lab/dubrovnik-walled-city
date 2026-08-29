@@ -67,13 +67,29 @@ const out = await page.evaluate((TIME) => {
     walk.push({ z, x: +x.toFixed(2), zone: zoneAt(x, z), geo: s1.geo, cos: s1.cos, sun: sh,
       y: +plan.groundAt(x, z).y.toFixed(2) });
   }
-  // --- B: 路地の代表点(各路地の中ほど)
+  // --- B: 路地の代表点
+  // 幾何中央を 1 点だけ取ると、東西街路との交差点に立つ。72.5m の北路地の中央
+  // z=-37.75 はプリイェコ(z=-36、舗装リボン半幅 2.10m)の中。実際そうなっていて、
+  // 「路地の半分が街路ゾーン」という虚偽の所見を出した。6 点に増やし、
+  // 東西街路の中心線 ±(w/2 + 2.6m) に落ちた標本は捨てる。
+  const crossers = plan.streets.filter(s => s.kind === 'street' || s.kind === 'stradun');
+  const inCross = z => crossers.some(c => Math.abs(z - c.pts[0][1]) < c.w / 2 + 2.6);
   const spots = [];
   for (const s of alleys) {
-    const z = (s.pts[0][1] + s.pts[s.pts.length - 1][1]) / 2;
-    const x = plan.alleyXAt ? plan.alleyXAt(s, z) : s.pts[0][0];
-    const s1 = svf(x, z);
-    spots.push({ id: s.id, geo: s1.geo, cos: s1.cos, sun: sunHit(x, z), zone: zoneAt(x, z) });
+    const z0 = s.pts[0][1], z1 = s.pts[s.pts.length - 1][1];
+    const got = [];
+    for (const t of [0.15, 0.28, 0.42, 0.58, 0.72, 0.86]) {
+      const z = z0 + (z1 - z0) * t;
+      if (inCross(z)) continue;
+      const x = plan.alleyXAt ? plan.alleyXAt(s, z) : s.pts[0][0];
+      got.push({ geo: svf(x, z).geo, cos: svf(x, z).cos, sun: sunHit(x, z), zone: zoneAt(x, z) });
+    }
+    if (!got.length) continue;
+    const md = k => got.map(g => g[k]).sort((a, b) => a - b)[got.length >> 1];
+    spots.push({ id: s.id, n: got.length, geo: md('geo'), cos: md('cos'),
+      sun: got.reduce((a, g) => a + g.sun, 0) / got.length,
+      zone: got.map(g => g.zone).sort()[got.length >> 1],
+      zones: got.map(g => g.zone) });
   }
   // --- C: 参照(ストラドゥン中央・ルジャ広場・城壁歩廊)
   const refs = [];
@@ -98,6 +114,6 @@ const sp = out.spots.slice().sort((a, b) => a.cos - b.cos);
 const med = a => a[a.length >> 1];
 console.log(`\n## 路地 ${out.spots.length} 本の中ほど`);
 console.log(`  cos 天空率  最小 ${sp[0].cos.toFixed(3)} (${sp[0].id}) / 中央 ${med(sp).cos.toFixed(3)} / 最大 ${sp[sp.length-1].cos.toFixed(3)} (${sp[sp.length-1].id})`);
-console.log(`  直射が当たる路地 ${out.spots.filter(s => s.sun).length} / ${out.spots.length}`);
-const zc = {}; for (const s of out.spots) zc[s.zone] = (zc[s.zone] || 0) + 1;
-console.log(`  ゾーンの内訳 ${JSON.stringify(zc)}`);
+console.log(`  直射が当たる標本の割合 ${(out.spots.reduce((a,s)=>a+s.sun,0)/out.spots.length*100).toFixed(0)}%  (路地の何割かに日が差す本数 ${out.spots.filter(s=>s.sun>0).length}/${out.spots.length})`);
+const zc = {}; for (const s of out.spots) for (const z of s.zones) zc[z] = (zc[z] || 0) + 1;
+console.log(`  ゾーンの内訳(標本 ${out.spots.reduce((a,s)=>a+s.n,0)} 点) ${JSON.stringify(zc)}`);

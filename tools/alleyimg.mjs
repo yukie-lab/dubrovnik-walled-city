@@ -66,7 +66,11 @@ function localSD(L, W, H, k) {
   out.sort((a, b) => a - b);
   return out[out.length >> 1];
 }
-console.log('画                     潰れ%   飛び%  L*中央  sd8   sd32   帯%');
+// 画面中央値では路地の明暗は測れない。ストラドゥンに立った時点で画面の大半が
+// すでに路地の壁だから。同じ材質・同じ向きの面を比べる必要がある —
+// **足元の床(画面下 10%)** を測る。第1パスで lightprobe が IBL を数えて
+// いなかったのと同じ種類の誤りを、ここで繰り返していた。
+console.log('画                     潰れ%   飛び%  L*中央  sd8   sd32   帯%   足元L*   足元Y');
 for (const p of process.argv.slice(2)) {
   const png = readPNG(p);
   const W = png.w, H = png.h, L = new Float32Array(W * H);
@@ -88,8 +92,14 @@ for (const p of process.argv.slice(2)) {
     rib.push(best / W);
   }
   rib.sort((a, b) => a - b);
+  // 足元帯: 画面下 10% の中央値
+  const foot = [];
+  for (let y = Math.floor(H * 0.90); y < H; y++) for (let x = 0; x < W; x++) foot.push(L[y * W + x]);
+  foot.sort((a, b) => a - b);
+  const fL = foot[foot.length >> 1];
+  const fY = fL > 8 ? Math.pow((fL + 16) / 116, 3) : fL / 903.3;   // L* → 相対輝度
   const name = p.split('/').pop().replace('.png', '');
   console.log(`${name.padEnd(20)} ${(dark / (W * H) * 100).toFixed(1).padStart(6)} ${(blow / (W * H) * 100).toFixed(1).padStart(6)} ` +
     `${all[all.length >> 1].toFixed(1).padStart(6)} ${localSD(L, W, H, 8).toFixed(2).padStart(6)} ${localSD(L, W, H, 32).toFixed(2).padStart(6)} ` +
-    `${rib.length ? (rib[rib.length >> 1] * 100).toFixed(1).padStart(6) : '   —  '}`);
+    `${rib.length ? (rib[rib.length >> 1] * 100).toFixed(1).padStart(6) : '   —  '} ${fL.toFixed(1).padStart(7)} ${fY.toFixed(4).padStart(7)}`);
 }
