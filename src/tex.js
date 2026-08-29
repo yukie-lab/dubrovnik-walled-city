@@ -590,13 +590,25 @@ function rockTex(rng, { size = 1024, coverM = 14 }) {
 }
 
 // スルジ山の乾いた斜面(草地とカルストの斑・遠景用の大きな筆)
-function scrubTex(rng, { size = 1024 }) {
+// **この 1024² の絵は、統計的に無地の灰色板と区別が付かなかった。**
+// 実測: 全画素の SD 1.00 L*、64texel ブロックで 0.45 L*。同じ線形平均の
+// 4×4 単色に差し替えても、画面の局所SD は r1 で 0.03 L*、r64 で 0.01 L* しか
+// 変わらない(弁別閾の 1/30)。何も描いていないのと同じだった。
+// **平均は動かさず、分散だけ入れる。** 平均を動かすと第1パスで採点済みの
+// 空気遠近(/空Y比)に触れてしまう。
+function scrubTex(rng, { size = 1024, coverM = 22 }) {
   const [c, ctx] = canvas(size);
   ctx.fillStyle = 'hsl(52,14%,50%)'; ctx.fillRect(0, 0, size, size);
-  dabs(ctx, 0, 0, size, size, 520, rng, 62, 14, 38, 26, 0.12);   // 灌木(乾いた緑)
-  dabs(ctx, 0, 0, size, size, 560, rng, 46, 14, 60, 30, 0.16);   // 乾いた草
-  dabs(ctx, 0, 0, size, size, 300, rng, 38, 10, 64, 18, 0.14);   // 露岩
-  return { map: toTex(c) };
+  // 低周波の大筆(タイル 22m に対し 4.8m と 2.4m)。遠景で最初に効くのはこれ。
+  dabs(ctx, 0, 0, size, size, 34, rng, 96, 18, 26, size * 0.22, 0.34);   // 谷筋の濃緑
+  dabs(ctx, 0, 0, size, size, 42, rng, 42, 9, 74, size * 0.11, 0.30);    // 白い露頭
+  // 中〜高周波。明度の振れを 38/60/64 から 28/46/76 へ開き、alpha も上げる。
+  dabs(ctx, 0, 0, size, size, 520, rng, 62, 16, 28, 26, 0.34);   // 灌木(乾いた緑)
+  dabs(ctx, 0, 0, size, size, 560, rng, 46, 15, 46, 30, 0.40);   // 乾いた草
+  dabs(ctx, 0, 0, size, size, 300, rng, 38, 10, 76, 18, 0.45);   // 露岩
+  // coverM を返さないと ground.js の `${(tex.scrub.coverM*0.45).toFixed(2)}` が
+  // 文字列 "NaN" を生み、GLSL が未定義識別子でコンパイルに失敗する。
+  return { map: toTex(c), coverM };
 }
 
 // ---------------------------------------------------------------- 雲 ----
@@ -680,7 +692,11 @@ function needleTex(rng, { size = 256 }) {
     const L = size * (0.30 + Math.pow(rng(), 0.6) * 0.62);
     const x2 = cx + Math.cos(a) * L, y2 = cy + Math.sin(a) * L;
     // 房の縁は揃わない。長さと太さを散らし、外周を欠けさせる。
-    ctx.strokeStyle = `hsla(${104 + rng() * 26},${26 + rng() * 26}%,${30 + rng() * 30}%,${0.55 + rng() * 0.45})`;
+    // **葉が幹より暗いという逆転**。tube() の頂点は UV を持たないので
+    // 「不透明の隅」(純白)を読み、幹の実効アルベドは頂点色そのまま(Y 0.0676)。
+    // 一方、葉は房の不透明部の平均 Y 0.2623 を掛けられて Y 0.0228 に落ちる。
+    // 実物は逆で、500m から見た松林の幹の帯は樹冠より暗い。房を明るくする。
+    ctx.strokeStyle = `hsla(${104 + rng() * 26},${26 + rng() * 26}%,${58 + rng() * 26}%,${0.55 + rng() * 0.45})`;
     ctx.lineWidth = 1.0 + rng() * 1.9;
     ctx.beginPath();
     ctx.moveTo(cx + Math.cos(a) * L * 0.12, cy + Math.sin(a) * L * 0.12);
@@ -691,7 +707,7 @@ function needleTex(rng, { size = 256 }) {
   // 束の芯を少し詰める(中心が透けると房が輪に見える)
   for (let i = 0; i < 60; i++) {
     const a = -Math.PI / 2 + (rng() - 0.5) * 1.7, L = size * (0.08 + rng() * 0.26);
-    ctx.strokeStyle = `hsla(${100 + rng() * 22},${30 + rng() * 20}%,${24 + rng() * 20}%,0.9)`;
+    ctx.strokeStyle = `hsla(${100 + rng() * 22},${30 + rng() * 20}%,${48 + rng() * 20}%,0.9)`;
     ctx.lineWidth = 1.6 + rng() * 2.2;
     ctx.beginPath(); ctx.moveTo(cx, cy);
     ctx.lineTo(cx + Math.cos(a) * L, cy + Math.sin(a) * L); ctx.stroke();
@@ -701,8 +717,23 @@ function needleTex(rng, { size = 256 }) {
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, size - OP, OP, OP);
+  // 幹はこの隅を **1 テクセル**しか読んでいなかった(tube() が UV を持たない)。
+  // 結果、幹・枝・糸杉の胴・オリーブの茎は全部が map = 1.0 の無地で、
+  // 色は頂点色の明暗だけ = 糸杉が「六角形のガラスの紡錘」に見えていた。
+  // 隅に樹皮の縦筋を焼き、tube() 側で隅の中を舐める UV を与える。
+  // **alpha は 255 のまま** — alphaTest 0.42(surround.js)で幹が抜けてしまう。
+  for (let i = 0; i < 22; i++) {
+    const bx = rng() * OP, bw = 0.7 + rng() * 2.2;
+    ctx.fillStyle = `rgb(${152 + rng() * 52 | 0},${144 + rng() * 48 | 0},${132 + rng() * 46 | 0})`;
+    ctx.fillRect(bx, size - OP, bw, OP);
+  }
+  for (let i = 0; i < 14; i++) {                      // 割れ目(横の節)
+    const by = size - OP + rng() * OP, bh = 0.6 + rng() * 1.4;
+    ctx.fillStyle = `rgba(96,88,78,${0.30 + rng() * 0.35})`;
+    ctx.fillRect(0, by, OP, bh);
+  }
   const t = toTex(c, { repeat: false });
-  t.userData = { opaqueUV: (OP * 0.5) / size };
+  t.userData = { opaqueUV: (OP * 0.5) / size, opaqueSize: OP / size };
   return t;
 }
 

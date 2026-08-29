@@ -31,8 +31,9 @@ import { TAU, clamp, lerp } from './util.js';
 
 /** 生成中の頂点を溜める袋。位置・法線・色・揺れ・位相を並行して持つ。 */
 export class TreeBuf {
-  constructor(opaqueUV = 0.04) { this.P = []; this.N = []; this.C = []; this.S = []; this.H = []; this.U = [];
-    this.op = opaqueUV; this.uv = null; this.tris = 0; }
+  constructor(opaqueUV = 0.04, opaqueSize = 0.085) {
+    this.P = []; this.N = []; this.C = []; this.S = []; this.H = []; this.U = [];
+    this.op = opaqueUV; this.opSize = opaqueSize; this.uv = null; this.tris = 0; }
 
   vert(p, n, c, sway, phase) {
     this.P.push(p[0], p[1], p[2]);
@@ -120,12 +121,20 @@ function tube(B, path, rad, sway, sides, col, phase) {
       // 樹皮の色むら。一様な円柱は「棒」に見える。
       const t = i / (rings.length - 1);
       // 樹皮は割れて板になる。明暗の幅が狭いと、滑らかなコンクリートの柱に見える。
-      const sh = 0.62 + 0.76 * (0.5 + 0.5 * Math.sin(k * 2.7 + i * 1.9 + phase * 9.0))
+      // 幅を 0.62〜1.38(2.2 倍)から 0.55〜1.10(2.0 倍)へ。上限を下げないと、
+      // 最も明るい面が砂(L* 54)と見分けが付かない白い棒になる。
+      const sh = 0.55 + 0.55 * (0.5 + 0.5 * Math.sin(k * 2.7 + i * 1.9 + phase * 9.0))
         * (0.6 + 0.4 * (0.5 + 0.5 * Math.sin(k * 5.3 - i * 3.1 + phase * 17.0)));
       // 根元ほど暗い。アレッポ松の樹皮は上が淡く、下は割れて濃い板になる。
       const dk = 0.58 + 0.42 * t;
       const c2 = [col[0] * sh * dk, col[1] * sh * dk, col[2] * sh * dk * (1 - t * 0.06)];
-      B.quad(A.p, Bv.p, Cv.p, D.p, A.n, c2, [sway[i], sway[i], sway[i + 1], sway[i + 1]], phase);
+      // 隅の中を舐める UV。1 テクセル固定だと樹皮の筋が一本も読めない。
+      const os = B.opSize ?? 0.085;
+      const u0 = os * (0.10 + 0.80 * (k / sides)), u1 = os * (0.10 + 0.80 * ((k + 1) / sides));
+      const v0 = os * (0.08 + 0.84 * (i / Math.max(1, rings.length - 1)));
+      const v1 = os * (0.08 + 0.84 * ((i + 1) / Math.max(1, rings.length - 1)));
+      B.quadUV(A.p, Bv.p, Cv.p, D.p, A.n, c2, [sway[i], sway[i], sway[i + 1], sway[i + 1]], phase,
+        [[u0, v0], [u1, v0], [u1, v1], [u0, v1]]);
     }
   }
 }
@@ -253,9 +262,11 @@ export function aleppoPine(B, base, rnd, o = {}) {
   // 葉は枝の外半分にだけ。房と房の間に空を残す — これが逆光のレースになる。
   // 房が小さすぎると樹冠が紙吹雪に、大きすぎると閉じた塊になる。
   // 枝の長さに対して 0.16H 前後、1 本の枝に 2〜3 房が平頂の傘を作る。
-  const fs = H * 0.155;
+  // 傘の被覆率が約 37% しかなく、枝先に房が点在するだけだった(silK 0.496 =
+  // 連結した葉の塊の平均直径が 8 画素 = 紙吹雪)。芯を埋める。**外周のレースは閉じない。**
+  const fs = H * 0.200;
   for (const tp of tips) {
-    const n = detail > 0.5 ? 2 + (rnd() < 0.55 ? 1 : 0) : 1;
+    const n = detail > 0.5 ? 3 : 1;   // 遠景の木は 1 のまま(費用を増やさない)
     for (let k = 0; k < n; k++) {
       const back = 0.04 + k * (0.20 + rnd() * 0.16);
       const at = [tp.p[0] - Math.cos(tp.a) * tp.L * back,
@@ -279,7 +290,10 @@ export function cypress(B, base, rnd, o = {}) {
   const H = o.h ?? (8 + rnd() * 7);
   const phase = rnd();
   const detail = o.detail ?? 1;
-  const W = H * (0.075 + rnd() * 0.035);      // 幅は高さの 1/13 前後 = 本当に細い
+  // 縦横比 9.1〜13.3 では、642m 先のロクルムで幅が 1.0〜2.9 画素にしかならず、
+  // 全樹木の 18%(114 本)を占める糸杉が画面に一本も読めない。
+  // 実物の Cupressus sempervirens 'Stricta' は 15m で幅 1.5〜3m(比 5〜10)。
+  const W = H * (0.115 + rnd() * 0.045);
   const NS = detail > 0.5 ? 8 : 5;
   const lean = (rnd() - 0.5) * 0.05;
   const leanA = rnd() * TAU;
@@ -386,17 +400,27 @@ export function patchTreeWind(mat, { wind = 1.0, time = null } = {}) {
       // 逆光の薄い葉は光を透かして暖かく光る。輪郭のレースはこれで生きる。
       .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
         // 葉の板は水平に寝ているので、空の環境光をまともに受ける。
-        // そのままだと樹冠が空の色(青白)に染まり、松が霜に見える。
-        // 葉だけ間接光を落とす。
-        reflectedLight.indirectDiffuse *= mix(1.0, 0.38, vLeaf);
+        // 量を落とすだけでは足りなかった — 実測で **樹冠そのものの色相が 254°**
+        // (空 257°・海 265°)、つまり「明るい水を背にした暗い木」ではなく
+        // 「水の色を少し暗くした斑」になっていた。
+        // 落とすと同時に、残った間接光から空の青を抜いて葉自身の色に染め直す。
+        // (0.62, 1.00, 0.72) は松の葉の色比そのもの。
+        {
+          vec3 li = reflectedLight.indirectDiffuse;
+          float lum = dot(li, vec3(0.2126, 0.7152, 0.0722));
+          reflectedLight.indirectDiffuse =
+            mix(li, vec3(lum) * vec3(0.62, 1.00, 0.72), vLeaf * 0.75) * mix(1.0, 0.30, vLeaf);
+        }
         #if NUM_DIR_LIGHTS > 0
         {
           vec3 vd = normalize(-vViewPosition);
           float back = max(0.0, dot(vd, directionalLights[0].direction));
           // 透過は「薄い葉の縁がほのかに暖かく光る」程度。強くすると樹冠が
           // 白い紙吹雪になり、松ではなく桜に見える(実測で島が白く飛んだ)。
+          // 房のアルベドを 2.4 倍にしたので、透過も同じだけ出る。係数を下げないと
+          // t3gold で島が白く飛ぶ(コメントが記録している既知の失敗)。
           float tr = pow(back, 4.5) * vLeaf;
-          reflectedLight.directDiffuse += directionalLights[0].color * tr * 0.42
+          reflectedLight.directDiffuse += directionalLights[0].color * tr * 0.20
             * mix(diffuseColor.rgb, vec3(0.46, 0.52, 0.26), 0.35);
         }
         #endif`);

@@ -54,7 +54,10 @@ export function makeSurround(plan, tex) {
         + smoothstep(28, 2, y) * 0.60, 0, 1);
       if (y < 0.8) {
         // ロクルムの縁は砂浜ではなく岩。明るい白い帯を回すと、環礁に見える。
-        c.setHSL(0.093, 0.13, 0.42 + n * 0.10, THREE.SRGBColorSpace);
+        // ——そのコメントのとおりの症状が値として残っていた。実測 L* 51.9 で、
+        // 樹冠(L* 16.9)との差 35 L*。真昼のアドリア海(L* 69)より 5 しか暗くない、
+        // 明るい砂の帯が島の全周を回っていた。**帯を消し、白い岩は線として残す。**
+        c.setHSL(0.095, 0.09, 0.28 + n * 0.13, THREE.SRGBColorSpace);
       } else {
         // 素地 = 石灰岩。そこへ松葉(赤みの茶)とマキ(灰緑)を混ぜる。
         c.setHSL(0.098 + n * 0.012, 0.11 + n * 0.05, 0.40 + n * 0.10, THREE.SRGBColorSpace);
@@ -83,8 +86,9 @@ export function makeSurround(plan, tex) {
   // 一様なランダム散布は失敗状態 — それは「木を置いた」であって「森」ではない。
   const vegChunks = new Map();
   const OPQ = tex.needle.userData?.opaqueUV ?? 0.04;
+  const OPS = tex.needle.userData?.opaqueSize ?? 0.085;
   const vegBuf = (key) => {
-    if (!vegChunks.has(key)) vegChunks.set(key, new TreeBuf(OPQ));
+    if (!vegChunks.has(key)) vegChunks.set(key, new TreeBuf(OPQ, OPS));
     return vegChunks.get(key);
   };
   let treeCount = 0;
@@ -160,7 +164,10 @@ export function makeSurround(plan, tex) {
             // 乾いた石灰岩の松は濃緑ではない。灰がかった青緑。
             // 乾いた石灰岩の松は濃緑ではなく青緑。ただし線形空間の 0.25 は日向で
             // 白く飛ぶ(実測で島が霜に見えた)。石灰岩より確実に暗い値にする。
-            foliage: [0.052 + rnd() * 0.020, 0.098 + rnd() * 0.026, 0.068 + rnd() * 0.018],
+            // 642m 先では画素の輝度の約 6 割が大気側になる(霧は保護済み)。
+            // 葉の実効アルベドが Y 0.023 しか無いと、自分の色を主張できず
+            // 色相が空の 254° に飲まれる。実物の日向の樹冠は Y 0.09〜0.13。
+            foliage: [0.070 + rnd() * 0.024, 0.130 + rnd() * 0.030, 0.090 + rnd() * 0.022],
           });
         }
         treeCount++;
@@ -208,7 +215,7 @@ export function makeSurround(plan, tex) {
         aleppoPine(B, [x, st.y - 0.15, z], rnd, {
           h: 5.5 + rnd() * 6 - smoothstep(30, 75, st.y) * 2.5,
           exposure, detail: far ? 0.2 : 1,
-          foliage: [0.048 + rnd() * 0.018, 0.086 + rnd() * 0.024, 0.060 + rnd() * 0.016],
+          foliage: [0.066 + rnd() * 0.022, 0.120 + rnd() * 0.028, 0.084 + rnd() * 0.020],
         });
       }
       treeCount++;
@@ -225,7 +232,7 @@ export function makeSurround(plan, tex) {
     if (!vegMats[mk]) {
       vegMats[mk] = patchTreeWind(new THREE.MeshStandardMaterial({
         map: tex.needle, vertexColors: true, roughness: 0.92, metalness: 0,
-        envMapIntensity: 0.25,
+        envMapIntensity: 0.12,
         // 房の絵はアルファで抜ける。alphaTest なら深度も影も素直に効く
         // (transparent にすると並べ替えが要り、樹冠が前後で瞬く)。
         alphaTest: 0.42,

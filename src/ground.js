@@ -396,8 +396,18 @@ export function makeGround(plan, tex, stepPool) {
       roughness: 0.9, metalness: 0,
       envMapIntensity: 0.30,   // 既定の 1.0 だと水面下の海底に太陽の鏡面が乗る
     });
+    // **この 30 行は一度も GPU に届いていなかった。**
+    // macroVariation(ground.js の上)は onBeforeCompile を **連鎖せず代入する**
+    // 唯一の patcher で、呼び出し順が 「三平面を代入 → patchSkyVis → macroVariation」
+    // だったため、三平面投影もマキの粒も天空可視率も丸ごと破棄されていた
+    // (実測: ground.near の実コンパイル GLSL に mapScrub も vWPos も vSkyV も無い)。
+    // macroVariation 本体は直さない — paveMat と **stradunMat(保護対象の石)** も
+    // 呼んでおり、直すと石の見えが変わる。ここでは呼ぶ順だけを入れ替える。
+    macroVariation(nearMat, tex.grime, 26.0, 0.20);   // 数mスケールの情報が無いと岩肌が砂に見える
     // 岩棚や壕の急斜面で平面投影が縦に伸びる。三平面で潰す。
-    nearMat.onBeforeCompile = (sh) => {
+    const prevNear = nearMat.onBeforeCompile;
+    nearMat.onBeforeCompile = (sh, rr) => {
+      if (prevNear) prevNear(sh, rr);
       sh.uniforms.mapScrub = { value: tex.scrub.map };
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nattribute float aScrub;\nvarying float vScrub;')
@@ -432,7 +442,6 @@ export function makeGround(plan, tex, stepPool) {
     };
     bakeSkyVis(g, skyAt, { offsetY: 0.9 });
     patchSkyVis(nearMat);
-    macroVariation(nearMat, tex.grime, 26.0, 0.20);   // 数mスケールの情報が無いと岩肌が砂に見える
     patchWet(nearMat, { wet: 0.34, top: 0.55, foam: 0.22, dry: true });   // 汀の濡れ帯
     const m = new THREE.Mesh(g, nearMat);
     m.receiveShadow = true;
@@ -476,15 +485,44 @@ export function makeGround(plan, tex, stepPool) {
       const hx = farHeight(x + 24, z) - farHeight(x - 24, z);
       const hz = farHeight(x, z + 24) - farHeight(x, z - 24);
       const slope = Math.hypot(hx, hz) / 48;
-      const n = fbm2(x * 0.008, z * 0.008);
-      const n2 = fbm2(x * 0.031 + 11, z * 0.031 - 7);
-      // 実測の遠景 slope は平均 0.23 / 最大 0.94。閾値 0.42 では岩が一度も出ず、
-      // スルジが暗いマキ低木一色の板になっていた。
-      const rockF = clamp(smoothstep(0.12, 0.55, slope) * 0.85
-        + smoothstep(120, 260, y) * 0.65 + (n2 - 0.5) * 0.5, 0, 1);
-      const scrubC = new THREE.Color().setHSL(0.235 - n * 0.045, 0.26 + n2 * 0.10, 0.155 + n * 0.055, THREE.SRGBColorSpace);
-      const rockC = new THREE.Color().setHSL(0.105 + n2 * 0.012, 0.11, 0.50 + n * 0.10, THREE.SRGBColorSpace);
+      // **書かれていた 34 L* の意図が、画面に 0.8 L* しか届いていなかった。**
+      // 原因は標本化。fbm2(x*0.031) の第1オクターブは波長 32.3m で、この格子は
+      // step = 42m。ナイキストの半分以下なので、噪声は頂点ごとの疑似乱数へ
+      // 折り返され、Gouraud 補間と三平面のミップで完全に平均されて消える。
+      // 42m 格子が解ける波長(84m 以上)まで落とす。
+      const n = fbm2(x * 0.0032 + 5, z * 0.0032 - 3);       // 波長 313m — 塊の分割
+      const n2 = fbm2(x * 0.0072 + 11, z * 0.0072 - 7);     // 波長 139m — マキの群れ
+      // plan.js が既に高さへ刻んでいる谷筋を、色にも読ませる。形と色が同じことを言う。
+      const gul = 1 - Math.abs(fbm2(x * 0.0055, z * 0.0038) - 0.5) * 2;
+      // 2000 年代の山火事の帯。斜面の向きに沿って走るので、別の低周波で切る。
+      const burn = smoothstep(0.63, 0.82, fbm2(x * 0.0035 + 7, z * 0.0035 + 3));
+      // 高度で駆動していたので y>260m は必ず rockF ≥ 0.79 に飽和し、
+      // 可視の上半分が岩一色になっていた(実測 rockF ≥ 0.9 が 38〜45%)。
+      // 斜面と高度は 42m 格子でも滑らかなので、これらが支配すると相が分かれない。
+      // 噪声を主にして、二相がはっきり空間的に分かれるようにする。
+      const rockF = clamp(0.40 + (n2 - 0.5) * 1.95 + (n - 0.5) * 1.05
+        + smoothstep(0.10, 0.62, slope) * 0.45 - gul * 0.32, 0, 1);
+      // 八月のスルジの実際の色域(CIELAB 実測): 直射の石灰岩の露頭 L* 72〜85 /
+      // その日陰 45〜55 / 乾いたマキ 30〜42 / ガリーグの灰緑 40〜50 /
+      // 火事の跡 18〜28。いまは 24.5 と 60.4 の二相しか無かった。
+      // 遠景の石灰岩は、日陰の微細凹凸と暗いマキが支配するので実際に青灰へ寄る。
+      // これは霧ではなく「その距離での面の色」— 空気遠近には触れない。
+      const scrubC = new THREE.Color().setHSL(0.285 - n * 0.030, 0.19 + n2 * 0.07, 0.16 + n * 0.05, THREE.SRGBColorSpace);
+      // 露頭は「白く光る石灰岩」。実物の直射面は L* 72〜85 まで行く。
+      const rockW = new THREE.Color().setHSL(0.105 + n2 * 0.012, 0.10, 0.435 + n * 0.20, THREE.SRGBColorSpace);
+      const rockF2 = new THREE.Color().setHSL(0.575 + n2 * 0.030, 0.075, 0.435 + n * 0.20, THREE.SRGBColorSpace);
+      // 遠いほど冷たく寄せるが、振り切らない(振り切ると白い露頭が消える)。
+      // 中距離(200〜600m)の丘も冷たく寄せる。340m からでは v6 の岬まわりが
+      // 暖色のまま残り、空との輝度比が 0.78 → 0.96 まで上がっていた。
+      const rockC = rockW.lerp(rockF2, smoothstep(180, 900, Math.hypot(x, z)) * 0.68);
       c.copy(scrubC).lerp(rockC, rockF);
+      // 焼け跡の黒い帯(炭と立ち枯れ)
+      c.lerp(new THREE.Color().setHSL(0.075, 0.13, 0.10, THREE.SRGBColorSpace), burn * 0.62);
+      // 谷筋は空が見えない。夜に山が空より明るくなる(実測 /空Y比 1.38)のは、
+      // 遠景メッシュに天空可視率が一度も焼かれていないため。拡散面が
+      // その光源である空より明るくなることは、アルベド ≤ 1 なので原理的に無い。
+      // 高さと同じ噪声から遮蔽を作るので、形と必ず一致し、コストはゼロ。
+      c.multiplyScalar(clamp(1 - gul * 0.26 - clamp(-hz / 48, 0, 1) * 0.14, 0.56, 1));
       if (y < 6) c.lerp(new THREE.Color().setHSL(0.10, 0.10, 0.46, THREE.SRGBColorSpace), smoothstep(6, -1, y));
       // 水面下は近景と同じ白い石灰岩に。ここだけ違う色で塗ると、近景格子の
       // 縁で水の色が四角く切り替わる(海面に矩形の継ぎ目が出る)。
@@ -501,10 +539,15 @@ export function makeGround(plan, tex, stepPool) {
     g.setAttribute('color', new THREE.BufferAttribute(colors, 3));
     g.computeVertexNormals();
     const uv = g.attributes.uv;
-    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 60, pos.getZ(i) / 60);
+    // この UV を読むのは法線マップだけ(アルベドは下の三平面が上書きする)。
+    // 60m タイルだと層理の帯が 5〜15m 周期で規則的な縞になる。150m へ。
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / 150, pos.getZ(i) / 150);
     const farMat = new THREE.MeshStandardMaterial({
       map: tex.scrub.map, vertexColors: true, roughness: 0.95, metalness: 0,
-      envMapIntensity: 0.35,   // 草木に空の鏡面は出ない
+      // tex.rock は heightToNormal(2.6) で層理(1〜3m の帯)を焼いてある。
+      // 近景(ground.near)は法線を持っているのに、遠景だけ持っていなかった。
+      normalMap: tex.rock.normalMap, normalScale: new THREE.Vector2(0.35, 0.35),
+      envMapIntensity: 0.18,   // 草木に空の鏡面は出ない。夜に山が空より明るくならない値
     });
     // 平面投影のままだと急斜面でテクスチャが縦に伸び、山肌が「垂れた布」になる。
     // 三平面投影(法線で重み付け)に差し替える。
@@ -521,10 +564,15 @@ export function makeGround(plan, tex, stepPool) {
           tw = max(tw, vec3(1e-3));
           tw = tw * tw * tw;
           tw /= max(tw.x + tw.y + tw.z, 1e-4);
-          vec4 sampledDiffuseColor =
-              texture2D(map, vWPos.xz / 60.0) * tw.y
-            + texture2D(map, vWPos.zy / 60.0) * tw.x
-            + texture2D(map, vWPos.xy / 60.0) * tw.z;
+          // 一尺度だと 1.2km の山に同じタイルが 20 回出て、斜めのキルトになる。
+          // 約分できない二尺度(74m と 213m、比 2.88)を重ねて卓越周期を消す。
+          vec4 s1 = texture2D(map, vWPos.xz / 74.0) * tw.y
+                  + texture2D(map, vWPos.zy / 74.0) * tw.x
+                  + texture2D(map, vWPos.xy / 74.0) * tw.z;
+          vec4 s2 = texture2D(map, vWPos.xz / 213.0 + vec2(0.37, 0.11)) * tw.y
+                  + texture2D(map, vWPos.zy / 213.0 + vec2(0.37, 0.11)) * tw.x
+                  + texture2D(map, vWPos.xy / 213.0 + vec2(0.37, 0.11)) * tw.z;
+          vec4 sampledDiffuseColor = s1 * 0.55 + s2 * 0.45;
           diffuseColor *= sampledDiffuseColor;`);
     };
     patchWet(farMat, { foam: 0.35 });   // 遠景の岸も同じ汀を持つ
