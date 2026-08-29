@@ -70,7 +70,12 @@ function localSD(L, W, H, k) {
 // すでに路地の壁だから。同じ材質・同じ向きの面を比べる必要がある —
 // **足元の床(画面下 10%)** を測る。第1パスで lightprobe が IBL を数えて
 // いなかったのと同じ種類の誤りを、ここで繰り返していた。
-console.log('画                     潰れ%   飛び%  L*中央  sd8   sd32   帯%   足元L*   足元Y');
+// sd8 は画面全体の中央値なので「壁に物があるか」を測れない — 縦樋が 6 本
+// 写っている画(0.70)と無地の板(0.58)がほとんど同じ値になる。動くのは
+// 日向の面積で、物の数ではない。手前の壁だけを見る二つの指標を足す:
+//   壁sd8 = 画面の左右 22%(路地では手の届く壁)に限った局所 SD
+//   輪郭  = 勾配 > 3 L*/px の画素の割合(= そこに縁のある物がどれだけあるか)
+console.log('画                     潰れ%  L*中央  sd8   壁sd8  輪郭%   帯%   足元L*   足元Y');
 for (const p of process.argv.slice(2)) {
   const png = readPNG(p);
   const W = png.w, H = png.h, L = new Float32Array(W * H);
@@ -98,8 +103,22 @@ for (const p of process.argv.slice(2)) {
   foot.sort((a, b) => a - b);
   const fL = foot[foot.length >> 1];
   const fY = fL > 8 ? Math.pow((fL + 16) / 116, 3) : fL / 903.3;   // L* → 相対輝度
+  // 手前の壁(左右 22%)だけの局所 SD
+  const wW = Math.floor(W * 0.22);
+  const sub = new Float32Array(wW * 2 * H);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < wW; x++) sub[y * wW * 2 + x] = L[y * W + x];
+    for (let x = 0; x < wW; x++) sub[y * wW * 2 + wW + x] = L[y * W + (W - wW + x)];
+  }
+  const wallSD = localSD(sub, wW * 2, H, 8);
+  // 輪郭: 隣接画素の勾配が 3 L*/px を超える割合
+  let edge = 0;
+  for (let y = 1; y < H; y++) for (let x = 1; x < W; x++) {
+    const i = y * W + x;
+    if (Math.abs(L[i] - L[i - 1]) > 3 || Math.abs(L[i] - L[i - W]) > 3) edge++;
+  }
   const name = p.split('/').pop().replace('.png', '');
-  console.log(`${name.padEnd(20)} ${(dark / (W * H) * 100).toFixed(1).padStart(6)} ${(blow / (W * H) * 100).toFixed(1).padStart(6)} ` +
-    `${all[all.length >> 1].toFixed(1).padStart(6)} ${localSD(L, W, H, 8).toFixed(2).padStart(6)} ${localSD(L, W, H, 32).toFixed(2).padStart(6)} ` +
+  console.log(`${name.padEnd(20)} ${(dark / (W * H) * 100).toFixed(1).padStart(6)} ` +
+    `${all[all.length >> 1].toFixed(1).padStart(6)} ${localSD(L, W, H, 8).toFixed(2).padStart(6)} ${wallSD.toFixed(2).padStart(6)} ${(edge / (W * H) * 100).toFixed(2).padStart(6)} ` +
     `${rib.length ? (rib[rib.length >> 1] * 100).toFixed(1).padStart(6) : '   —  '} ${fL.toFixed(1).padStart(7)} ${fY.toFixed(4).padStart(7)}`);
 }
