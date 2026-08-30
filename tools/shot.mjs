@@ -39,6 +39,36 @@ for (const s of specs) {
     console.log(`[timeout] ${s.name} — __READY にならない`);
   }
   await new Promise(r => setTimeout(r, 1400));
+  // 1400ms の固定待ちだけでは足りないことがある。第7パスで 64 枚中 1 枚
+  // (v4_srd_t4dusk)が、手前の wall.curtain だけ落ち着く前の明るさで焼かれ、
+  // 「変化した画素 7.90%」という **修正と無関係の差** を調和の門に出した
+  // (同じコードで撮り直すと再現しない = 比較が原理的に成立していない)。
+  // 固定の秒数ではなく **絵が止まったこと** を待つ。連続 2 フレームが
+  // 画素単位で一致したら落ち着いたとみなす。
+  const settled = await page.evaluate(async () => {
+    const w = window.__world, gl = w.renderer.getContext();
+    const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
+    // 全画素は重いので 16 画素ごとに間引いて比べる(異常は面で出るので拾える)
+    const grab = () => { const px = new Uint8Array(W * H * 4);
+      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+      const out = new Uint8Array(((W * H) >> 4) * 3 + 3);
+      for (let i = 0, j = 0; i < W * H; i += 16, j += 3) {
+        out[j] = px[i * 4]; out[j + 1] = px[i * 4 + 1]; out[j + 2] = px[i * 4 + 2];
+      }
+      return out; };
+    const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    let prev = grab();
+    for (let k = 0; k < 30; k++) {          // 上限 30 フレーム(≒0.5s)
+      await frame();
+      const cur = grab();
+      let same = true;
+      for (let i = 0; i < cur.length; i++) if (cur[i] !== prev[i]) { same = false; break; }
+      if (same) return k;
+      prev = cur;
+    }
+    return -1;                               // 止まらなかった
+  });
+  if (settled < 0) console.log(`[未静定] ${s.name} — 30 フレーム待っても絵が止まらない`);
   await page.screenshot({ path: new URL(`../shots/${s.name}.png`, import.meta.url).pathname });
   const m = await page.evaluate(() => {
     const w = window.__world;

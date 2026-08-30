@@ -241,7 +241,14 @@ function stripGeometry(pts2, width, yAt, { step = 1.0, coverM = 5, edgeAO = 0.24
 // 舗装に周期 34m の大きな明度のうねりを足す。6m のタイルだけだと、
 // カメラに近いほど情報が減る(近景が画面でいちばん空虚になる)。
 function macroVariation(mat, macroTex, periodM, amount) {
-  mat.onBeforeCompile = (sh) => {
+  // **連鎖する。代入してはならない。** ここを代入にすると、この呼び出しより前に
+  // 書いた patcher が黙って消える。実際 stradunMat の鏡面クランプ(下の
+  // lights_fragment_end)は、この一行のせいで六つのパスのあいだ一度も GPU に
+  // 届いていなかった(tools/_obc.mjs: ground.stradun のパッチが macro,skyVis
+  // だけで specClamp が無い)。onBeforeCompile を書く者は全員 chain する。
+  const prev = mat.onBeforeCompile;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev.call(mat, sh, r);
     sh.uniforms.uMacro = { value: macroTex };
     sh.uniforms.uMacroP = { value: periodM };
     sh.uniforms.uMacroA = { value: amount };
@@ -401,8 +408,9 @@ export function makeGround(plan, tex, stepPool) {
     // 唯一の patcher で、呼び出し順が 「三平面を代入 → patchSkyVis → macroVariation」
     // だったため、三平面投影もマキの粒も天空可視率も丸ごと破棄されていた
     // (実測: ground.near の実コンパイル GLSL に mapScrub も vWPos も vSkyV も無い)。
-    // macroVariation 本体は直さない — paveMat と **stradunMat(保護対象の石)** も
-    // 呼んでおり、直すと石の見えが変わる。ここでは呼ぶ順だけを入れ替える。
+    // 第4パスでは呼ぶ順だけを入れ替えて凌いだ(macroVariation 本体を直すと
+    // 保護対象の stradunMat が動くため)。**第7パスで本体を連鎖に直した。**
+    // 順序への依存は消えたが、この並び自体は動かす理由が無いので残す。
     macroVariation(nearMat, tex.grime, 26.0, 0.20);   // 数mスケールの情報が無いと岩肌が砂に見える
     // 岩棚や壕の急斜面で平面投影が縦に伸びる。三平面で潰す。
     const prevNear = nearMat.onBeforeCompile;
