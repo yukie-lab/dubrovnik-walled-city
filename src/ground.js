@@ -674,6 +674,59 @@ export function makeGround(plan, tex, stepPool) {
     const cm = p.polished ? tex.stradun.coverM : tex.paving.coverM;
     for (let i = 0; i < uv.count; i++) uv.setXY(i, pos.getX(i) / cm, pos.getZ(i) / cm);
     (p.polished ? stradunGeoms : paveGeoms).push(g);
+
+    // ---- 擁壁。広場は水平な一枚の板なので、地面が下がる縁では **板が宙に浮く**。
+    // 実測(tools/_plazafloor.mjs): 7 広場で合計 308㎡ が浮いており、
+    // グンドリッチの東の縁で 7.52m、イエズス会の足元は面の 72% が浮いていた。
+    // 斜面の上に敷いたテラスには擁壁がある。縁を地面まで垂らす。
+    // paveGeoms に入れるので **描画呼び出しは増えない**(既存のマージ先)。
+    {
+      const yTop = p.y + 0.02;
+      // 外向きの法線が出る順に周回する(FrontSide カリングなので裏返すと消える)。
+      const ring = [[p.x0, p.z1], [p.x1, p.z1], [p.x1, p.z0], [p.x0, p.z0], [p.x0, p.z1]];
+      const pos = [], nrm = [], uvs = [], cols = [], idx = [];
+      const cmS = tex.paving.coverM;
+      for (let e = 0; e < 4; e++) {
+        const [ax, az] = ring[e], [bx, bz] = ring[e + 1];
+        const L = Math.hypot(bx - ax, bz - az);
+        const dx = (bx - ax) / L, dz = (bz - az) / L;
+        const nx = -dz, nz = dx;            // d × up = 外向き
+        const n = Math.max(1, Math.ceil(L / 1.5));
+        for (let k = 0; k < n; k++) {
+          const t0 = (k * L) / n, t1 = ((k + 1) * L) / n;
+          const p0x = ax + dx * t0, p0z = az + dz * t0;
+          const p1x = ax + dx * t1, p1z = az + dz * t1;
+          // 基準は **隣に実際に描かれている床**(plan.surfaceAt)であって、
+          // 素の地形ではない。地形で測ると街路の舗装より 0.5m ほど下になり、
+          // 段差の無い縁にまで壁が立って **広場が全周を囲まれる**(市場に入れなくなる)。
+          const adj = Math.min(plan.surfaceAt(p0x + nx * 0.6, p0z + nz * 0.6),
+                               plan.surfaceAt(p1x + nx * 0.6, p1z + nz * 0.6));
+          if (yTop - adj < 0.30) continue;  // 段差の無い縁に壁は立てない
+          const yBot = adj - 0.20;          // 隣の床に 0.20m 埋めて継ぎ目を消す
+          // マージ先の幾何はインデックス付き。片方だけ非インデックスだと
+          // mergeGeometries が丸ごと失敗して床が消える(実測: 舗装が null になり
+          // bakeSkyVis が落ちた)。こちらもインデックスで作る。
+          const base = pos.length / 3;
+          for (const [vx, vy, vz] of [[p0x, yTop, p0z], [p0x, yBot, p0z],
+                                      [p1x, yTop, p1z], [p1x, yBot, p1z]]) {
+            pos.push(vx, vy, vz); nrm.push(nx, 0, nz);
+            // 縦面の UV は「縁に沿った距離」と「高さ」。石の目が寝ない。
+            uvs.push(((vx - ax) * dx + (vz - az) * dz) / cmS, vy / cmS);
+            cols.push(0.74, 0.74, 0.74);    // 擁壁は床より一段暗い(日が当たらない面)
+          }
+          idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+        }
+      }
+      if (pos.length) {
+        const sg = new THREE.BufferGeometry();
+        sg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        sg.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+        sg.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        sg.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+        sg.setIndex(idx);
+        paveGeoms.push(sg);
+      }
+    }
   }
   // イエズス会の大階段(幅広の儀典階段)
   {
