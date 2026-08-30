@@ -667,15 +667,24 @@ export function makeLife(plan, tex, stepPool) {
     };
     // 会話の輪。人は等間隔には立たない — 2〜3人が向き合う塊を作る。
     const cluster = (x, z, y, seed) => {
-      const a = place(x, z, y, seed);
-      if (!a) return;
       const n = seed > 0.62 ? 2 : 1;
       const base = seed * 6.28318;
+      // **乱数は「置けたか」より先に引く。** 置けなかったときだけ rng を飛ばすと、
+      // そこから先の街全体で位相がずれる — 通りの人の間隔まで
+      // `d += step * (0.6 + rng() * 0.8)` で決まっているので、**一人置けなかった
+      // だけで街じゅうの人数が変わる**。実測: 北の帯を 1 層上げただけで
+      // folk 481 → 440 になり、増えた棄却は 9 なのに place の成功は 37 減っていた
+      // (= 残りは全部この位相ずれ)。引く回数を置けたかどうかから切り離す。
+      const draws = [];
+      for (let k = 0; k < n; k++) draws.push([rng(), rng(), rng()]);
+      const a = place(x, z, y, seed);
+      if (!a) return;
       for (let k = 0; k < n; k++) {
-        const th = base + (k + 1) * (2.0 + rng() * 0.9);
-        const r = 0.72 + rng() * 0.34;
+        const [d0, d1, d2] = draws[k];
+        const th = base + (k + 1) * (2.0 + d0 * 0.9);
+        const r = 0.72 + d1 * 0.34;
         const bx = x + Math.cos(th) * r, bz = z + Math.sin(th) * r;
-        place(bx, bz, y, rng(), Math.atan2(x - bx, z - bz));
+        place(bx, bz, y, d2, Math.atan2(x - bx, z - bz));
       }
       a.rotY = base + 3.14159;
     };
