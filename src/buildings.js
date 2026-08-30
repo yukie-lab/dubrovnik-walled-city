@@ -1119,7 +1119,17 @@ export function makeBuildings(plan, tex) {
             // 切れて「家が浮いている」ように読める。
             const dg = (g3 && g3.y !== undefined) ? g3.y - ty : -1;
             const onPaving = f.paved || (h.monument && dg > 0.08 && dg < 0.24);
-            const sy = onPaving ? Math.max(g3 && g3.y !== undefined ? g3.y : groundY, ty) : ty;
+            let sy = onPaving ? Math.max(g3 && g3.y !== undefined ? g3.y : groundY, ty) : ty;
+            // **描かれている舗装に乗せる。** surfaceAt は地形の格子しか見ないので、
+            // 帯の下に居る巾木が石畳に 0.12〜0.30m 沈んでいた(実測 159 個)。
+            // 帯の高さは plan.pavedY が ground.js と同じ式で返す。地形から
+            // 0.45m 以上離れた値は舗装ではない(歩廊や段)ので拾わない。
+            const pv = plan.pavedY(px3, pz3);
+            if (pv !== null && pv > sy && pv - ty < 0.45) sy = pv;
+            // 段のある路地では、描かれる踏面は帯より 1 蹴上ぶん高い。
+            // groundAt は路地を **段と同じ格子で量子化して** 返すので、それに乗せる。
+            const ga = plan.groundAt(px3, pz3, ty + 0.6);
+            if (ga && ga.zone === 'alley' && ga.y > sy && ga.y - ty < 0.45) sy = ga.y;
             plinths.push({ x: px3, z: pz3, rotY, w: w3 + 0.02, y: sy - 0.06 });
           }
         };

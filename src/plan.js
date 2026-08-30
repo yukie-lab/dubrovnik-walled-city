@@ -1203,6 +1203,62 @@ export function buildPlan() {
       : h11 + (h01 - h11) * (1 - u) + (h10 - h11) * (1 - v);
   }
 
+  // 描かれている舗装の高さ。**ground.js が帯を張るのと同じ式・同じ幅**で引く。
+  // surfaceAt は地形の格子しか見ないので、「舗装の上に置く物」(巾木・鉢・卓・
+  // 露店・井戸蓋)がこれを使わないと、描かれた石畳に 0.12〜0.30m 沈む
+  // (実測 巾木 159 個・鉢 4 個ほか)。舗装が無ければ null。
+  function pavedY(x, z) {
+    let best = null;
+    const put = (y) => { if (best === null || y > best) best = y; };
+    for (const p of PLAZAS) {
+      if (x > p.x0 && x < p.x1 && z > p.z0 && z < p.z1) put(p.y + 0.02);
+    }
+    for (const s of streets) {
+      const near = nearestOnPolyline(s.pts, x, z);
+      if (near.d >= (s.w + 0.9) / 2) continue;          // 帯の実半幅
+      // 帯は折れ線の長さぶんしか張られない。端は四角く切る(groundAt と同じ)。
+      const a0 = s.pts[0], a1 = s.pts[1];
+      const la = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) || 1;
+      if (((x - a0[0]) * (a1[0] - a0[0]) + (z - a0[1]) * (a1[1] - a0[1])) / la < -0.001) continue;
+      const b0 = s.pts[s.pts.length - 2], b1 = s.pts[s.pts.length - 1];
+      const lb = Math.hypot(b1[0] - b0[0], b1[1] - b0[1]) || 1;
+      if (((x - b1[0]) * (b1[0] - b0[0]) + (z - b1[1]) * (b1[1] - b0[1])) / lb > 0.001) continue;
+      const lift = s.kind === 'stradun' ? 0.012 : s.kind === 'alley' ? 0.002 : 0.007;
+      put(streetY(s, near.x, near.z) + lift);
+    }
+    // 段のある路地の踏面。ground.js は stepPool.addRun([a, b], s.w + 0.95) で
+    // **路地より 0.95m 広く** 石を張るので、通行帯(w/2 + 0.40)の外にも踏面が
+    // 乗る。そこに立つ物がこの高さを知らないと踏面に潜る(実測 巾木 47 個)。
+    //
+    // quantizeRun の格子で近似すると **箱の実物と 0.08〜0.12m ずれる**
+    // (踏面の箱は奥行 tread+0.06 で重なり合い、射線は上の一枚に当たる)。
+    // addRun と同じ式で **箱そのものを並べて** 中に入っているか見る。
+    const RISE = 0.16;
+    for (const s of streets) {
+      if (s.kind !== 'alley') continue;
+      const half = (s.w + 0.95) / 2;
+      for (const seg of alleySamples(s).segs) {
+        if (!seg.stepped) continue;
+        const x0 = seg.a[0], z0 = seg.a[1], y0 = seg.a[2];
+        const x1 = seg.b[0], z1 = seg.b[1], y1 = seg.b[2];
+        const dh = y1 - y0, len = Math.hypot(x1 - x0, z1 - z0);
+        if (Math.abs(dh) < RISE * 1.2 || len < 0.01) continue;
+        const n = Math.max(1, Math.round(Math.abs(dh) / RISE));
+        const dirx = (x1 - x0) / len, dirz = (z1 - z0) / len;
+        const along = (x - x0) * dirx + (z - z0) * dirz;
+        const lat = Math.abs((x - x0) * -dirz + (z - z0) * dirx);
+        if (lat > half) continue;
+        const treadD = len / n + 0.06;
+        for (let k = 0; k <= n; k++) {
+          const c = (k / n) * len;
+          if (Math.abs(along - c) > treadD / 2) continue;
+          put(y0 + dh * (k / n));
+        }
+      }
+    }
+    return best;
+  }
+
   // 岸までの距離(双一次)。範囲外は「沖」として大きな値。
   function shoreDistAt(x, z) {
     const u = (x - SF.x0) / SF.dx, v = (z - SF.z0) / SF.dz;
@@ -1433,6 +1489,16 @@ export function buildPlan() {
     //  tier1 = 届く範囲(±1.8m)— 今の層に最も近い高さへ(pri で奪わない)。
     //          これが無いと、デッキの下を並走する階段が足を引きずり下ろす。
     //  tier0 = それ以外 — 最も近い高さへ(受け皿)。
+    // **curY を渡さない呼び出しが 4 箇所あった**(巾木・窓まわり・鉢)。
+    // その場合 dy が NaN になり、tier が全部 0、比較もすべて false になるので
+    // **候補の並び順の最初**がそのまま返っていた(= 広場があれば広場、無ければ
+    // 最初に当たった街路)。実測で巾木 168 個が 0.12〜0.30m 沈んでいた原因。
+    // 基準の高さが無いなら「見える床」= いちばん高い候補を返す。
+    if (!(typeof curY === 'number' && isFinite(curY))) {
+      let hi = null;
+      for (const c of cands) if (!hi || c.y > hi.y) hi = c;
+      return hi ? { ...hi, tier: 2, dy: 0 } : { y: fbTerrain, zone: 'street', tier: 0, dy: 0 };
+    }
     let best = null;
     for (const c of cands) {
       if (c.y > curY + 1.45) continue;
@@ -1733,7 +1799,7 @@ export function buildPlan() {
   }
 
   return {
-    alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, NEAR, landings, shoreDistAt, seaDepth,
+    alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, pavedY, NEAR, landings, shoreDistAt, seaDepth,
     HOUSE_BASE_BURY,
     streets, northXs, southXs, houses, PLAZAS, MONUMENTS, GATES,
     JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, moatAt, alleyXAt,

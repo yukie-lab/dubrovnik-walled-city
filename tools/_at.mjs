@@ -9,9 +9,10 @@ console.log(await p.evaluate((pts) => {
   return pts.map(([x, z]) => {
     const g = w.plan.groundAt(x, z, 4.0);
     const sa = w.plan.surfaceAt ? w.plan.surfaceAt(x, z) : null;
+    const pv = w.plan.pavedY ? w.plan.pavedY(x, z) : null;
     rc.set(new T.Vector3(x, 12, z), new T.Vector3(0, -1, 0));
     const hits = rc.intersectObjects(w.solids, true).filter(h => h.object.name).slice(0, 3);
-    return `(${x}, ${z})  groundAt ${g && g.y !== undefined ? g.y.toFixed(2) : '—'}  surfaceAt ${sa === null ? '—' : sa.toFixed(2)}  描かれた面: ${hits.map(h => `${h.object.name}@${h.point.y.toFixed(2)}`).join(' / ')}`;
+    return `(${x}, ${z})  groundAt ${g && g.y !== undefined ? g.y.toFixed(2) : '—'}  surfaceAt ${sa === null ? '—' : sa.toFixed(2)}  pavedY ${pv === null ? '—' : pv.toFixed(2)}  描かれた面: ${hits.map(h => `${h.object.name}@${h.point.y.toFixed(2)}`).join(' / ')}`;
   }).join('\n');
-}, [[133.9, 8.3], [118, -4.2], [-52, -4.2], [60, 4.0]]));
+}, [[104.7, 35.0], [-133.9, -21.9]]));
 await b.close();

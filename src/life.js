@@ -218,6 +218,18 @@ export function makeLife(plan, tex, stepPool) {
     group.add(tagMesh(mesh, 'life.laundryCloth', { thin: true, reason: '布', noCollide: true }));
   }
 
+  // 描かれている床に物を置く。plan.pavedY は ground.js が石を張るのと **同じ式**で
+  // 帯と踏面の高さを返す。streetY(滑らかなランプ)や広場の素の y のままだと、
+  // 段のある路地や重ね張りの帯で石に潜る(実測 鉢 3 個・露店 1 台・井戸蓋 1 枚)。
+  // 目安から 0.9m 以上離れた値は別の層(歩廊・段の上の踊り場)なので採らない。
+  // 近ければ **その高さに合わせる**(高い方を採るのではない)。人が帯の縁で
+  // 0.13m 浮いていたのは、足の高さが groundAt の通行帯(w/2+0.40)から来ていて、
+  // 描かれた帯がそこまで無かったため。離れた値は別の層なので採らない。
+  const onFloor = (x, z, fallback) => {
+    const pv = plan.pavedY(x, z);
+    return (pv !== null && Math.abs(pv - fallback) < 0.35) ? pv : fallback;
+  };
+
   // ------------------------------------------------------- 鉢植えと緑 ----
   const pots = [];    // 階段脇・扉脇
   // 鉢を増やしたら鉢どうしが重なった(実測 19 組)。鉢の外径は 0.335m。
@@ -234,7 +246,7 @@ export function makeLife(plan, tex, stepPool) {
       const ax = plan.alleyXAt(a, z);
       const side = rng() < 0.5 ? -1 : 1;
       const x = ax + side * (a.w / 2 - 0.35);
-      putPot({ x, z, y: plan.streetY(a, ax, z), s: 0.7 + rng() * 0.7, seed: rng(), boug: rng() < 0.16 });
+      putPot({ x, z, y: onFloor(x, z, plan.streetY(a, ax, z)), s: 0.7 + rng() * 0.7, seed: rng(), boug: rng() < 0.16 });
     }
   }
   // 東西の通りの壁際にも。プリイェコは実物では鉢と卓でいちばん賑わう通り。
@@ -246,13 +258,14 @@ export function makeLife(plan, tex, stepPool) {
       const x = lerp(x0e + 3, x1e - 3, rng());
       const side = rng() < 0.5 ? -1 : 1;
       const z = sz + side * (s2.w / 2 - 0.35);
-      putPot({ x, z, y: plan.streetY(s2, x, z), s: 0.7 + rng() * 0.7, seed: rng(), boug: rng() < 0.16 });
+      putPot({ x, z, y: onFloor(x, z, plan.streetY(s2, x, z)), s: 0.7 + rng() * 0.7, seed: rng(), boug: rng() < 0.16 });
     }
   }
   // 広場・ストラドゥンの縁にも
   for (let i = 0; i < 42; i++) {
     const x = -140 + rng() * 270;
-    putPot({ x, z: (rng() < 0.5 ? -1 : 1) * (3.5 - 0.2), y: 2.6, s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
+    const pz5 = (rng() < 0.5 ? -1 : 1) * (3.5 - 0.2);
+    putPot({ x, z: pz5, y: onFloor(x, pz5, 2.6), s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
   }
   {
     // 上面を塞いだ円柱だと、天面が空を向いて明るいピンクの円盤に見える。
@@ -591,7 +604,7 @@ export function makeLife(plan, tex, stepPool) {
           // 完全な格子は市場に見えない。列ごとにずらし、個体差を大きくする。
           const x = lerp(gu.x0 + 3.2, gu.x1 - 3.2, c / 3) + (srng() - 0.5) * 1.8 + (r % 2 ? 1.1 : -0.6);
           const z = lerp(gu.z0 + 4.0, gu.z1 - 4.0, r / 2) + (srng() - 0.5) * 1.5;
-          stalls.push({ x, z, y: gu.y, rot: (srng() - 0.5) * 0.7 + (r % 2 ? 0.06 : -0.04), seed: srng() });
+          stalls.push({ x, z, y: onFloor(x, z, gu.y), rot: (srng() - 0.5) * 0.7 + (r % 2 ? 0.06 : -0.04), seed: srng() });
         }
       }
     }
@@ -615,6 +628,7 @@ export function makeLife(plan, tex, stepPool) {
       // 「描かれた床と当たり判定の床が食い違う」ほうが直すべき欠陥で、
       // それは walkability が既に 43 点で鳴らしている。
       let gy = (g && Math.abs(g.y - y) < 1.6) ? g.y : y;
+      gy = onFloor(x, z, gy);          // 描かれている床に合わせる
       // 石段の天板は踏面より 0.06m 先まで出る(段鼻)。当たり判定は
       // quantizeRun の格子で切り替わるので、段鼻の 3cm の帯では
       // **描かれた段が一段上** になり、そこに立つ人は蹴上ぶん(0.16m)
@@ -1062,8 +1076,12 @@ export function makeLife(plan, tex, stepPool) {
     for (const st of stalls) {
       const nx = -Math.sin(st.rot), nz = -Math.cos(st.rot);
       const sd2 = 0.30 + st.seed * 0.11;
+      // 売り子は台から 0.95m 後ろ。台の高さをそのまま使うと、台が帯の上・
+      // 売り子が広場の板の上、という食い違いで 0.13m 浮く(実測 1 人)。
+      // 立つ場所の床を引き直す。
+      const vx = st.x - nx * 0.95, vz = st.z - nz * 0.95;
       folk.push({
-        x: st.x - nx * 0.95, z: st.z - nz * 0.95, y: st.y, seed: sd2, sit: 0, job: 'stall',
+        x: vx, z: vz, y: onFloor(vx, vz, st.y), seed: sd2, sit: 0, job: 'stall',
         h: 0.90 + st.seed * 0.16, wx: 1.0, wz: 1.0, headK: 1.0,
         // 12 人が同じ向きで棒立ちだと、市場ではなく人形の陳列になる
         rotY: st.rot + Math.PI + (sd2 - 0.5) * 0.9, walk: null,
@@ -1676,7 +1694,10 @@ export function makeLife(plan, tex, stepPool) {
   // ------------------------------------------ 通りの井戸の蓋 ----
   {
     const lids = [];
-    for (let x = -132; x < 132; x += 21) lids.push({ x, z: (rng() - 0.5) * 1.6, y: 2.6 });
+    for (let x = -132; x < 132; x += 21) {
+      const lz = (rng() - 0.5) * 1.6;
+      lids.push({ x, z: lz, y: onFloor(x, lz, 2.6) });
+    }
     const lg = new THREE.CylinderGeometry(0.31, 0.31, 0.035, 16);
     const lm = new THREE.InstancedMesh(lg, new THREE.MeshStandardMaterial({
       map: tex.stradun.map, normalMap: tex.stradun.normalMap,
