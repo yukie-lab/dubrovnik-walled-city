@@ -80,21 +80,40 @@ for (const v of views.filter(v => wantV.includes(v.name))) {
       // ② 分類マスク。トーンマップを切ると material.color の hex がそのまま画素になる。
       const saved = [], tm = w.renderer.toneMapping, fog = w.scene.fog;
       w.renderer.toneMapping = T.NoToneMapping; w.scene.fog = null;
+      const hidden = [];
       w.scene.traverse(o => {
         if (!o.isMesh && !o.isInstancedMesh) return;
+        // 半透明の飾り(灯だまり・煤の帯・窓の内法・噴水・雲)は「その画素の持ち主」
+        // ではない。石を覆うのではなく染めている物なので、マスクでは描かない —
+        // 持ち主は後ろの不透明な物。alphaTest で抜く物(葉・松)はこの限りでない。
+        if (o.material && !(o.material.alphaTest > 0) && o.material.transparent) {
+          hidden.push([o, o.visible]); o.visible = false; return;
+        }
         let cls = 'stone';
         for (const [k, re] of RULES2) if (re.test(o.name || '')) { cls = k; break; }
         // InstancedMesh の instanceColor は材質色に **必ず掛かる**(material.vertexColors とは無関係)。
         // 屋根の橙の個体差がそのまま分類色を壊し、屋根が 0.2% しか数えられなかった。
         saved.push([o, o.material, o.instanceColor]);
         if (o.instanceColor) o.instanceColor = null;
-        o.material = new T.MeshBasicMaterial({ color: COL2[cls], fog: false,
-          side: o.material?.side ?? T.FrontSide, transparent: false, depthWrite: true });
+        // アルファで抜いている物(life.foliage alphaTest 0.45 / surround.pine 0.42)を
+        // 不透明の板として描くと、葉のカードが四角いまま後ろの要素を食う
+        // (実測 v2_alley で veg が 4.8% と出るが、実際の画では 1% 未満)。
+        // **map のアルファだけ**を採る — RGB を掛けると分類色そのものが壊れる。
+        const src0 = o.material;
+        const mm = new T.MeshBasicMaterial({ color: COL2[cls], fog: false,
+          side: src0?.side ?? T.FrontSide, transparent: false, depthWrite: true,
+          alphaTest: src0?.alphaTest ?? 0, map: src0?.alphaTest ? src0.map : null });
+        if (src0?.alphaTest > 0 && src0.map) mm.onBeforeCompile = (sh) => {
+          sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
+            'diffuseColor.a *= texture2D( map, vMapUv ).a;');
+        };
+        o.material = mm;
       });
       w.renderer.setRenderTarget(null);
       w.renderer.render(w.scene, w.camera);
       const mask = grab();
       for (const [o, m, ic] of saved) { o.material = m; if (ic) o.instanceColor = ic; }
+      for (const [o, vis] of hidden) o.visible = vis;
       w.renderer.toneMapping = tm; w.scene.fog = fog;
       // 分類 → 集計
       const keys = Object.keys(COL2);

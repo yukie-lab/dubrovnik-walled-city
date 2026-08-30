@@ -25,6 +25,12 @@ console.log(await p.evaluate(async (PTS) => {
     const m = new T.MeshBasicMaterial({ fog: false, side: o.material?.side ?? T.FrontSide,
       transparent: o.material?.transparent ?? false, alphaTest: o.material?.alphaTest ?? 0,
       map: o.material?.alphaTest ? o.material.map : null });
+    // map を付けると RGB が掛かって **id そのものが壊れる**(葉と松が別の物として
+    // 数えられる)。アルファだけを採る。harmony / stonestat の分類マスクも同じ。
+    if (o.material?.alphaTest > 0 && o.material.map) m.onBeforeCompile = (sh) => {
+      sh.fragmentShader = sh.fragmentShader.replace('#include <map_fragment>',
+        'diffuseColor.a *= texture2D( map, vMapUv ).a;');
+    };
     m.color.setRGB((id & 255) / 255, ((id >> 8) & 255) / 255, 0, T.SRGBColorSpace);
     o.material = m;
   });
