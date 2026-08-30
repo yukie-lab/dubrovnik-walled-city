@@ -815,33 +815,70 @@ export function makeLife(plan, tex, stepPool) {
     for (const f of folk) {
       if (f.sit) { f.walk = null; continue; }
       if (f.seed <= 0.26) { f.walk = null; continue; }     // 永久固定は 26%(残りは歩いて止まる)
+      // **乱数はここで全部引く。** 経路が取れたかどうかで引く回数が変わると、
+      // そこから先の街全体の位相がずれる(前の commit と同じ故障)。
+      // 引く数は「歩く体になり得る人」1 人につき常に 5。
+      const dSpan = rng(), dT0 = rng(), dSp = rng(), dPa = rng(), dPb = rng();
       let best = null;
       for (const st of allStreets) {
         const q = nearestOnPolyline(st.pts, f.x, f.z);
         if (q.d > st.w / 2 + 0.9) continue;
         if (!best || q.d < best.q.d) best = { st, q };
       }
-      if (!best) { f.walk = null; continue; }
-      const tx = best.q.tx, tz = best.q.tz;
-      const span = Math.min(16 + rng() * 14, polylineLength(best.st.pts) - 6);
-      if (span < 5) { f.walk = null; continue; }
-      // 経路上の高さを 9 点サンプルして持っておく(毎フレームの groundAt を避ける)
-      const ys = [];
-      let okPath = true;
-      for (let k = 0; k <= 8; k++) {
-        const u = k / 8 - 0.5;
-        const px2 = f.x + tx * span * u, pz2 = f.z + tz * span * u;
-        const c = plan.collide(px2, pz2, 0.4, f.y + 1.0);
-        if (Math.hypot(c.x - px2, c.z - pz2) > 0.2) { okPath = false; break; }
-        const g = plan.groundAt(px2, pz2, f.y + 1.2);
-        if (!g || Math.abs(g.y - f.y) > 3.5) { okPath = false; break; }
-        ys.push(g.y);
+      // 経路の候補を作る。街路の人は 1 本(通りに沿う)、広場の人は向きを
+      // 変えて 4 本試す — 広場の弦は記念物・階段・柱廊に当たりやすく、
+      // 一方向だけ試すとルジャで 25 人中 3 人しか歩けない。
+      const cands = [];
+      if (best) {
+        cands.push({ tx: best.q.tx, tz: best.q.tz,
+          span: Math.min(16 + dSpan * 14, polylineLength(best.st.pts) - 6) });
+      } else {
+        // **広場の人は街路の折れ線に乗らない。** ここで一律 walk = null にしていたので、
+        // ルジャ広場もオノフリオの前も、広場に立つ人は一人も歩いていなかった
+        // (実測: 広場の folk の歩く体 0 / 全員)。広場は街でいちばん人が動く場所で、
+        // そこが全員棒立ちだと「模型だ」と最も強く告げる。
+        const pl = (plan.PLAZAS || []).find(q2 =>
+          f.x > q2.x0 && f.x < q2.x1 && f.z > q2.z0 && f.z < q2.z1);
+        if (!pl) { f.walk = null; continue; }
+        const M = 1.2;   // 縁の 1.2m は柱廊・階段・記念物の取り付き
+        for (let k = 0; k < 4; k++) {
+          const th = f.seed * 6.28318 + k * (Math.PI / 4);
+          const ux = Math.sin(th), uz = Math.cos(th);
+          const tMax = (dx, dz) => {
+            let t = Infinity;
+            if (dx > 1e-6) t = Math.min(t, (pl.x1 - M - f.x) / dx);
+            else if (dx < -1e-6) t = Math.min(t, (pl.x0 + M - f.x) / dx);
+            if (dz > 1e-6) t = Math.min(t, (pl.z1 - M - f.z) / dz);
+            else if (dz < -1e-6) t = Math.min(t, (pl.z0 + M - f.z) / dz);
+            return Math.max(0, t);
+          };
+          cands.push({ tx: ux, tz: uz,
+            span: Math.min(tMax(ux, uz), tMax(-ux, -uz), (16 + dSpan * 14) / 2) * 2 });
+        }
       }
+      let tx = 0, tz = 0, span = 0, ys = null;
+      for (const c of cands) {
+        if (c.span < 5) continue;
+        // 経路上の高さを 9 点サンプルして持っておく(毎フレームの groundAt を避ける)
+        const yy = [];
+        let ok = true;
+        for (let k = 0; k <= 8; k++) {
+          const u = k / 8 - 0.5;
+          const px2 = f.x + c.tx * c.span * u, pz2 = f.z + c.tz * c.span * u;
+          const cc = plan.collide(px2, pz2, 0.4, f.y + 1.0);
+          if (Math.hypot(cc.x - px2, cc.z - pz2) > 0.2) { ok = false; break; }
+          const g = plan.groundAt(px2, pz2, f.y + 1.2);
+          if (!g || Math.abs(g.y - f.y) > 3.5) { ok = false; break; }
+          yy.push(g.y);
+        }
+        if (ok) { tx = c.tx; tz = c.tz; span = c.span; ys = yy; break; }
+      }
+      const okPath = ys !== null;
       if (!okPath) { f.walk = null; continue; }
       // 端で止まって振り向く時間。三角波で往復するだけだと、1 フレームで
       // yaw が π 飛び、同じ人が目の前で瞬間反転する。
-      f.walk = { tx, tz, span, ys, t0: rng(), sp: 1.05 + rng() * 0.55,
-        pa: 1.8 + rng() * 4.5, pb: 1.8 + rng() * 4.5 };
+      f.walk = { tx, tz, span, ys, t0: dT0, sp: 1.05 + dSp * 0.55,
+        pa: 1.8 + dPa * 4.5, pb: 1.8 + dPb * 4.5 };
     }
   }
 
@@ -1812,6 +1849,12 @@ export function makeLife(plan, tex, stepPool) {
   const dummy = new THREE.Object3D();
   const fkDummy = new THREE.Object3D();
   const near = { folk: 0, sitting: 0, list: [], steps: [] };   // 音の密度と定位に使う
+  // 視錐台の判定に使う作業用。毎フレーム new すると GC が走る。
+  const _frustum = new THREE.Frustum();
+  const _projScreen = new THREE.Matrix4();
+  const _sph = new THREE.Sphere(new THREE.Vector3(), 1.0);
+  let folkStateInit = false;
+
   // ---- 街の時計。人出・市場・パラソル・洗濯物が時刻で変わる。
   // 行列と visible の書き換えだけなのでドローコールは増えない。
   const folkRank = new Float32Array(folk.length);
@@ -1833,9 +1876,13 @@ export function makeLife(plan, tex, stepPool) {
     const cafeOn = h >= 8.0 && h < 23.2;   // 24.0 は永久に来ない値だった
     for (let i = 0; i < folk.length; i++) {
       const f = folk[i];
-      if (f.job === 'stall') { f._off = !marketOn; continue; }
-      if (f.sit === 1) { f._off = !cafeOn || folkRank[i] > crowd * 1.15; continue; }
-      f._off = folkRank[i] > crowd;
+      // **ここでは「そうあるべき姿」だけを書く。** 実際に消し出しするのは
+      // 画面に入っていないと分かった時だけ(下)。flow 36 では 3 ゲーム分 =
+      // 実 5 秒ごとにこの関数が走り、crowd は 7:06 の 0.374 から 9:00 の 1.0 まで
+      // 上がる = **人が目の前で 10 人ずつ湧く**。それが「突然パッと出る」の正体。
+      if (f.job === 'stall') { f._want = !marketOn; continue; }
+      if (f.sit === 1) { f._want = !cafeOn || folkRank[i] > crowd * 1.15; continue; }
+      f._want = folkRank[i] > crowd;
     }
     if (clock.market) for (const m of clock.market) m.visible = marketOn;
     // 洗濯物は家ごとに干す時刻も取り込む時刻も違う。InstancedMesh 全体に
@@ -1877,7 +1924,7 @@ export function makeLife(plan, tex, stepPool) {
     }
   }
 
-  function update(elapsed, sun, camPos) {
+  function update(elapsed, sun, camPos, camera) {
     clothTime.value = elapsed;
     swiftTime.value = elapsed;
     // ---- 人を歩かせる。行列の書き換えだけなのでドローコールは増えない。
@@ -1888,8 +1935,32 @@ export function makeLife(plan, tex, stepPool) {
       lastElapsed = elapsed;
       const TAU = Math.PI * 2;
       applyClock(sun);
+      // 見えている人は消さないし、出さない。人は湧いて出ない — 出入りは
+      // **こちらが見ていない間に**起きる。camera が渡されていれば視錐台で判定し、
+      // 渡されていなければ(旧い呼び出し)従来どおり即時に反映する。
+      let frustum = null;
+      if (camera) {
+        camera.updateMatrixWorld();
+        _projScreen.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        frustum = _frustum.setFromProjectionMatrix(_projScreen);
+      }
+      const firstApply = !folkStateInit;
+      folkStateInit = true;
       for (let i = 0; i < folk.length; i++) {
         const f = folk[i];
+        if (f._off !== f._want) {
+          // 初回(街を組み立てた直後)は誰も見ていないので、そのまま入れる。
+          if (firstApply || !frustum) f._off = f._want;
+          else {
+            _sph.center.set(f.x, f.y + 0.9, f.z);
+            // 点で見ると画面の縁に半分だけ入っている人を「見えていない」と
+            // 判定して、縁で湧く。体の太さぶんの球で見る。
+            // **距離で逃がさない。** 一度 90m の逃げ道を置いたら、ピレ門から
+            // 見通す 300m のストラドゥンは大半が 90m の外なので、そこで
+            // 246 回中 211 回が画面の中で湧いた(実測)。視錐台の外だけが条件。
+            if (!frustum.intersectsSphere(_sph)) f._off = f._want;
+          }
+        }
         let x = f.x, y = f.y, z = f.z, rot = f.rotY, wAmt = 0;
         if (f.walk) {
           const w = f.walk;

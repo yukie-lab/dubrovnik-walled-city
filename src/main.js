@@ -525,7 +525,7 @@ function frame(now) {
   sky.update(sun, state.elapsed, camera.position);
   sea.update(sun, state.elapsed, camera, scene.fog ? scene.fog.density : null);
   setWetTime(state.elapsed);      // 岸の濡れ帯は海面と同じ時計で上下する
-  life.update(state.elapsed, sun, camera.position);
+  life.update(state.elapsed, sun, camera.position, camera);
   monumentTime.value = state.elapsed;
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
