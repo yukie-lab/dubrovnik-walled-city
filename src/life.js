@@ -1393,15 +1393,41 @@ export function makeLife(plan, tex, stepPool) {
   const cafeSpots = [[118, -4.2, 0.4], [60, 4.0, 2.6], [-52, -4.2, 1.2], [134, 8, 1.9]];
   for (const [cx, cz, rot0] of cafeSpots) {
     const n = 4 + (rng() * 4 | 0);
-    let sx = cx, sz = cz, srot = rot0;
-    for (let i = 0; i < n; i++) {
-      const stack = i % 2 === 0;
-      // 積み重ねは真上に乗らないと浮く。段の途中で x,z を引き直さない。
-      if (!stack || i % 3 === 0) { sx = cx + (rng() - 0.5) * 3.4; sz = cz + (rng() - 0.5) * 1.6; srot = rot0 + rng() * 1.2; }
-      chairPos.push({
-        x: sx, z: sz, y: 2.6 + (stack ? 0.42 * (i % 3) : 0),
-        rot: srot + (stack ? 0 : rng() * 1.2), seed: rng(),
-      });
+    let i = 0;
+    while (i < n) {
+      // 候補は **常に 3 つ引く**。当たったかどうかで引く回数を変えると、
+      // そこから先の位相がずれる(この場面で三度目)。
+      const cand = [];
+      for (let t = 0; t < 3; t++) cand.push([cx + (rng() - 0.5) * 3.4, cz + (rng() - 0.5) * 1.6]);
+      const srot = rot0 + rng() * 1.2;
+      let sx = null, sz = null, gy = 2.6;
+      for (const [qx, qz] of cand) {
+        // **床は実際に引く。** 以前は 2.6 の決め打ちで、そこに床が無い所では
+        // 椅子がその高さに浮いていた。
+        const g4 = plan.groundAt(qx, qz, 4.0);
+        const y4 = (g4 && g4.y !== undefined) ? g4.y : 2.6;
+        // 家の躯体の中に置かない。実測で (133.9, 8.3) の椅子の真上は
+        // house.body@2.85 だった = 壁の中に椅子が立っていた。
+        const c4 = plan.collide(qx, qz, 0.35, y4 + 1.0);
+        if (Math.hypot(c4.x - qx, c4.z - qz) > 0.15) continue;
+        sx = qx; sz = qz; gy = y4; break;
+      }
+      if (sx === null) { i += 1; continue; }   // 三つとも駄目なら 1 脚ぶん諦める
+      // 積み重ねは **一箇所に下から順に** 積む。以前は段を i % 3 で決めていたので
+      // 段の順が 0 → 2 → 1 → 0 になり、**下に何も無い 0.84m の段に椅子が乗って**
+      // いた(実測 (118.6, -4.3) で 0.83m の浮き)。
+      const k = rng() < 0.45 ? Math.min(n - i, 2 + (rng() < 0.5 ? 1 : 0)) : 1;
+      for (let s = 0; s < k; s++) {
+        const jit = rng();                      // 段ごとに必ず 1 回引く
+        chairPos.push({
+          // 積んだ椅子は座面が入れ子になるので 1 脚 0.13m しか上がらない。
+          // 0.42m(座面の高さそのもの)で積むと、椅子ではなく棚に見える。
+          x: sx, z: sz, y: gy + 0.13 * s,
+          // 積んだ椅子は同じ向きに少しずつずれて重なる。1 脚だけなら自由に振る。
+          rot: srot + (k > 1 ? s * 0.06 : (jit - 0.5) * 1.2), seed: rng(),
+        });
+      }
+      i += k;
     }
   }
   {

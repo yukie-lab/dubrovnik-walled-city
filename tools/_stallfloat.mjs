@@ -13,9 +13,20 @@ console.log(await p.evaluate(() => {
   w.scene.traverse(o => {
     if (!o.isInstancedMesh || !o.name || !o.userData?.groundContact) return;
     let worst = 0, at = '', n = 0, bad = 0;
+    // 先に全インスタンスの位置を取る。**積み重ねた物は床から離れていて正しい**
+    // (椅子の上の椅子)。同じメッシュの別インスタンスが真下 0.30〜0.55m に
+    // 居るなら、それは積まれているのであって浮いてはいない。
+    const P = [];
     for (let i = 0; i < o.count; i++) {
       o.getMatrixAt(i, m); v.setFromMatrixPosition(m); o.localToWorld(v);
+      P.push(v.clone());
+    }
+    const stacked = (q) => P.some(r => r !== q && Math.abs(r.x - q.x) < 0.15
+      && Math.abs(r.z - q.z) < 0.15 && q.y - r.y > 0.08 && q.y - r.y < 0.55);
+    for (let i = 0; i < o.count; i++) {
+      v.copy(P[i]);
       if (v.lengthSq() === 0) continue;
+      if (stacked(v)) continue;
       // 30m 上から撃つと屋根や庇に当たって「−28m めり込み」のような嘘が出る。
       // 物のすぐ上から落とす。
       rc.set(new T.Vector3(v.x, v.y + 0.4, v.z), down);
