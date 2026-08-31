@@ -46,7 +46,22 @@ renderer.info.autoReset = false;   // 1フレーム分のドローコールを�
 document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(qf('fov', 66), innerWidth / innerHeight, 0.1, 6000);
+// 垂直画角を固定すると、横長の窓では **水平画角が開きすぎる**。
+// 66° 固定は 16:9 で水平 98°、2.07:1(2000×966)では **106.8°** になり、
+// 画面の端で垂直な線が大きく倒れる。首を少し振るだけでパラソルの棒や
+// 柱が左右に振れて見える(ユーザー報告「棒が左右にゆらゆらします」)。
+// **水平画角に上限を掛け**、超える窓では垂直画角を下げる。
+// 撮影の定点は 1600×1000(縦横比 1.6)で画角 44〜62 なので、水平は最大 96° —
+// この上限には触れない = キャンペーンの実測値は 1 枚も動かない。
+const HFOV_MAX_TAN = Math.tan((100 * Math.PI / 180) / 2);   // 水平 100°
+function fovFor(vDeg, aspect) {
+  const tanH = Math.tan((vDeg * Math.PI) / 360) * aspect;
+  if (tanH <= HFOV_MAX_TAN) return vDeg;
+  return (2 * Math.atan(HFOV_MAX_TAN / aspect) * 180) / Math.PI;
+}
+const FOV_V = qf('fov', 66);
+const camera = new THREE.PerspectiveCamera(
+  fovFor(FOV_V, innerWidth / innerHeight), innerWidth / innerHeight, 0.1, 6000);
 
 // 組み立ては world.js が唯一の定義。ここに順序を書き写すと、検証ツールが
 // 見ている世界とプレイヤーが歩く世界が静かに食い違う。
@@ -474,6 +489,7 @@ function adaptResolution(dt) {
 
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
+  camera.fov = fovFor(FOV_V, camera.aspect);
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);

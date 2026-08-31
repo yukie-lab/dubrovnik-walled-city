@@ -25,9 +25,11 @@ const rows = await p.evaluate((want) => {
   const MARK = [
     ['macro', /uMacro\b/], ['specClamp', /3\.2 \/ pk/], ['skyVis', /vSkyV\b/],
     ['triplanar', /mapScrub\b/], ['wet', /vWetP\b|uWetTime\b/],
+    ['時間で動く', /uniform float uT\b|uT \*/], ['skyVisInst', /aSkyI\b|vSkyI\b/],
   ];
   const out = [], seen = new Set();
-  for (const root of W.solids) root.traverse(o => {
+  // solids だけだと life(人・鉢・日除け)を見落とす。場面全体を歩く。
+  W.scene.traverse(o => {
     const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
     for (const m of ms) {
       if (!m || !o.name) continue;

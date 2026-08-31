@@ -28,6 +28,8 @@ export function makeLife(plan, tex, stepPool) {
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
   const clock = { bucket: -1, market: null, parasols: null, cloths: null };
+  // パラソルの開閉は時刻の関数(店ごとにずれる)。毎フレーム時刻だけ渡す。
+  const parasolHour = { value: 12 };
   // 街の遮蔽(天空可視率)。buildings が先に作った物を使い回す。
   const skyAt = sharedSkyVis || makeSkyVis(plan);
   const skyOf = (x, z, y) => 0.5 * (skyAt(x, z, y, 0, 1, 0) + skyAt(x, z, y, 0, 0.2, 1));
@@ -1673,10 +1675,36 @@ export function makeLife(plan, tex, stepPool) {
         parts.push(knob);
         return mergeSimple(parts);
       })();
-      const pm = new THREE.InstancedMesh(pGeo, new THREE.MeshStandardMaterial({
+      // 畳み。**インスタンス行列を非一様に潰してはいけない** — three は
+      // 法線に mat3(instanceMatrix) をそのまま掛ける(逆転置ではない)ので、
+      // xz を 0.16 に潰すと法線が壊れ、閉じた傘が光の変化のたびに明滅する
+      // (ユーザー報告「ゆらゆら揺れている」。実測 実機 1 秒で画素の 52%)。
+      // 畳みは頂点シェーダでやる。行列は常に等倍のまま。
+      const paraMat = new THREE.MeshStandardMaterial({
         map: tex.cloth.map, roughness: 0.94, side: THREE.DoubleSide, envMapIntensity: 0.25,
-      }), parasols.length);
+      });
+      paraMat.onBeforeCompile = (sh) => {
+        sh.uniforms.uHour = parasolHour;
+        sh.vertexShader = sh.vertexShader
+          .replace('#include <common>', '#include <common>\nuniform float uHour;\nattribute vec2 aPara;')
+          .replace('#include <begin_vertex>', `#include <begin_vertex>
+            // aPara = (開く時刻, 畳む時刻)。店ごとに違う = 一斉に開かない。
+            // 0.25 時 = 15 分かけて開く。人の手で開く速さ。
+            float k = smoothstep(aPara.x, aPara.x + 0.25, uHour)
+                    * (1.0 - smoothstep(aPara.y, aPara.y + 0.25, uHour));
+            float r = length(transformed.xz);
+            // **支柱は畳まない。** 軸ごと縮めると支柱(半径 0.03)が 3mm になり
+            // 消える。軸からの距離で重みを付け、布と骨だけを寄せる。
+            float w = smoothstep(0.06, 0.30, r);
+            float rr = mix(mix(r, 0.10, w), r, k);       // 閉じた束の半径 0.10m
+            transformed.xz *= (r > 1e-4) ? rr / r : 1.0;
+            // 畳んだ布は頂点から **垂れ下がる**(持ち上がるのではない)。
+            transformed.y -= (1.0 - k) * w * r * 0.47;`);
+      };
+      paraMat.customProgramCacheKey = () => 'parasol';
+      const pm = new THREE.InstancedMesh(pGeo, paraMat, parasols.length);
       const cc4 = new THREE.Color();
+      const paraA = new Float32Array(parasols.length * 2);
       parasols.forEach((p2, i) => {
         dm4.position.set(p2.x, p2.y, p2.z);
         dm4.rotation.set(0, p2.seed * 6.28, 0);
@@ -1684,7 +1712,14 @@ export function makeLife(plan, tex, stepPool) {
         pm.setMatrixAt(i, dm4.matrix);
         cc4.setHSL(0.09 + p2.seed * 0.03, 0.14 + p2.seed * 0.10, 0.44 + p2.seed * 0.14, THREE.SRGBColorSpace);
         pm.setColorAt(i, cc4);
+        // 開く 8.0〜9.1 時 / 畳む 19.9〜21.0 時。店ごとにばらす。
+        paraA[i * 2] = 8.0 + p2.seed * 1.1;
+        paraA[i * 2 + 1] = 19.9 + ((p2.seed * 7.3) % 1) * 1.1;
       });
+      pGeo.setAttribute('aPara', new THREE.InstancedBufferAttribute(paraA, 2));
+      // 影も畳む。深度パスに同じ頂点変形を渡さないと、閉じた傘が
+      // **開いた傘の影**を落とす。
+      pm.customDepthMaterial = depthFor(paraMat);
       pm.castShadow = true;
     group.add(tagMesh(pm, 'life.parasol', { solid: true, cloth: true }));
       clock.parasols = { mesh: pm, list: parasols, dummy: dm4, open: true };
@@ -1954,24 +1989,13 @@ export function makeLife(plan, tex, stepPool) {
     // 並ぶほうが夜らしく、壁のランタンの光がテーブルに届く。
     // 23.0 にしていたが時計は 22.1 で朝へ飛ぶので、畳んだ姿は一度も
     // 描かれない死んだ分岐だった。
-    const pOpen = h >= 8.4 && h < 20.4;
-    const P = clock.parasols;
-    if (P && P.open !== pOpen) {
-      P.open = pOpen;
-      for (let i = 0; i < P.list.length; i++) {
-        const p2 = P.list[i];
-        P.dummy.position.set(p2.x, p2.y, p2.z);
-        P.dummy.rotation.set(0, p2.seed * 6.28, 0);
-        // 畳んだパラソルは布が支柱に沿って落ちる(細くなる)
-        P.dummy.scale.set(pOpen ? 1 : 0.16, 1, pOpen ? 1 : 0.16);
-        P.dummy.updateMatrix();
-        P.mesh.setMatrixAt(i, P.dummy.matrix);
-      }
-      P.mesh.instanceMatrix.needsUpdate = true;
-    }
+    // パラソルはここで一斉に切り替えない。**店ごとの時刻**で、頂点シェーダが
+    // 15 分かけて開く(aPara)。以前は 8.4 時ちょうどに全 53 本が 1 フレームで
+    // 開いていた(ユーザー報告「いきなり開く」)。
   }
 
   function update(elapsed, sun, camPos, camera) {
+    parasolHour.value = sun.time ?? 12;
     clothTime.value = elapsed;
     swiftTime.value = elapsed;
     // ---- 人を歩かせる。行列の書き換えだけなのでドローコールは増えない。
