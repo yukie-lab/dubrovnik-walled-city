@@ -250,7 +250,7 @@ const SKY_FRAG = /* glsl */`
 varying vec3 vDir;
 uniform vec3 uZenith, uHorizon, uHorizonFar, uSunDir, uSunCol;
 uniform float uSkyGain;
-uniform float uDusk, uNight, uStarAlpha, uTime, uSunEl;
+uniform float uDusk, uNight, uStarAlpha, uTime, uSunEl, uHour;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){
@@ -312,7 +312,14 @@ void main() {
   // 垂直 4〜6° の層をなす。等方 (d*4.4) では支配周期が 13° になり、視野が
   // 12〜18° しかない路地と広場の空の帯では **その成分がまるごと直流になって消える**。
   // 実測 resid: v8_luza_t2noon 0.774 / v1_stradun_t2noon 0.757(弁別閾 1 L* 未満)。
-  vec3 brushP = d * vec3(3.4, 13.0, 3.4) + vec3(0.0, uTime * 0.012, 0.0);
+  // **時刻でも流す。** uTime(実時間の elapsed)だけで動かしていたので、
+  // 時計を進めても絵具の配置が 1 画素も動かなかった(色だけが変わる)。
+  // ユーザー報告「時間を変えても背景が変わらない」。大気の不均一は風で流れる
+  // 物で、3m/s なら 1 時間に 11km 動く — 一時間ごとに別の空になるのが正しい。
+  // 流すのは **水平**(x, z = 風向)。y は仰角の軸で、そこを流すと空が
+  // 上下に滑る。斜めの風にして、模様が同じ形で往復しないようにする。
+  vec3 brushP = d * vec3(3.4, 13.0, 3.4)
+    + vec3(uHour * 0.55, uTime * 0.012, uHour * 0.21);
   float brushK = smoothstep(0.97, 0.70, d.y);
   float brush = fbm3(brushP);
   float fine  = fbm3(brushP * 3.1 + 7.7);
@@ -511,6 +518,7 @@ export function makeSky(tex) {
     uSkyGain: { value: SKY_GAIN },
     uSunCol: { value: new THREE.Color() },
     uDusk: { value: 0 }, uNight: { value: 0 }, uStarAlpha: { value: 0 }, uTime: { value: 0 },
+    uHour: { value: 12 },
     uSunEl: { value: 0 },
   };
   const dome = new THREE.Mesh(
@@ -612,6 +620,7 @@ export function makeSky(tex) {
     skyUniforms.uStarAlpha.value = sun.starAlpha;
     skyUniforms.uSunEl.value = sun.el;
     skyUniforms.uTime.value = elapsed;
+    skyUniforms.uHour.value = sun.time ?? 12;
 
     // 雲の色: 昼は白/灰青、夕は上面が琥珀・底が灰紫、夜は沈黙
     // 空は uSkyGain 倍で描かれるのに、雲はその係数を掛けずに 0.84 で頭打ちだった。
