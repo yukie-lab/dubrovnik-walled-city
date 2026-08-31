@@ -7,8 +7,12 @@
 
 ```sh
 cd dubrovnik-walled-city
-python3 -m http.server 8765
+node tools/serve.mjs 8765
 # → http://localhost:8765
+# python3 -m http.server は Cache-Control を送らないので、ブラウザが
+# src/*.js を握ったままになる(index.html に ?v= を付けてもモジュールは
+# 別 URL なので切れない)。直したのに直っていないように見える事故が
+# 実際に起きた。tools/serve.mjs は no-store で配る。
 ```
 
 Three.js は `node_modules/three`(0.185.1 固定)を importmap で参照。ビルド不要。

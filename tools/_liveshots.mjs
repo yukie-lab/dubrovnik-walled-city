@@ -3,9 +3,9 @@
 import puppeteer from 'puppeteer-core';
 const [NAME, X, Z, YAW, PITCH, N = '3', GAP = '0.5', FOV = '62', TIME = '11'] = process.argv.slice(2);
 const b = await puppeteer.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  headless: 'new', args: ['--headless=new','--use-angle=metal','--window-size=1640,1060','--no-sandbox'], protocolTimeout: 300000 });
+  headless: 'new', args: ['--headless=new','--use-angle=metal','--window-size=2040,1206','--no-sandbox'], protocolTimeout: 300000 });
 const p = await b.newPage();
-await p.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
+await p.setViewport({ width: 2000, height: 1146, deviceScaleFactor: 1 });
 await p.goto(`http://localhost:8765/index.html?fov=${FOV}&time=${TIME}`, { waitUntil: 'domcontentloaded' });
 await p.waitForFunction('window.__READY === true', { timeout: 60000 });
 await p.evaluate(() => document.querySelector('#btnStart')?.click());
