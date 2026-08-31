@@ -1426,8 +1426,19 @@ export function makeBuildings(plan, tex) {
         for (const sgn of [1]) {
           const ox = nx * sgn, oz = nz * sgn;
           const cx = bx0 + ox * half, cz = bz0 + oz * half;
-          const g7 = plan.groundAt(cx + ox * 0.5, cz + oz * 0.5, 200);
+          // **curY に 200 を渡してはいけない。** groundAt は curY にいちばん
+          // 近い候補を採るので、200 を渡すと「いちばん高い床」= 歩廊や砲座の
+          // 天端が返る。汚れ帯は **壁の足元** に貼る物なので、足元の地面を
+          // 基準にする(実測: 砲座の上に 2m の黒い帯が立ち、視点によっては
+          // 画面の 30.4% を塗っていた — ユーザー報告の「半透明の黒い板」)。
+          const footY = plan.surfaceAt(cx + ox * 0.5, cz + oz * 0.5);
+          const g7 = plan.groundAt(cx + ox * 0.5, cz + oz * 0.5, footY + 1.0);
           if (!g7 || g7.y === undefined || g7.y > 24) continue;
+          // 壁の上(歩廊・階段・塔)は「壁の足元」ではない。そこに貼ると
+          // 帯が床の上に立つ。
+          if (g7.zone === 'wall' || g7.zone === 'stair' || g7.zone === 'shaft') continue;
+          // 足元の地面から大きく離れた床(橋・踊り場)も足元ではない。
+          if (g7.y - footY > 1.6) continue;
           // 門のまわりは壁体ではなく門ブロックが立つので、半厚は面の位置に
           // ならない(プロチェ門で 2 件鳴った)。門から 12m は貼らない。
           if (plan.GATES.some(g8 => Math.hypot(cx - g8.x, cz - g8.z) < 12)) continue;
