@@ -237,6 +237,10 @@ export function makeLife(plan, tex, stepPool) {
   // 鉢を増やしたら鉢どうしが重なった(実測 19 組)。鉢の外径は 0.335m。
   const putPot = (o) => {
     for (const q of pots) if (Math.hypot(q.x - o.x, q.z - o.z) < 0.78) return;
+    // 広場の擁壁の中に置かない。壁は第7パスで足した物で、置く側が知らないと
+    // 鉢が石の中に立つ(ユーザー報告。実測 jesuitFoot の南で 2 個)。
+    const pw = plan.plazaWall(o.x, o.z, 0.50);
+    if (pw && o.y < pw.yTop - 0.05) return;
     pots.push(o);
   };
   for (const a of alleys) {
@@ -631,6 +635,9 @@ export function makeLife(plan, tex, stepPool) {
       // それは walkability が既に 43 点で鳴らしている。
       let gy = (g && Math.abs(g.y - y) < 1.6) ? g.y : y;
       gy = onFloor(x, z, gy);          // 描かれている床に合わせる
+      // 広場の擁壁の中に立たせない(実測 2 人が壁の中に居た)
+      const pw = plan.plazaWall(x, z, 0.55);
+      if (pw && gy < pw.yTop - 0.05) return null;
       // 石段の天板は踏面より 0.06m 先まで出る(段鼻)。当たり判定は
       // quantizeRun の格子で切り替わるので、段鼻の 3cm の帯では
       // **描かれた段が一段上** になり、そこに立つ人は蹴上ぶん(0.16m)

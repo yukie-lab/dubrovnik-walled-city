@@ -696,13 +696,14 @@ export function makeGround(plan, tex, stepPool) {
           const t0 = (k * L) / n, t1 = ((k + 1) * L) / n;
           const p0x = ax + dx * t0, p0z = az + dz * t0;
           const p1x = ax + dx * t1, p1z = az + dz * t1;
-          // 基準は **隣に実際に描かれている床**(plan.surfaceAt)であって、
-          // 素の地形ではない。地形で測ると街路の舗装より 0.5m ほど下になり、
-          // 段差の無い縁にまで壁が立って **広場が全周を囲まれる**(市場に入れなくなる)。
-          const adj = Math.min(plan.surfaceAt(p0x + nx * 0.6, p0z + nz * 0.6),
-                               plan.surfaceAt(p1x + nx * 0.6, p1z + nz * 0.6));
-          if (yTop - adj < 0.30) continue;  // 段差の無い縁に壁は立てない
-          const yBot = adj - 0.20;          // 隣の床に 0.20m 埋めて継ぎ目を消す
+          // **壁がどこに立つかの定義は plan.plazaWall 一本。**
+          // ここで自前に作り直したら、置く側(life.js)の判定と食い違い、
+          // 「本体は壁を立てているのに、置く側は無いと思っている」場所が出る
+          // (実測 オノフリオの縁で人が壁の中に立った)。
+          const mx = (p0x + p1x) / 2, mz = (p0z + p1z) / 2;
+          const pw = plan.plazaWall(mx, mz, 0.05);
+          if (!pw) continue;                // 段差が無い / 大階段が取り付く縁
+          const yBot = pw.yBot - 0.20;      // 隣の床に 0.20m 埋めて継ぎ目を消す
           // マージ先の幾何はインデックス付き。片方だけ非インデックスだと
           // mergeGeometries が丸ごと失敗して床が消える(実測: 舗装が null になり
           // bakeSkyVis が落ちた)。こちらもインデックスで作る。

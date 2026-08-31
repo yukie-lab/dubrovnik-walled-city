@@ -1259,6 +1259,35 @@ export function buildPlan() {
     return best;
   }
 
+  // 広場の縁に立つ擁壁(ground.js が段差 0.30m 以上の縁にだけ張る立ち上がり)。
+  // **描いた物は、置く側も知っていなければならない。** 知らせずに壁だけ描いたら、
+  // 鉢 2 個と人 2 人が壁の中に立った(ユーザー報告)。
+  // (x, z) が壁の線から margin 以内なら {yBot, yTop} を返す。無ければ null。
+  function plazaWall(x, z, margin = 0.45) {
+    for (const q of PLAZAS) {
+      const yTop = q.y + 0.02;
+      const ring = [[q.x0, q.z1], [q.x1, q.z1], [q.x1, q.z0], [q.x0, q.z0], [q.x0, q.z1]];
+      for (let e = 0; e < 4; e++) {
+        const [ax, az] = ring[e], [bx, bz] = ring[e + 1];
+        const L = Math.hypot(bx - ax, bz - az);
+        const dx = (bx - ax) / L, dz = (bz - az) / L, nx = -dz, nz = dx;
+        // 線分までの距離を先に見る(遠ければ床を引かない)
+        const t = Math.max(0, Math.min(L, (x - ax) * dx + (z - az) * dz));
+        const cx = ax + dx * t, cz = az + dz * t;
+        if (Math.hypot(x - cx, z - cz) > margin) continue;
+        const adj = surfaceAt(cx + nx * 0.6, cz + nz * 0.6);
+        const pv = pavedY(cx + nx * 0.6, cz + nz * 0.6);
+        const low = pv !== null && pv > adj ? pv : adj;
+        if (yTop - low < 0.30) continue;              // 段差の無い縁に壁は無い
+        // 大階段が取り付く縁には壁を張らない(ground.js と同じ判定)
+        if (cx > JESUIT_STAIR.x0 - 1 && cx < JESUIT_STAIR.x1 + 1
+          && cz > JESUIT_STAIR.z0 - 1.5 && cz < JESUIT_STAIR.z1 + 1.5) continue;
+        return { yBot: low, yTop };
+      }
+    }
+    return null;
+  }
+
   // 岸までの距離(双一次)。範囲外は「沖」として大きな値。
   function shoreDistAt(x, z) {
     const u = (x - SF.x0) / SF.dx, v = (z - SF.z0) / SF.dz;
@@ -1799,7 +1828,7 @@ export function buildPlan() {
   }
 
   return {
-    alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, pavedY, NEAR, landings, shoreDistAt, seaDepth,
+    alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, pavedY, plazaWall, NEAR, landings, shoreDistAt, seaDepth,
     HOUSE_BASE_BURY,
     streets, northXs, southXs, houses, PLAZAS, MONUMENTS, GATES,
     JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, moatAt, alleyXAt,

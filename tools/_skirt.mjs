@@ -6,7 +6,8 @@ const p = await b.newPage();
 await p.goto('http://localhost:8765/index.html?shot=1&time=12.87', { waitUntil: 'domcontentloaded' });
 await p.waitForFunction('window.__READY === true', { timeout: 60000 });
 console.log(await p.evaluate(() => {
-  const w = window.__world, oh = (x, z) => w.plan.surfaceAt(x, z);
+  // 壁の定義は plan.plazaWall 一本。計器が作り直すと本体と食い違う。
+  const w = window.__world;
   const out = [`${'広場'.padEnd(15)} ${'標本'.padStart(4)} ${'壁あり'.padStart(6)} ${'中央'.padStart(6)} ${'最大'.padStart>=0?'最大'.padStart(6):''}  最大の場所`];
   for (const q of w.plan.PLAZAS) {
     const yTop = q.y + 0.02;
@@ -21,8 +22,9 @@ console.log(await p.evaluate(() => {
         const t = (k + 0.5) * L / steps;
         const ex = ax + dx * t, ez = az + dz * t;
         n++;
-        const h = yTop - oh(ex + nx * 0.6, ez + nz * 0.6);
-        if (h < 0.30) continue;
+        const pw = w.plan.plazaWall(ex, ez, 0.05);
+        if (!pw) continue;
+        const h = pw.yTop - pw.yBot;
         if (h <= 0) continue;
         hs.push(h);
         if (h > mx) { mx = h; at = `(${ex.toFixed(1)}, ${ez.toFixed(1)})`; }
