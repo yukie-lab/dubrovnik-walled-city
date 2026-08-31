@@ -250,7 +250,7 @@ const SKY_FRAG = /* glsl */`
 varying vec3 vDir;
 uniform vec3 uZenith, uHorizon, uHorizonFar, uSunDir, uSunCol;
 uniform float uSkyGain;
-uniform float uDusk, uNight, uStarAlpha, uTime, uSunEl, uHour;
+uniform float uDusk, uNight, uStarAlpha, uTime, uSunEl, uHour, uClear;
 
 float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p){
@@ -342,6 +342,10 @@ void main() {
   // 混合係数を負にして色度を伸ばす — mix の外挿。輝度は t に依らず保存される
   // (自分の輝度への混合なので (1-t)Y + tY = Y)。彩度も平均でゼロ和になる。
   mK += (up - dn) * 0.34 * gate;
+  // **晴天の窓。** ブラ(北東の風)が抜けたあとのアドリアは、雲も靄の層も
+  // 残さず澄む。uClear は 0(いつもの空)→ 1(洗った空)で、筆むらも層も
+  // まるごと引く。じわじわ効かせるのは JS 側(smoothstep で 1.5 時間かける)。
+  mK *= 1.0 - uClear;
   col *= 1.0 + mK;
   // AgX は明るい画素ほど彩度を落とす。筆と靄の層で持ち上げた画素はそのぶん
   // 色度が抜け、空クラスの平均 B/R が下がって、水平線で海と空の色相差が痩せる
@@ -518,7 +522,7 @@ export function makeSky(tex) {
     uSkyGain: { value: SKY_GAIN },
     uSunCol: { value: new THREE.Color() },
     uDusk: { value: 0 }, uNight: { value: 0 }, uStarAlpha: { value: 0 }, uTime: { value: 0 },
-    uHour: { value: 12 },
+    uHour: { value: 12 }, uClear: { value: 0 },
     uSunEl: { value: 0 },
   };
   const dome = new THREE.Mesh(
@@ -620,7 +624,13 @@ export function makeSky(tex) {
     skyUniforms.uStarAlpha.value = sun.starAlpha;
     skyUniforms.uSunEl.value = sun.el;
     skyUniforms.uTime.value = elapsed;
-    skyUniforms.uHour.value = sun.time ?? 12;
+    const hourNow = sun.time ?? 12;
+    skyUniforms.uHour.value = hourNow;
+    // 晴天の窓。**キャンペーンの四定点(7.90 / 12.87 / 19.30 / 21.20)を跨がない。**
+    // 13:06 から 1.5 時間かけて澄み、14:36〜17:36 は雲ひとつ絵具ひとつ無く、
+    // 17:36 から 1.4 時間かけて戻る(19:00 には元通り = t3gold に掛からない)。
+    const clearNow = smoothstep(13.1, 14.6, hourNow) * (1 - smoothstep(17.6, 19.0, hourNow));
+    skyUniforms.uClear.value = clearNow;
 
     // 雲の色: 昼は白/灰青、夕は上面が琥珀・底が灰紫、夜は沈黙
     // 空は uSkyGain 倍で描かれるのに、雲はその係数を掛けずに 0.84 で頭打ちだった。
@@ -660,14 +670,20 @@ export function makeSky(tex) {
     // これが無いので、四時刻の雲は画素単位で同じ配置・同じ被覆率だった
     // (SHOT では elapsed が 40 に固定されるので位相も完全に一致する)。
     const conv = 0.10 + 0.90 * Math.pow(Math.max(0, Math.sin(Math.PI * clamp((sun.time - 8.0) / 14.0, 0, 1))), 1.0);
-    const nAct = Math.round(lerp(3, N, conv));      // t1am 5 / t2noon 20 / t3gold 15 / t4dusk 8
-    const grow = lerp(0.66, 1.0, conv);             // Cu humilis → mediocris
+    // 活性の数は **丸めない**。整数で切ると 1 枚が丸ごと消える瞬間があり、
+    // 30 枚を数分で引くあいだ「ぽん、ぽん」と抜けて見える。境目の 1 枚だけを
+    // 連続に痩せさせれば、積雲が順に蒸発していくように消える。
+    // 晴天の窓(clearNow)もここに掛ける — 数だけを引き、残る雲の大きさは
+    // そのまま(全部が一斉に縮むと「引いた」ではなく「遠のいた」に見える)。
+    const thr = lerp(3, N, conv) * (1 - clearNow);   // 実数のまま
+    const grow = lerp(0.66, 1.0, conv);              // Cu humilis → mediocris
     for (let i = 0; i < N; i++) {
       const s = cloudState[i];
       const a = s.a + elapsed * s.speed;
       dummy.position.set(Math.cos(a) * s.r + camPos.x * 0.7, s.y, Math.sin(a) * s.r + camPos.z * 0.7);
       // 非活性は面積ゼロ。InstancedMesh なので描画呼び出しは 1 のまま動かない。
-      const k = i < nAct ? grow : 0;
+      // 境目の 1 枚は thr の小数部だけ痩せる = 連続に消える。
+      const k = grow * clamp(thr - i, 0, 1);
       dummy.scale.set(s.w * k, s.h * k, 1);
       dummy.rotation.set(0, 0, 0);
       dummy.updateMatrix();
