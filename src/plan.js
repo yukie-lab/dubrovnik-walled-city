@@ -230,6 +230,14 @@ const PLAZAS = [
 ];
 
 // イエズス会の大階段(グンドリッチ広場 4.7 → テラス 8.4)
+// カフェ・テラス(卓・椅子・パラソルが並ぶ帯)。**life と buildings の両方が読む。**
+// life だけが持っていたとき、店の日除け(z ±4.4)とパラソルの笠(半径 1.30m、
+// 中心 z ±2.92)が 1.48m しか離れず、10 組が食い込んでいた(ユーザー報告)。
+// 「テラスの前の店には日除けを付けない」を言うには、両方が同じ表を見る要がある。
+const TERRACES = [];
+for (let k = 0; k < 8; k++) TERRACES.push({ x0: -118 + k * 30, len: 9.0, z: 2.92 });
+for (let k = 0; k < 4; k++) TERRACES.push({ x0: -104 + k * 34, len: 8.0, z: -2.92 });
+
 const JESUIT_STAIR = { x0: 63, x1: 77, z0: 42, z1: 54, yLow: 5.95, yHigh: 8.4, axis: 'z' };
 
 // ---------------------------------------------------- 記念建築の敷地 ----
@@ -1846,7 +1854,7 @@ export function buildPlan() {
     alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, pavedY, plazaWall, NEAR, landings, shoreDistAt, seaDepth,
     HOUSE_BASE_BURY,
     streets, northXs, southXs, houses, PLAZAS, MONUMENTS, GATES,
-    JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, moatAt, alleyXAt,
+    JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, TERRACES, moatAt, alleyXAt,
     wallPts, wallKinds, wallLen, WALL_KIND, wallNodeHalf, deckEdgeAt, wallSegN, wallWalkYAt, wallWalkYOn,
     terrainHeight, streetY, groundAt, collide, inNoBuild,
     extraColliders, extraCylinders, CAVALIER,

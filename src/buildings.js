@@ -1759,7 +1759,13 @@ export function makeBuildings(plan, tex) {
           .replace('#include <uv_vertex>', '#include <uv_vertex>\n\tvMapUv += aUvOff;');
       };
       awnMat.customProgramCacheKey = () => 'awning';
-      const awnList = shops.filter(sp => hash2((sp.x * 17 + 3) | 0, (sp.z * 23 + 5) | 0) > 0.56);
+      // **カフェ・テラスの前の店には日除けを付けない。** 日除けは z ±4.4、
+      // パラソルの笠は中心 z ±2.92・半径 1.30m で、1.48m の隙間に収まらない
+      // (実測 10 組が食い込んでいた)。同じ frontage を二重に覆う理由も無い。
+      const underTerrace = (sp) => (plan.TERRACES || []).some(t =>
+        sp.x > t.x0 - 1.2 && sp.x < t.x0 + t.len + 1.2 && Math.abs(sp.z - t.z) < 2.6);
+      const awnList = shops.filter(sp =>
+        !underTerrace(sp) && hash2((sp.x * 17 + 3) | 0, (sp.z * 23 + 5) | 0) > 0.56);
       if (awnList.length) {
         const awnOff = new Float32Array(awnList.length * 2);
         const awns = new THREE.InstancedMesh(awnGeo, awnMat, awnList.length);

@@ -543,9 +543,8 @@ export function makeLife(plan, tex, stepPool) {
   }
 
   // カフェ・テラス(卓・椅子・パラソル)。椅子は既存の InstancedMesh に相乗り。
-  const terraces = [];
-  for (let k = 0; k < 8; k++) terraces.push({ x0: -118 + k * 30, len: 9.0, z: 2.92 });
-  for (let k = 0; k < 4; k++) terraces.push({ x0: -104 + k * 34, len: 8.0, z: -2.92 });
+  // 帯の定義は plan.TERRACES 一本(店の日除けも同じ表を見て避ける)。
+  const terraces = plan.TERRACES.map(t => ({ ...t }));
   // プリイェコは実物では通り幅の 2/3 をレストランの卓が占め、1m の通路しか
   // 残らない。カフェ卓はストラドゥンの z=±2.92 にしか無かった。
   // y を省くとストラドゥンの 2.6m が既定になる。プリイェコは 8〜10m の
