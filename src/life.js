@@ -862,7 +862,18 @@ export function makeLife(plan, tex, stepPool) {
         // そこが全員棒立ちだと「模型だ」と最も強く告げる。
         const pl = (plan.PLAZAS || []).find(q2 =>
           f.x > q2.x0 && f.x < q2.x1 && f.z > q2.z0 && f.z < q2.z1);
-        if (!pl) { f.walk = null; continue; }
+        if (!pl) {
+          // **城壁の歩廊も街路の折れ線に乗らない。** 実測 46 人中 45 人が
+          // 「永久に立っている人」だった(ユーザー報告「人が全然動いていない」)。
+          // 歩廊は曲がるので長い弦は通らない。短い区間を八方位で試し、
+          // 下の 9 点検証(collide と groundAt)に通ったものを採る。
+          for (let k = 0; k < 8; k++) {
+            const th = f.seed * 6.28318 + (k * Math.PI) / 4;
+            const ux = Math.sin(th), uz = Math.cos(th);
+            for (const sp of [11 + dSpan * 6, 6.5]) cands.push({ tx: ux, tz: uz, span: sp });
+          }
+          if (!cands.length) { f.walk = null; continue; }
+        } else {
         const M = 1.2;   // 縁の 1.2m は柱廊・階段・記念物の取り付き
         for (let k = 0; k < 4; k++) {
           const th = f.seed * 6.28318 + k * (Math.PI / 4);
@@ -877,6 +888,7 @@ export function makeLife(plan, tex, stepPool) {
           };
           cands.push({ tx: ux, tz: uz,
             span: Math.min(tMax(ux, uz), tMax(-ux, -uz), (16 + dSpan * 14) / 2) * 2 });
+        }
         }
       }
       let tx = 0, tz = 0, span = 0, ys = null;
