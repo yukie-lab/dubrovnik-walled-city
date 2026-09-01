@@ -195,8 +195,11 @@ export function makeStepPool(tex) {
 }
 
 // ------------------------------------------------------------- 舗装 ----
-function stripGeometry(pts2, width, yAt, { step = 1.0, coverM = 5, edgeAO = 0.24, lift = 0.02 } = {}) {
+function stripGeometry(pts2, width, yAt, { step = 1.0, coverM = 5, edgeAO = 0.24, lift = 0.02,
+  halfAt = null, edges = null } = {}) {
   // 折れ線に沿う帯。頂点色で縁を沈める(建物際の翳り)。
+  // halfAt(s, sign) を渡すと **左右で別々の半幅**になる(街路は立面の線まで
+  // 伸ばす — plan.paveHalfAt)。edges を渡すと両縁の柱を書き出す(縁石用)。
   const L = polylineLength(pts2);
   const n = Math.max(2, Math.ceil(L / step));
   const positions = [], uvs = [], colors = [], indices = [];
@@ -204,16 +207,23 @@ function stripGeometry(pts2, width, yAt, { step = 1.0, coverM = 5, edgeAO = 0.24
     const s = (i / n) * L;
     const p = samplePolyline(pts2, Math.min(s, L - 0.001));
     const nx = -p.tz, nz = p.tx;
+    const hL = halfAt ? halfAt(s, -1) : width / 2;
+    const hR = halfAt ? halfAt(s, 1) : width / 2;
     // 4 列(±1 / ±0.42)。2 列だと |side| が常に 1 で edgeAO が定数になり、
     // 横断方向の階調がゼロ = 帯全体が一様に沈むだけになる。
     for (const side of [-1, -0.42, 0.42, 1]) {
-      const px = p.x + nx * (width / 2) * side;
-      const pz = p.z + nz * (width / 2) * side;
+      const half = side < 0 ? hL : hR;
+      const px = p.x + nx * half * side;
+      const pz = p.z + nz * half * side;
       // 高さは列ごとに測る。中心線の一点で決めて幅 6m の帯を張っていたので、
       // 傾いた通りでは描かれた石畳が当たり判定の面より最大 0.47m 高くなり、
       // そこに立つ人の足がその分だけ石に埋まっていた。
-      positions.push(px, yAt(px, pz, s) + lift, pz);
-      uvs.push((side * width / 2) / coverM, s / coverM);
+      const py = yAt(px, pz, s) + lift;
+      positions.push(px, py, pz);
+      if (edges && Math.abs(side) === 1) {
+        (side < 0 ? edges.left : edges.right).push({ x: px, y: py, z: pz, ox: nx * side, oz: nz * side, s });
+      }
+      uvs.push((side * half) / coverM, s / coverM);
       // 縁が沈み、中央がわずかに磨かれて明るい(轍)
       const a2 = Math.abs(side);
       const shade = 1 - edgeAO * (a2 ** 1.7) + 0.014 * (1 - a2);
@@ -235,6 +245,52 @@ function stripGeometry(pts2, width, yAt, { step = 1.0, coverM = 5, edgeAO = 0.24
   g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
   g.setIndex(indices);
   g.computeVertexNormals();
+  return g;
+}
+
+// ---------------------------------------------------------- 帯の縁石 ----
+// 舗装の帯が立面に届かない所では、帯の縁が **地面より上で終わる**。市内の
+// 素地形は舗装の 0.16m 下に沈めてあるので(plan.landHeight)、そこは必ず段に
+// なり、厚みの無い平面の縁だけが見える = 「床が板みたいに浮いている」。
+// 広場の縁には既に擁壁がある(下の PLAZAS)。街路の帯にも同じ物を垂らす。
+//
+// 縁の柱(stripGeometry の edges)を辿り、下の面まで垂直な石を張る。
+// paveGeoms に入れるので **描画呼び出しは増えない**。
+function skirtGeometry(col, floorAt, { coverM = 5, shade = 0.66, minDrop = 0.05,
+  bury = 0.12, maxH = 3.2, covered = null } = {}) {
+  const pos = [], nrm = [], uvs = [], cols = [], idx = [];
+  let along = 0;
+  for (let i = 0; i < col.length - 1; i++) {
+    let a = col[i], b = col[i + 1];
+    const seg = Math.hypot(b.x - a.x, b.z - a.z);
+    const u0 = along; along += seg;
+    if (seg < 1e-4) continue;
+    const fa = floorAt(a.x, a.z), fb = floorAt(b.x, b.z);
+    if (a.y - fa < minDrop && b.y - fb < minDrop) continue;   // 段が無い所に縁石は無い
+    if (covered && covered(a.x, a.z) && covered(b.x, b.z)) continue;   // 屋根の下
+    // 巻き。**(-dz, dx) が外向きになる向きへ辿る**(逆だと FrontSide で消える)。
+    let dx = (b.x - a.x) / seg, dz = (b.z - a.z) / seg;
+    let ua = u0, ub = along;
+    if (-dz * a.ox + dx * a.oz < 0) { [a, b] = [b, a]; [ua, ub] = [ub, ua]; dx = -dx; dz = -dz; }
+    const nx = -dz, nz = dx;
+    const ya = Math.max(Math.min(fa, a.y) - bury, a.y - maxH);
+    const yb = Math.max(Math.min(fb, b.y) - bury, b.y - maxH);
+    const base = pos.length / 3;
+    for (const [vx, vy, vz, uu] of [[a.x, a.y, a.z, ua], [a.x, ya, a.z, ua],
+                                    [b.x, b.y, b.z, ub], [b.x, yb, b.z, ub]]) {
+      pos.push(vx, vy, vz); nrm.push(nx, 0, nz);
+      uvs.push(uu / coverM, vy / coverM);        // 縁に沿った距離と高さ。石の目が寝ない
+      cols.push(shade, shade, shade);
+    }
+    idx.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+  }
+  if (!pos.length) return null;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(nrm, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+  g.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  g.setIndex(idx);
   return g;
 }
 
@@ -594,7 +650,12 @@ export function makeGround(plan, tex, stepPool) {
   for (const s of plan.streets) {
     const yAt = (x, z) => streetY(s, x, z);
     const isStradun = s.kind === 'stradun';
+    const edges = { left: [], right: [] };
     const g = stripGeometry(s.pts, s.w + 0.9, yAt, {
+      // 帯の幅は **plan が唯一の真実**。置く側(pavedY)と足の側(groundAt)が
+      // 同じ表を引く。ここで自前に計算し直すと、また三者が別々の真実を持つ。
+      halfAt: (sArc, sign) => plan.paveHalfAt(s, sArc, sign),
+      edges,
       coverM: isStradun ? tex.stradun.coverM : tex.paving.coverM,
       edgeAO: s.kind === 'alley' ? 0.34 : 0.20,
       // 帯どうしが同じ高さで重なると Z ファイトする。種別ごとに 6mm ずつずらす。
@@ -605,6 +666,22 @@ export function makeGround(plan, tex, stepPool) {
       lift: isStradun ? 0.012 : s.kind === 'alley' ? 0.002 : 0.007,
     });
     (isStradun ? stradunGeoms : paveGeoms).push(g);
+
+    // 縁石。立面の下へ潜っている縁には要らない(屋根の下だから見えない)。
+    // 見えるのはブロックの切れ目・街路の端・岸壁の縁 — そこは板の縁が
+    // そのまま空中で終わっている。石の厚みを地面まで垂らす。
+    //
+    // **区間ごとに判定する。** 「開いている連なり」で切ると、家と家に挟まれた
+    // 1 点だけの切れ目(ブロックの隙間が刻みより狭い所)が連なりにならず、
+    // そこだけ縁石が抜けた(実測 stross x=21 ほか 82 箇所)。
+    for (const col of [edges.left, edges.right]) {
+      const sk = skirtGeometry(col, (x, z) => plan.surfaceAt(x, z), {
+        coverM: tex.paving.coverM,
+        shade: (1 - (s.kind === 'alley' ? 0.34 : 0.20)) * 0.94,
+        covered: (x, z) => !!plan.houseAt(x, z),
+      });
+      if (sk) paveGeoms.push(sk);
+    }
 
     // 勾配のきつい路地は階段化(足の量子化と同じ共有サンプル・同じ段フラグ)
     if (s.kind === 'alley') {

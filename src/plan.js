@@ -1214,6 +1214,115 @@ export function buildPlan() {
       : h11 + (h01 - h11) * (1 - u) + (h10 - h11) * (1 - v);
   }
 
+  // ---- 舗装の帯の実半幅 ----------------------------------------------------
+  // **描く側(ground.js)・置く側(pavedY)・足の側(groundAt)の唯一の真実。**
+  //
+  // 帯は長く (w+0.9)/2 の一定幅だった。立面はその外に立つので、帯と立面の
+  // あいだに素地形が残る。市内の素地形は舗装の 0.16m 下へ沈めてある
+  // (landHeight の `streetY − 0.16`)ので、そこは必ず段になる。つまり
+  // **舗装は宙に浮いた板に見える**(ユーザー報告 2026-09-01。実測
+  // tools/curbtest.mjs: 帯の縁 305m が浮き、平均 0.248m、見えている素地形 867㎡)。
+  // 石の街の路面は立面から立面まで張られている。帯を立面の線まで伸ばす。
+  //
+  // 立面の線は **家が途切れても途切れない**。ブロックの切れ目(家と家の
+  // 3m ほどの隙間)で線を切ると、そこだけ帯が凹んで同じ段が残る。
+  // 窓 ±4m の最大を取って線を continuous にする。
+  const PAVE_REACH = 1.4;    // 既定の帯の縁からこれ以上は伸ばさない
+  const PAVE_BURY = 0.35;    // 立面の下へ潜らせる量
+  const PAVE_DS = 1.0;       // 表の刻み(ground.js の stripGeometry と同じ)
+  const PAVE_WIN = 4.0;      // 立面の線を continuous にする窓(片側)
+  const paveTables = new Map();
+
+  /** (x, z) を含む家 / 庭塀 / 記念建築の footprint。無ければ null。 */
+  function houseAt(x, z) {
+    indexHouses();
+    const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL);
+    for (let gx = cx - 1; gx <= cx + 1; gx++) for (let gz = cz - 1; gz <= cz + 1; gz++) {
+      const list = hashGrid.get(key(gx, gz));
+      if (!list) continue;
+      for (const i of list) {
+        const h = houses[i];
+        if (Math.abs(x - h.x) < h.w / 2 && Math.abs(z - h.z) < h.d / 2) return h;
+      }
+    }
+    return null;
+  }
+
+  /** (x, z) が「高さの違う別の街路の通行帯」の中か。 */
+  function onOtherStreet(s, x, z, y) {
+    for (const s2 of streets) {
+      if (s2 === s) continue;
+      const q = nearestOnPolyline(s2.pts, x, z);
+      if (q.d >= s2.w / 2 + 0.45) continue;
+      if (Math.abs(streetY(s2, q.x, q.z) - y) > 0.25) return true;
+    }
+    return false;
+  }
+
+  function paveTable(s) {
+    let t = paveTables.get(s);
+    if (t) return t;
+    // 記念建築は buildPlan の後に houses へ push される。**最初の問い合わせは
+    // makeGround(= monuments の後)なので、ここで索引を追随させれば足りる。**
+    indexHouses();
+    const base = (s.w + 0.9) / 2;
+    const L = polylineLength(s.pts);
+    const n = Math.max(1, Math.round(L / PAVE_DS));
+    const raw = [[], []];                          // [左(-), 右(+)] 立面までの到達
+    const lim = [[], []];                          // 同 上限(別の街路に阻まれる距離)
+    for (let i = 0; i <= n; i++) {
+      const p = samplePolyline(s.pts, Math.min((i / n) * L, L - 0.001));
+      const nx = -p.tz, nz = p.tx;
+      const y0 = streetY(s, p.x, p.z);
+      for (let k = 0; k < 2; k++) {
+        const sg = k === 0 ? -1 : 1;
+        let reach = base, stop = Infinity;
+        // 通行帯の縁から外へ探す。立面が既定の帯より内側でも、その実距離を
+        // 見つけたい(見つからなければ広げない — そこは縁石が受ける)。
+        for (let d = s.w / 2 + 0.05; d <= base + PAVE_REACH + 1e-6; d += 0.1) {
+          const qx = p.x + nx * d * sg, qz = p.z + nz * d * sg;
+          // **高さの違う別の街路の帯へは乗り上げない。** 乗せると、描かれた床が
+          // 隣の街路の高さになり、足が立つ床(groundAt)と食い違う場所が生まれる
+          // (実測: 北路地 11 本の北端で 0.59m の食い違いが出た)。
+          if (onOtherStreet(s, qx, qz, y0)) { stop = d - 0.1; break; }
+          if (houseAt(qx, qz)) {
+            reach = Math.max(base, Math.min(d + PAVE_BURY, base + PAVE_REACH));
+            break;
+          }
+        }
+        raw[k].push(reach); lim[k].push(stop);
+      }
+    }
+    const win = Math.max(1, Math.round(PAVE_WIN / PAVE_DS));
+    // 立面の線は窓の最大で continuous にするが、**上限は station ごとに効かせる**
+    // (窓の最大だけだと、隣の station の広さが「乗り上げてはいけない所」へ
+    // そのまま運ばれる)。
+    const half = raw.map((arr, k) => arr.map((_, i) => {
+      let m = arr[i];
+      for (let j = Math.max(0, i - win); j <= Math.min(arr.length - 1, i + win); j++) m = Math.max(m, arr[j]);
+      return Math.max(base, Math.min(m, lim[k][i]));
+    }));
+    t = { L, n, base, half };
+    paveTables.set(s, t);
+    return t;
+  }
+
+  /** 弧長 sArc・側(sign<0 が左)での帯の半幅。ground.js の柱がこれを使う。 */
+  function paveHalfAt(s, sArc, sign) {
+    const t = paveTable(s);
+    const f = clamp((sArc / Math.max(1e-6, t.L)) * t.n, 0, t.n);
+    const i = Math.min(t.n - 1, Math.floor(f));
+    const arr = t.half[sign < 0 ? 0 : 1];
+    return lerp(arr[i], arr[i + 1], f - i);
+  }
+
+  /** (x, z) の側での帯の半幅。near は nearestOnPolyline の結果(使い回し用)。 */
+  function paveHalfXZ(s, x, z, near) {
+    const q = near || nearestOnPolyline(s.pts, x, z);
+    const sg = ((x - q.x) * -q.tz + (z - q.z) * q.tx) < 0 ? -1 : 1;
+    return paveHalfAt(s, q.s, sg);
+  }
+
   // 描かれている舗装の高さ。**ground.js が帯を張るのと同じ式・同じ幅**で引く。
   // surfaceAt は地形の格子しか見ないので、「舗装の上に置く物」(巾木・鉢・卓・
   // 露店・井戸蓋)がこれを使わないと、描かれた石畳に 0.12〜0.30m 沈む
@@ -1226,7 +1335,7 @@ export function buildPlan() {
     }
     for (const s of streets) {
       const near = nearestOnPolyline(s.pts, x, z);
-      if (near.d >= (s.w + 0.9) / 2) continue;          // 帯の実半幅
+      if (near.d >= paveHalfXZ(s, x, z, near)) continue;   // 帯の実半幅(立面まで伸びる)
       // 帯は折れ線の長さぶんしか張られない。端は四角く切る(groundAt と同じ)。
       const a0 = s.pts[0], a1 = s.pts[1];
       const la = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) || 1;
@@ -1417,7 +1526,9 @@ export function buildPlan() {
     // 見える床は常に上のリボン(交差点の段差はそこで生まれる)。
     for (const s of streets) {
       const near = nearestOnPolyline(s.pts, px, pz);
-      const half = s.w / 2 + 0.40;   // 舗装リボンの実半幅(w/2+0.45)より内側
+      // 舗装リボンの実半幅より 0.05m 内側。**帯が立面まで伸びた所は足も伸びる**
+      // — 描かれた石の上に立てないと、そこだけ足が 0.16m 石に埋まる。
+      const half = paveHalfXZ(s, px, pz, near) - 0.05;
       if (near.d >= half) continue;
       // **端でも「いちばん近い点」は返る。** 折れ線の外側にいても、端点に
       // 吸着して距離が半幅以内になれば通行帯の中と判定されていた。
@@ -1857,6 +1968,7 @@ export function buildPlan() {
     JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, TERRACES, moatAt, alleyXAt,
     wallPts, wallKinds, wallLen, WALL_KIND, wallNodeHalf, deckEdgeAt, wallSegN, wallWalkYAt, wallWalkYOn,
     terrainHeight, streetY, groundAt, collide, inNoBuild,
+    paveHalfAt, paveHalfXZ, houseAt,
     extraColliders, extraCylinders, CAVALIER,
   };
 }
