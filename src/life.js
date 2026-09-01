@@ -117,10 +117,16 @@ export function makeLife(plan, tex, stepPool) {
       // 「全戸が同時に取り込む町」になる(実測 19:30 に一斉に消えていた)。
       const q = rng();
       const h0 = 6.0 + q * 3.2, h1 = 16.4 + ((q * 7) % 1) * 5.0, night = ((q * 13) % 1) < 0.14;
+      // 風はロープ単位。同じ紐に干した布は同じ突風で動く。**枚ごとに違う
+      // 振動数を与えると隣どうしが位相をすれ違い、布が布を突き抜ける。**
+      // (新しい乱数は引かない — 引くと以降の生活すべての配置が動く)
+      const gustF = 1.1 + ((q * 17) % 1) * 0.8;      // この紐の突風の速さ
+      const gustP = ((q * 23) % 1) * Math.PI * 2;    // 位相
       let lastCol = -1;
+      // まず候補を **今までと同じ乱数の引き方で** 作る。
+      const cand = [];
       for (let c = 0; c < nc; c++) {
         const t = (c + 0.5 + (rng() - 0.5) * 0.55) / nc;
-        const sag = Math.sin(Math.PI * t) * 0.2;
         const k = rng();
         const [cw, ch] = k < 0.22 ? [0.20 + rng() * 0.12, 0.24 + rng() * 0.16]      // 靴下・布巾
           : k < 0.72 ? [0.34 + rng() * 0.22, 0.52 + rng() * 0.30]                    // シャツ
@@ -128,13 +134,36 @@ export function makeLife(plan, tex, stepPool) {
         let cs = rng();
         if ((cs < 0.45) === (lastCol < 0.45) && rng() < 0.6) cs = 1 - cs;            // 白ばかり並ばせない
         lastCol = cs;
-        const cu = lerp(v0, v1, t);
+        cand.push({ t, cw, ch, cs, tilt: (rng() - 0.5) * 0.24, jit: rng(),
+          rotY: (alongZ ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.5 });
+      }
+      // **幅のぶん場所を取らせて干す。** 位置だけを 1m あたり 2.2 枚で振って
+      // いたので、幅 0.62〜1.02m のシーツが 0.45m 間隔で並び、隣と重なって
+      // いた(実測 tools/clothtest.mjs: 隣り合う 1344 組のうち 309 組が静止で
+      // 重なり、313 組が揺れて突き抜けていた)。
+      //
+      // **紐の長さが枚数を決める — 逆ではない。** 人が干すのと同じ順に、
+      // 元の位置をなるべく守り、詰まったぶんだけ送る。端まで来た布は干さない
+      // (幅の広い物から先に場所を取らせると、線がシーツばかりになって
+      //  枚数も減った — 実測 360 → 284 枚)。
+      const PIN = 0.13;              // 洗濯挟みぶんの隙間(揺れの振れ幅を含む)
+      const EDGE = 0.15;             // 壁の金具から離す
+      let cursor = v0 + EDGE;
+      for (const it of cand) {
+        // 傾けて干した布は、傾けたぶんだけ紐に沿って場所を取る
+        const we = it.cw * Math.cos(it.tilt) + it.ch * Math.abs(Math.sin(it.tilt));
+        const start = Math.max(cursor, lerp(v0, v1, it.t) - we / 2);
+        if (start + we > v1 - EDGE) continue;
+        const cu = start + we / 2;
+        cursor = start + we + PIN;
+        const t = (cu - v0) / Math.max(1e-6, v1 - v0);
+        const sag = Math.sin(Math.PI * t) * 0.2;
         cloths.push({
           x: alongZ ? cu : u, y: y - sag, z: alongZ ? u : cu,
-          w: cw, h: ch, tilt: (rng() - 0.5) * 0.24,
-          phase: rng() * Math.PI * 2, colorSeed: cs,
-          rotY: (alongZ ? 0 : Math.PI / 2) + (rng() - 0.5) * 0.5,
-          h0, h1, night,
+          w: it.cw, h: it.ch, tilt: it.tilt,
+          // 突風は紐の端から端へ渡る(0.55 rad/m)。隣どうしはほぼ同時に振れる。
+          freq: gustF, phase: gustP + (cu - v0) * 0.55 + (it.jit - 0.5) * 0.30,
+          colorSeed: it.cs, rotY: it.rotY, h0, h1, night,
         });
       }
     }
@@ -149,7 +178,7 @@ export function makeLife(plan, tex, stepPool) {
   ];
   for (const f of flags) {
     cloths.push({ x: f.x, y: f.y, z: f.z, w: f.w, h: f.h, tilt: 0,
-      phase: f.x * 0.7, colorSeed: 0.20, rotY: f.rotY, h0: 0, h1: 24, night: true });
+      freq: 1.35, phase: f.x * 0.7, colorSeed: 0.20, rotY: f.rotY, h0: 0, h1: 24, night: true });
   }
   for (const a of alleys) hangLaundry(a, true);
   for (const s2 of ewStreets) hangLaundry(s2, false);
@@ -181,15 +210,19 @@ export function makeLife(plan, tex, stepPool) {
     const g = new THREE.PlaneGeometry(1, 1, 1, 3);
     g.translate(0, -0.5, 0);   // 上端がロープ
     const phases = new Float32Array(cloths.length);
+    const freqs = new Float32Array(cloths.length);
     const mat = new THREE.MeshStandardMaterial({
       map: tex.cloth.map, side: THREE.DoubleSide, roughness: 0.9,
     });
     mat.onBeforeCompile = (shader) => {
       shader.uniforms.uT = clothTime;
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aPhase; uniform float uT;')
+        // 振動数と位相は **別々の属性**。1 本の float の fract に振動数を
+        // 押し込んでいたので、位相を紐単位に揃えると振動数まで揃ってしまい、
+        // 逆に振動数をばらすと隣が位相をすれ違って布が布を貫いた。
+        .replace('#include <common>', '#include <common>\nattribute float aPhase; attribute float aFreq; uniform float uT;')
         .replace('#include <begin_vertex>', `#include <begin_vertex>
-          float sway = sin(uT * (1.1 + fract(aPhase) * 0.8) + aPhase * 7.0);
+          float sway = sin(uT * aFreq + aPhase);
           float hang = -transformed.y;   // 0(ロープ)→1(裾)
           transformed.z += sway * hang * 0.16;
           transformed.x += sway * hang * 0.05;`);
@@ -212,10 +245,12 @@ export function makeLife(plan, tex, stepPool) {
       else col.setHSL(0.13, 0.38, 0.82, THREE.SRGBColorSpace);
       mesh.setColorAt(i, col);
       phases[i] = c.phase;
+      freqs[i] = c.freq;
       c._m = dummy.matrix.clone();      // 干してある時の行列(取り込みで 0 に潰す)
     });
     clock.cloths.dummy = dummy;
     g.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phases, 1));
+    g.setAttribute('aFreq', new THREE.InstancedBufferAttribute(freqs, 1));
     mesh.castShadow = true;
     group.add(tagMesh(mesh, 'life.laundryCloth', { thin: true, reason: '布', noCollide: true }));
   }
