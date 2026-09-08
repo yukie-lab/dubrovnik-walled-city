@@ -1,0 +1,13 @@
+{
+  "sources": {
+    "src/sea.js": "a590bfa717edd471c36fa42815a596c8ea4fe82c14ee3746e947640f88708941",
+    "src/plan.js": "93a4e36bfb7d34205db1b01a7d0e87a93f2a42beaee26a9e80eca05397a08495",
+    "src/seed.js": "4813c94c47c13a8fafa7092285c2e9cc90db1470c1425daf4a4407cea5d32d51",
+    "src/light.js": "9a093d1e221a8781343e5f3064b309c7aeeac0c5cbaeb14ebd5f96df5ad29815",
+    "src/sky.js": "385092c716790ecb567949db34840321ef3d85094a614c926b2bf74da06f0252",
+    "src/wet.js": "242d239a7040dc3175ed6dee5be4058f4cd68988e15ed1e75f9b617eb6885f52",
+    "tools/campaign.txt": "44e1d5aaeedf6012019cc854135d85cfdc4c428f826610431ecd48084980389f"
+  },
+  "geography": "51dcfd395fda0a2f71199f810f6c826430f4218a50e9698521118d69e04a9e70",
+  "houseCount": 665
+}

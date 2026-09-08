@@ -9,6 +9,7 @@
 import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
+import { facadeHeightAttribute } from './facade.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, urbanTint, bounceRad, groundRefY,
   patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
@@ -403,6 +404,7 @@ export function makeBuildings(plan, tex) {
   bodyGeo.setAttribute('aPlas', new THREE.Float32BufferAttribute(A, 1));
   bodyGeo.setAttribute('aSky', new THREE.Float32BufferAttribute(S, 1));
   bodyGeo.setIndex(I);
+  bodyGeo.setAttribute('aWallUp', new THREE.BufferAttribute(facadeHeightAttribute(bodyGeo, plan), 1));
   const bodyMat = new THREE.MeshStandardMaterial({
     map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
     normalScale: new THREE.Vector2(1.7, 1.7),
@@ -418,8 +420,8 @@ export function makeBuildings(plan, tex) {
     sh.uniforms.uBounce = bounceRad;
     sh.uniforms.uGroundY = groundRefY;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; varying float vPlas; varying float vSky; varying float vBnc; varying float vUp; uniform float uGroundY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vPlas = aPlas; vSky = aSky;\n vBnc = clamp(0.75 - normal.y * 0.35, 0.25, 1.0) * exp(-max(position.y - uGroundY, 0.0) / 2.4);');
+      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; attribute float aWallUp; varying float vPlas; varying float vSky; varying float vBnc; varying float vUp; uniform float uGroundY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vPlas = aPlas; vSky = aSky; vUp = aWallUp;\n vBnc = clamp(0.75 - normal.y * 0.35, 0.25, 1.0) * exp(-max(position.y - uGroundY, 0.0) / 2.4);');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform sampler2D uPlasMap; uniform sampler2D uPlasNrm; uniform float uPlasScale;
@@ -475,7 +477,11 @@ export function makeBuildings(plan, tex) {
         // 上り湿気。実在の路地壁は下 1.2〜1.6m が必ず暗い — 目が歩く高さにある
         // 唯一の縦の階調。乾かない壁だけが湿るので、天空可視率で門を掛ける
         // (= 開けた広場やストラドゥンの正面には出ない。第2パスの石を守る)。
-        float damp = smoothstep(1.65, 0.0, vUp) * smoothstep(0.38, 0.18, vSky) * (0.55 + 0.45 * hf);
+        // Both smoothstep intervals are increasing; reversed endpoints have
+        // undefined results in GLSL. Height is baked from this wall's ground,
+        // not inferred from the camera or left as an uninitialised varying.
+        float damp = (1.0 - smoothstep(0.0, 1.65, vUp))
+                   * (1.0 - smoothstep(0.18, 0.38, vSky)) * (0.55 + 0.45 * hf);
         sd.rgb *= mix(vec3(1.0), vec3(0.60, 0.645, 0.60), damp * 0.55);
         // 雨に洗われた面は寒色へ、庇の下と風下は暖色へ。**色相は動かさず色温度だけ。**
         sd.rgb *= mix(vec3(1.020, 1.000, 0.955), vec3(0.975, 0.995, 1.030), lf);
@@ -488,7 +494,7 @@ export function makeBuildings(plan, tex) {
         mapN.xy *= normalScale;
         normal = normalize(tbn * mapN);`);
   };
-  bodyMat.customProgramCacheKey = () => 'houseBodyPlaster';
+  bodyMat.customProgramCacheKey = () => 'houseBodyPlaster|groundedDamp';
   const bodies = new THREE.Mesh(bodyGeo, bodyMat);
   bodies.castShadow = true; bodies.receiveShadow = true;
   group.add(tagMesh(bodies, 'house.body', { solid: true, masonry: true, groundContact: true, merged: 'plan.houses' }));
