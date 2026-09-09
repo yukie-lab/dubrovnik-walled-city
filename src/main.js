@@ -12,6 +12,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { buildWorld } from './world.js';
 import { makeRenderDiagnostics } from './diagnostics.js';
+import { makeInstanceLOD } from './instance-lod.js';
 import { sunState } from './sky.js';
 import { SEA_LAYER } from './sea.js';
 import { setWetTime } from './wet.js';
@@ -70,6 +71,7 @@ const world = buildWorld({ seed: Q.has('seed') ? qf('seed', undefined) : undefin
 const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps } = world;
 
 scene.add(world.root);
+const instanceLOD = makeInstanceLOD(world.root);
 const diagnostics = makeRenderDiagnostics(world.root, camera);
 window.__RENDER_STATS = diagnostics.stats;
 if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();
@@ -175,6 +177,7 @@ window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
   solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
   renderer,
+  instanceLOD,
   counts: world.counts,
   // 光の計器(tools/lightprobe.mjs)— 露出・放射照度・影の設定を数字で読む
   get lighting() { return lighting; },
@@ -587,6 +590,7 @@ function frame(now) {
   }
 
   if (!SHOT) adaptResolution(dt);
+  instanceLOD.update(camera, lighting.sun, renderer);
   renderUnder();
   composer.render();
   diagnostics.finishFrame(renderer);

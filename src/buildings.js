@@ -928,7 +928,7 @@ export function makeBuildings(plan, tex) {
     });
   }
   chimneys.castShadow = true;
-  group.add(tagMesh(chimneys, 'house.chimney', { solid: true, masonry: true }));
+  group.add(tagMesh(chimneys, 'house.chimney', { solid: true, masonry: true, staticDetail: true }));
 
   // ===== 開口部を集める
   const OPEN_H_HALF = 1.30;   // 窓枠(水切り込み)の半高。開口 1.66 + 枠 + 窓台。
@@ -1230,8 +1230,8 @@ export function makeBuildings(plan, tex) {
   // 窓台は 0.14m、水切りは 0.1375m 出ているのに影を落としていなかった。
   // ダルマチアの立面で最も読みやすい影がまるごと無い状態。
   winFrames.castShadow = true; winFrames.receiveShadow = true;
-  group.add(tagMesh(winFrames, 'window.frame', { solid: true, masonry: true }),
-    tagMesh(winGlass, 'window.glass', { thin: true, reason: 'ガラス 1 枚', noCollide: true }));
+  group.add(tagMesh(winFrames, 'window.frame', { solid: true, masonry: true, staticDetail: true }),
+    tagMesh(winGlass, 'window.glass', { thin: true, reason: 'ガラス 1 枚', noCollide: true, staticDetail: true }));
 
   // ===== 夜に灯る窓(暮らしの窓の 1/3 ほど — 手前に薄板を重ねて夜だけ現す)
   {
@@ -1255,7 +1255,7 @@ export function makeBuildings(plan, tex) {
       col.setHSL(0.062 + w.seed * 0.035, 0.86, 0.46 + w.seed * 0.14, THREE.SRGBColorSpace);
       litMesh.setColorAt(i, col);
     });
-    group.add(tagMesh(litMesh, 'window.litPane', { thin: true, reason: '夜の灯りの面', noCollide: true }));
+    group.add(tagMesh(litMesh, 'window.litPane', { thin: true, reason: '夜の灯りの面', noCollide: true, staticDetail: true }));
   }
 
   // ===== 鎧戸(緑の褪せ・角度の個体差 = 街の生活)
@@ -1397,9 +1397,9 @@ export function makeBuildings(plan, tex) {
     });
   }
   doorFramesRect.receiveShadow = doorFramesArch.receiveShadow = true;
-  group.add(tagMesh(doorFramesRect, 'door.frameRect', { solid: true, masonry: true }),
-    tagMesh(doorFramesArch, 'door.frameArch', { solid: true, masonry: true }),
-    tagMesh(doorLeaves, 'door.leaf', { thin: true, reason: '扉の葉は板(要立体化)', joinery: true }));
+  group.add(tagMesh(doorFramesRect, 'door.frameRect', { solid: true, masonry: true, staticDetail: true }),
+    tagMesh(doorFramesArch, 'door.frameArch', { solid: true, masonry: true, staticDetail: true }),
+    tagMesh(doorLeaves, 'door.leaf', { thin: true, reason: '扉の葉は板(要立体化)', joinery: true, staticDetail: true }));
 
   // 城壁の内面の足元。街の中でいちばん面積の大きい石の面なのに、接地の
   // 汚れが 1 枚も無かった(実測 半径 16m に 0 枚)。石の量で言えば街の
@@ -1484,7 +1484,7 @@ export function makeBuildings(plan, tex) {
       grimeMesh.setMatrixAt(i, dummy.matrix);
     });
   }
-  group.add(tagMesh(grimeMesh, 'house.grimeBand', { thin: true, reason: '接地の汚れ(デカール)', noCollide: true, decal: true }));
+  group.add(tagMesh(grimeMesh, 'house.grimeBand', { thin: true, reason: '接地の汚れ(デカール)', noCollide: true, decal: true, staticDetail: true }));
 
   // ===== 雨だれ(窓台・水切りの下)— 壁の履歴のうち最も読み取りやすい印。
   // 上向きの面(窓台・蛇腹)がある所には必ず下に筋が落ちる。
@@ -1509,7 +1509,7 @@ export function makeBuildings(plan, tex) {
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
-    group.add(tagMesh(mesh, 'window.reveal', { thin: true, reason: '見込みの奥の暗がり', noCollide: true, opening: true }));
+    group.add(tagMesh(mesh, 'window.reveal', { thin: true, reason: '見込みの奥の暗がり', noCollide: true, opening: true, staticDetail: true }));
   }
 
   // ===== ストラドゥンの店舗アーチ(clear 1.85×2.95m、膝高 0.72m のカウンター)
@@ -1811,7 +1811,7 @@ export function makeBuildings(plan, tex) {
       pm.setMatrixAt(i, dummy.matrix);
     });
     pm.castShadow = true; pm.receiveShadow = true;
-    group.add(tagMesh(pm, 'house.plinth', { solid: true, masonry: true, groundContact: true }));
+    group.add(tagMesh(pm, 'house.plinth', { solid: true, masonry: true, groundContact: true, staticDetail: true }));
 
     // ===== 目の高さ(1.6m 以下)の造作
     // AAA の基準は「近づくほど新しい情報が出る」。ところが実測では逆で、
@@ -1904,7 +1904,7 @@ export function makeBuildings(plan, tex) {
       pipeMesh.setColorAt(i, col2);
     });
     pipeMesh.castShadow = true;
-  group.add(tagMesh(pipeMesh, 'house.downpipe', { solid: true, small: true }));
+  group.add(tagMesh(pipeMesh, 'house.downpipe', { solid: true, small: true, staticDetail: true }));
   }
 
   const counts = {
