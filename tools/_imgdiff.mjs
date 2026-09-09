@@ -31,11 +31,12 @@ const gn = Array.from({ length: GY }, () => new Array(GX).fill(0));
 let n = 0, chg = 0, sum = 0, mx = 0, mxAt = '';
 for (let y = 0; y < A.h; y++) for (let x = 0; x < A.w; x++) {
   const o = (y * A.w + x) * A.ch;
+  const ob = (y * B.w + x) * B.ch;
   const ya = 0.2126*s2l(A.px[o]/255)+0.7152*s2l(A.px[o+1]/255)+0.0722*s2l(A.px[o+2]/255);
-  const yb = 0.2126*s2l(B.px[o]/255)+0.7152*s2l(B.px[o+1]/255)+0.0722*s2l(B.px[o+2]/255);
+  const yb = 0.2126*s2l(B.px[ob]/255)+0.7152*s2l(B.px[ob+1]/255)+0.0722*s2l(B.px[ob+2]/255);
   const d = yb - ya, ad = Math.abs(d);
   n++; sum += d;
-  if (Math.max(Math.abs(A.px[o]-B.px[o]), Math.abs(A.px[o+1]-B.px[o+1]), Math.abs(A.px[o+2]-B.px[o+2])) > 1) chg++;
+  if (Math.max(Math.abs(A.px[o]-B.px[ob]), Math.abs(A.px[o+1]-B.px[ob+1]), Math.abs(A.px[o+2]-B.px[ob+2])) > 1) chg++;
   if (ad > mx) { mx = ad; mxAt = x + ',' + y; }
   const gy = Math.min(GY-1, (y * GY / A.h) | 0), gx = Math.min(GX-1, (x * GX / A.w) | 0);
   g[gy][gx] += d; gn[gy][gx]++;

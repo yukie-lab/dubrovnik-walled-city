@@ -2,7 +2,7 @@
 //   node tools/shot.mjs name:x:z:yaw:pitch:time [name2:...]
 // 例: node tools/shot.mjs stradun:-147:0.3:-1.5708:0.02:8.2
 import puppeteer from 'puppeteer-core';
-import { mkdirSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const BASE = process.env.BASE || 'http://localhost:8765';
@@ -24,13 +24,16 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
+let sceneErrors = [];
 page.on('console', m => {
   const t = m.type();
   if (t === 'error' || t === 'warning') console.log(`[${t}]`, m.text().slice(0, 300));
+  if (t === 'error') sceneErrors.push(m.text());
 });
-page.on('pageerror', e => console.log('[pageerror]', String(e).slice(0, 500)));
+page.on('pageerror', e => { sceneErrors.push(String(e)); console.log('[pageerror]', String(e).slice(0, 500)); });
 
-for (const s of specs) {
+try { for (const s of specs) {
+  sceneErrors = [];
   const url = `${BASE}/index.html?shot=1${s.extra}&hud=0&x=${s.x}&z=${s.z}&yaw=${s.yaw}&pitch=${s.pitch}&time=${s.time}`;
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
   try {
@@ -39,37 +42,30 @@ for (const s of specs) {
     console.log(`[timeout] ${s.name} — __READY にならない`);
   }
   await new Promise(r => setTimeout(r, 1400));
-  // 1400ms の固定待ちだけでは足りないことがある。第7パスで 64 枚中 1 枚
-  // (v4_srd_t4dusk)が、手前の wall.curtain だけ落ち着く前の明るさで焼かれ、
-  // 「変化した画素 7.90%」という **修正と無関係の差** を調和の門に出した
-  // (同じコードで撮り直すと再現しない = 比較が原理的に成立していない)。
-  // 固定の秒数ではなく **絵が止まったこと** を待つ。連続 2 フレームが
-  // 画素単位で一致したら落ち着いたとみなす。
-  const settled = await page.evaluate(async () => {
-    const w = window.__world, gl = w.renderer.getContext();
-    const W = gl.drawingBufferWidth, H = gl.drawingBufferHeight;
-    // 全画素は重いので 16 画素ごとに間引いて比べる(異常は面で出るので拾える)
-    const grab = () => { const px = new Uint8Array(W * H * 4);
-      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
-      const out = new Uint8Array(((W * H) >> 4) * 3 + 3);
-      for (let i = 0, j = 0; i < W * H; i += 16, j += 3) {
-        out[j] = px[i * 4]; out[j + 1] = px[i * 4 + 1]; out[j + 2] = px[i * 4 + 2];
-      }
-      return out; };
-    const frame = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-    let prev = grab();
-    for (let k = 0; k < 30; k++) {          // 上限 30 フレーム(≒0.5s)
-      await frame();
-      const cur = grab();
-      let same = true;
-      for (let i = 0; i < cur.length; i++) if (cur[i] !== prev[i]) { same = false; break; }
-      if (same) return k;
-      prev = cur;
+  // The old readPixels check and the later compositor screenshot sampled two
+  // different frames. A wall-sized transient escaped that check twice across
+  // campaigns. Read and save the SAME completed render, requiring four equal
+  // full-frame PNGs rather than two sparsely sampled buffers.
+  const direct = await page.evaluate(() => typeof window.__captureFrame === 'function');
+  let png = null;
+  if (direct) {
+    let previous = null, same = 0;
+    for (let k = 0; k < 30; k++) {
+      png = await page.evaluate(() => window.__captureFrame());
+      same = png === previous ? same + 1 : 0;
+      if (same >= 3) break;
+      previous = png;
     }
-    return -1;                               // 止まらなかった
-  });
-  if (settled < 0) console.log(`[未静定] ${s.name} — 30 フレーム待っても絵が止まらない`);
-  await page.screenshot({ path: new URL(`../shots/${s.name}.png`, import.meta.url).pathname });
+    if (same < 3) throw new Error(`${s.name}: image did not settle; refusing to save a comparison frame`);
+  }
+  if (sceneErrors.length) throw new Error(`${s.name}: ${sceneErrors.join('\n')}`);
+  const output = new URL(`../shots/${s.name}.png`, import.meta.url).pathname;
+  if (png && new URL(url).searchParams.get('hud') !== '1') {
+    writeFileSync(output, Buffer.from(png.split(',')[1], 'base64'));
+  } else {
+    if (!direct) console.log(`[legacy capture] ${s.name}: no render-frame hook`);
+    await page.screenshot({ path: output });
+  }
   const m = await page.evaluate(() => {
     const w = window.__world;
     // カメラが家の体積の中にいないか(屋内から撮ると、背面カリングで壁が消え、
@@ -88,12 +84,15 @@ for (const s of specs) {
     return {
       near: +near.toFixed(1),
       fps: window.__FPS?.toFixed(0), calls: window.__CALLS, tris: window.__TRIS,
+      instances: window.__INSTANCES, renderStats: window.__RENDER_STATS,
       inside: inside ? `${inside.x.toFixed(1)},${inside.z.toFixed(1)}` : null,
       cam: [+c.x.toFixed(1), +c.y.toFixed(2), +c.z.toFixed(1)],
     };
   });
-  console.log(`shot: ${s.name}  calls=${m.calls} tris=${(m.tris / 1e3 | 0)}k fps=${m.fps} y=${m.cam[1]} 視線先=${m.near}m`
+  writeFileSync(output.replace(/\.png$/, '.json'), JSON.stringify({ url, ...m }, null, 2) + '\n');
+  console.log(`shot: ${s.name}  calls=${m.calls} instances=${m.instances ?? '?'} tris=${(m.tris / 1e3 | 0)}k fps=${m.fps} y=${m.cam[1]} 視線先=${m.near}m`
     + (m.inside ? `  ★屋内 (家 ${m.inside}) — 構図として無効` : '')
     + (!m.inside && m.near < 2.2 ? '  ★壁に近すぎ — 構図として無効' : ''));
+} } finally {
+  await browser.close();
 }
-await browser.close();

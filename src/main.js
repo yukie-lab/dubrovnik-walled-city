@@ -11,6 +11,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { buildWorld } from './world.js';
+import { makeRenderDiagnostics } from './diagnostics.js';
 import { sunState } from './sky.js';
 import { SEA_LAYER } from './sea.js';
 import { setWetTime } from './wet.js';
@@ -69,6 +70,9 @@ const world = buildWorld({ seed: Q.has('seed') ? qf('seed', undefined) : undefin
 const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps } = world;
 
 scene.add(world.root);
+const diagnostics = makeRenderDiagnostics(world.root, camera);
+window.__RENDER_STATS = diagnostics.stats;
+if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();
 
 const lighting = makeLighting(renderer, scene, tex);
 const audio = new CityAudio(monuments.bellPos);
@@ -171,6 +175,7 @@ window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
   solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
   renderer,
+  counts: world.counts,
   // 光の計器(tools/lightprobe.mjs)— 露出・放射照度・影の設定を数字で読む
   get lighting() { return lighting; },
   get sunState() { return sunState(state.time); },
@@ -504,9 +509,13 @@ let fps = 60, uiTimer = 0;
 
 function frame(now) {
   renderer.info.reset();
-  const dt = clamp((now - last) / 1000, 0.001, 0.05);
+  diagnostics.beginFrame();
+  const frameMs = Math.max(1, now - last);
+  const dt = clamp(frameMs / 1000, 0.001, 0.05);
   last = now;
-  fps += ((1 / dt) - fps) * 0.06;
+  // Simulation steps are capped for collision stability. Frame-rate reporting
+  // must use wall time, otherwise every rate below 20fps is reported as 20fps.
+  fps += ((1000 / frameMs) - fps) * 0.06;
 
   if (started && !state.paused && !SHOT) {
     state.time += (dt * state.flow) / 3600;
@@ -580,19 +589,21 @@ function frame(now) {
   if (!SHOT) adaptResolution(dt);
   renderUnder();
   composer.render();
+  diagnostics.finishFrame(renderer);
 
   uiTimer -= dt;
   if (uiTimer <= 0) {
     uiTimer = 0.25;
     ui.drawArc(state.time);
     ui.debugText(renderer, fps, player.zone, state.time, renderer.toneMappingExposure,
-      camera.position, player.yaw, player.pitch);
+      camera.position, player.yaw, player.pitch, diagnostics.stats);
     if (ui.isMapOpen()) ui.drawMap({ x: player.x, z: player.z, yaw: player.yaw });
   }
   window.__READY = true;
   window.__FPS = fps;
   window.__CALLS = renderer.info.render.calls;
   window.__TRIS = renderer.info.render.triangles;
+  window.__INSTANCES = diagnostics.stats.instances;
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

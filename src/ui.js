@@ -155,15 +155,20 @@ export function makeUI(plan, counts, presets = []) {
   // ---------------------------------------------------------- 計器 ----
   // 位置も出す。「あそこに板がある」と言われたときに、目で場所を推理する
   // のではなく座標で受け取れる。推理は何度も外した。
-  function debugText(renderer, fps, zone, time, exposure, pos, yaw, pitch) {
+  function debugText(renderer, fps, zone, time, exposure, pos, yaw, pitch, renderStats) {
     const i = renderer.info.render;
     const inst = Object.entries(counts).map(([k, v]) => `${k}:${v}`).join(' ');
     const at = pos ? `  @ ${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`
       + `  yaw ${yaw.toFixed(3)} pitch ${pitch.toFixed(3)}` : '';
+    const submitted = renderStats
+      ? `instances ${renderStats.instances.toLocaleString('en-US')} drawn / ${renderStats.instanceCapacity.toLocaleString('en-US')} capacity`
+        + `  LOD culled ${renderStats.culledInstances.toLocaleString('en-US')}  DPR ${renderStats.dpr.toFixed(2)}\n`
+      : '';
     els.debug.textContent =
       `draw calls ${i.calls}  tris ${(i.triangles / 1000).toFixed(0)}k  fps ${fps.toFixed(0)}\n` +
+      submitted +
       `zone ${zone}  t ${time.toFixed(2)}  exp ${exposure.toFixed(2)}${at}\n` +
-      `instances: ${inst}`;
+      `built: ${inst}`;
   }
 
   // ---------------------------------------------------------- 案内 ----
