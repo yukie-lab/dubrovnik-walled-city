@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
+import { makePottedPlants } from './plants.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
 
@@ -30,6 +31,7 @@ export function makeLife(plan, tex, stepPool) {
   const clock = { bucket: -1, market: null, parasols: null, cloths: null };
   // パラソルの開閉は時刻の関数(店ごとにずれる)。毎フレーム時刻だけ渡す。
   const parasolHour = { value: 12 };
+  const plantTime = { value: 0 };
   // 街の遮蔽(天空可視率)。buildings が先に作った物を使い回す。
   const skyAt = sharedSkyVis || makeSkyVis(plan);
   const skyOf = (x, z, y) => 0.5 * (skyAt(x, z, y, 0, 1, 0) + skyAt(x, z, y, 0, 0.2, 1));
@@ -308,77 +310,8 @@ export function makeLife(plan, tex, stepPool) {
     const pz5 = (rng() < 0.5 ? -1 : 1) * (3.5 - 0.2);
     putPot({ x, z: pz5, y: onFloor(x, pz5, 2.6), s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
   }
-  {
-    // 上面を塞いだ円柱だと、天面が空を向いて明るいピンクの円盤に見える。
-    // 縁を筒にして、その中に暗い土を落とす(頂点色で焼く)。
-    const potGeo = (() => {
-      const side = new THREE.CylinderGeometry(0.32, 0.24, 0.42, 8, 1, true);
-      side.translate(0, 0.21, 0);
-      // 縁を「詰まった円柱」にすると天面が塞がり、土が見えず明るい円盤になる
-      const lip = new THREE.CylinderGeometry(0.335, 0.32, 0.06, 8, 1, true);
-      lip.translate(0, 0.40, 0);
-      const lipTop = new THREE.RingGeometry(0.29, 0.335, 8);
-      lipTop.rotateX(-Math.PI / 2);
-      lipTop.translate(0, 0.43, 0);
-      // 内張り。半径 0.29 の「まっすぐな円筒」を高さ 0.05〜0.39 に置いていた。
-      // 鉢の胴は上 0.32 → 下 0.24 に絞れているので、胴の半径が 0.29 を下回る
-      // y=0.26 より下では、内張りが胴を突き抜けて外に出る。八角形の角が
-      // 左右で一番遠くまで出るので、「鉢の下の方が左右で尖って」見えていた。
-      // 内張りは土(y=0.33)から縁までしか要らない。胴の絞りの内側に収める。
-      const inner = new THREE.CylinderGeometry(0.300, 0.288, 0.115, 8, 1, true);
-      inner.scale(-1, 1, 1);            // 内側を向ける
-      inner.translate(0, 0.3725, 0);
-      const soil = new THREE.CylinderGeometry(0.29, 0.29, 0.02, 8);
-      soil.translate(0, 0.33, 0);
-      const tintG = (g, c) => {
-        const n = g.attributes.position.count, a = new Float32Array(n * 3);
-        for (let i = 0; i < n; i++) { a[i * 3] = c[0]; a[i * 3 + 1] = c[1]; a[i * 3 + 2] = c[2]; }
-        g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g;
-      };
-      return mergeSimpleC([tintG(side, [1, 1, 1]), tintG(lip, [0.88, 0.86, 0.84]), tintG(lipTop, [0.60, 0.58, 0.56]),
-        tintG(inner, [0.55, 0.50, 0.46]), tintG(soil, [0.20, 0.155, 0.115])]);
-    })();
-    const potMat = new THREE.MeshStandardMaterial({ roughness: 0.85, vertexColors: true });
-    const potMesh = new THREE.InstancedMesh(potGeo, potMat, pots.length);
-    // 葉群(交差クアッド × 3)
-    const leafGeo = (() => {
-      const quads = [];
-      for (let k = 0; k < 3; k++) {
-        const q = new THREE.PlaneGeometry(1, 1);
-        q.rotateY((k / 3) * Math.PI);
-        q.translate(0, 0.5, 0);
-        quads.push(q);
-      }
-      const merged = mergeSimple(quads);
-      return merged;
-    })();
-    const leafMat = new THREE.MeshStandardMaterial({
-      map: tex.foliage, transparent: true, alphaTest: 0.45, side: THREE.DoubleSide,
-      roughness: 0.9, emissive: 0x0c1406, emissiveIntensity: 0.22,   // 日陰の黒死防止
-    });
-    const leafMesh = new THREE.InstancedMesh(leafGeo, leafMat, pots.length);
-    const dummy = new THREE.Object3D();
-    const col = new THREE.Color();
-    pots.forEach((p, i) => {
-      dummy.position.set(p.x, p.y, p.z);
-      dummy.scale.setScalar(p.s);
-      dummy.rotation.set(0, p.seed * 7, 0);
-      dummy.updateMatrix();
-      potMesh.setMatrixAt(i, dummy.matrix);
-      col.setHSL(0.043, 0.31 + p.seed * 0.13, 0.375 + p.seed * 0.10, THREE.SRGBColorSpace);
-      potMesh.setColorAt(i, col);
-      dummy.position.set(p.x, p.y + 0.36 * p.s, p.z);
-      dummy.scale.set(p.s * (0.66 + p.seed * 0.34), p.s * (0.62 + p.seed * 0.46), p.s * (0.66 + p.seed * 0.34));
-      dummy.updateMatrix();
-      leafMesh.setMatrixAt(i, dummy.matrix);
-      if (p.boug) col.setHSL(0.915, 0.52, 0.435, THREE.SRGBColorSpace);          // ブーゲンビリア
-      else col.setHSL(0.255 + p.seed * 0.075, 0.30 + p.seed * 0.12, 0.275 + p.seed * 0.125, THREE.SRGBColorSpace);
-      leafMesh.setColorAt(i, col);
-    });
-    potMesh.castShadow = true; leafMesh.castShadow = true;
-    group.add(tagMesh(potMesh, 'life.flowerPot', { solid: true, groundContact: true }),
-      tagMesh(leafMesh, 'life.foliage', { thin: true, reason: '葉は交差板', noCollide: true }));
-  }
+  const pottedPlants = makePottedPlants(pots, skyAt, plantTime);
+  group.add(pottedPlants.group);
 
   // ------------------------------------------------------------ 猫 ----
   // 一匹は南の路地の日なたの段で丸くなり、一匹はストラドゥンの戸口に座る。
@@ -2048,6 +1981,7 @@ export function makeLife(plan, tex, stepPool) {
   }
 
   function update(elapsed, sun, camPos, camera) {
+    plantTime.value = elapsed;
     parasolHour.value = sun.time ?? 12;
     clothTime.value = elapsed;
     swiftTime.value = elapsed;

@@ -25,6 +25,7 @@ if (args.includes('--sweep')) {
   views = fixed.flatMap(([v, [x,z,yaw,pitch,extra]]) => times.map(([t,h]) =>
     [`${v}_${t}`, `x=${x}&z=${z}&yaw=${yaw}&pitch=${pitch}&time=${h}${extra || ''}`]));
 }
+if(args.includes('--view'))views=views.filter(([v])=>v.includes(option('--view')));
 const dir = new URL('../shots/rendercheck/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const browser = await puppeteer.launch({

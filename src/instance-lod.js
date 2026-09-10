@@ -84,7 +84,7 @@ function intersects(planes, x, y, z, radius) {
 export function makeInstanceLOD(root) {
   const batches = [];
   root.traverse(mesh => {
-    if (mesh.userData.staticDetail) batches.push(new StaticInstanceLOD(mesh));
+    if (mesh.userData.staticDetail) batches.push(new StaticInstanceLOD(mesh,{minPixels:mesh.userData.lodMinPixels ?? .4}));
   });
   const view = new THREE.Frustum(), shadow = new THREE.Frustum(), matrix = new THREE.Matrix4();
   return {
