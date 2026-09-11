@@ -71,7 +71,7 @@ const world = buildWorld({ seed: Q.has('seed') ? qf('seed', undefined) : undefin
 const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps } = world;
 
 scene.add(world.root);
-const instanceLOD = makeInstanceLOD(world.root);
+const instanceLOD = makeInstanceLOD(world.root, plan);
 const diagnostics = makeRenderDiagnostics(world.root, camera);
 window.__RENDER_STATS = diagnostics.stats;
 if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();

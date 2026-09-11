@@ -38,6 +38,11 @@ try {
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
+  if(args.includes('--walk')) {
+    const { walkChecks }=await import('./walk-capture.mjs');
+    await walkChecks(page,{name,dir,rows,errors,args});
+    views=[];
+  }
   for (let r = 0; r < repeat; r++) for (const [view, query] of views) {
     await page.goto(`${process.env.BASE || 'http://localhost:8765'}/index.html?shot=1&hud=0&${query}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction('window.__READY && window.__captureFrame', { timeout: 60000 });
