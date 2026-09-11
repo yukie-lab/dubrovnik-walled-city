@@ -27,6 +27,7 @@ import { makeWalls } from './walls.js';
 import { makeMonuments } from './monuments.js';
 import { makeSurround } from './surround.js';
 import { makeLife } from './life.js';
+import { makeGroundSupport } from './support.js';
 
 /**
  * 街を一つ作る。同じ seed からは必ず同じ街が出る。
@@ -48,11 +49,12 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const monuments = makeMonuments(plan, tex);
   const ground = makeGround(plan, tex, stepPool);
   const walls = makeWalls(plan, tex, stepPool, plan.outsideHeight);
-  const buildings = makeBuildings(plan, tex);
+  const support=makeGroundSupport(ground.group,stepPool.items);
+  const buildings = makeBuildings(plan, tex, support);
   const surround = makeSurround(plan, tex);
   const seaObj = sea ? makeSea(plan) : null;
   const skyObj = sky ? makeSky(tex) : null;
-  const lifeObj = life ? makeLife(plan, tex, stepPool, ground.group) : null;
+  const lifeObj = life ? makeLife(plan, tex, stepPool, support) : null;
   const steps = stepPool.finalize(getSharedSkyVis());
 
   const parts = { ground, walls, buildings, monuments, surround, sea: seaObj, sky: skyObj, life: lifeObj };

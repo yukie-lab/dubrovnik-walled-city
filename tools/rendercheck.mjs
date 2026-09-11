@@ -36,6 +36,14 @@ const errors = [], rows = [];
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
+  if(args.includes('--buildings-source')) {
+    const source=readFileSync(option('--buildings-source'),'utf8');
+    await page.setRequestInterception(true);
+    page.on('request',request=>{
+      if(new URL(request.url()).pathname==='/src/buildings.js')request.respond({status:200,contentType:'text/javascript',body:source});
+      else request.continue();
+    });
+  }
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
   if(args.includes('--walk')) {

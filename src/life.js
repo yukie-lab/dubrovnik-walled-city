@@ -8,7 +8,6 @@ import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { makePottedPlants } from './plants.js';
-import { makeGroundSupport } from './support.js';
 import { seatPottedPlants } from './prop-support.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
@@ -26,7 +25,7 @@ function depthFor(mat) {
 }
 
 
-export function makeLife(plan, tex, stepPool, groundGroup) {
+export function makeLife(plan, tex, stepPool, floorSupport) {
   // 時刻で変わるもの。update() が行列を書き換えるだけの設計だったので、
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
@@ -312,7 +311,7 @@ export function makeLife(plan, tex, stepPool, groundGroup) {
     const pz5 = (rng() < 0.5 ? -1 : 1) * (3.5 - 0.2);
     putPot({ x, z: pz5, y: onFloor(x, pz5, 2.6), s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
   }
-  const seating=seatPottedPlants(pots,makeGroundSupport(groundGroup,stepPool.items),plan);
+  const seating=seatPottedPlants(pots,floorSupport,plan);
   pots=seating.pots;
   const pottedPlants = makePottedPlants(pots, skyAt, plantTime);
   group.add(pottedPlants.group);

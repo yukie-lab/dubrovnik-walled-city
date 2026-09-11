@@ -10,6 +10,8 @@ import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { facadeHeightAttribute } from './facade.js';
+import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkGeometry,
+  joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, urbanTint, bounceRad, groundRefY,
   patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
@@ -366,7 +368,7 @@ function facesOnStreet(plan, h) {
 }
 
 // ---------------------------------------------------------------------------
-export function makeBuildings(plan, tex) {
+export function makeBuildings(plan, tex, floorSupport) {
   WALL_COVER = tex.wallStone.coverM;
   const group = new THREE.Group();
   const rng = rngFor(0xca5a);
@@ -1316,49 +1318,14 @@ export function makeBuildings(plan, tex) {
   group.add(tagMesh(shutters, 'window.shutter', { solid: true, joinery: true }));
 
   // ===== 扉(石の枠と木の扉は別の素材 — 枠まで緑に塗らない)
-  const frameRectGeo = (() => {
-    const parts = [];
-    const mk = (w, hh, x, y, d = 0.16) => { const g = new THREE.BoxGeometry(w, hh, d); g.translate(x, y, 0); return g; };
-    parts.push(mk(0.16, 2.25, -0.58, 1.12));
-    parts.push(mk(0.16, 2.25, 0.58, 1.12));
-    parts.push(mk(1.32, 0.18, 0, 2.3));
-    parts.push(mk(1.4, 0.09, 0, 0.03));   // 敷居
-    return mergeGeoSimple(parts);
-  })();
-  const frameArchGeo = (() => {
-    const parts = [];
-    const mk = (w, hh, x, y, d = 0.18) => { const g = new THREE.BoxGeometry(w, hh, d); g.translate(x, y, 0); return g; };
-    parts.push(mk(0.17, 2.3, -0.62, 1.15));
-    parts.push(mk(0.17, 2.3, 0.62, 1.15));
-    // アーチ環は「半円柱」ではなく壁面に貼る半円環。半円柱だと正面から
-    // 見たとき内輪だけが見え、垂れ幕のような弧になる。
-    const sh = new THREE.Shape();
-    sh.moveTo(-0.7, 0);
-    sh.absarc(0, 0, 0.7, Math.PI, 0, true);
-    sh.lineTo(0.87, 0);
-    sh.absarc(0, 0, 0.87, 0, Math.PI, false);
-    sh.lineTo(-0.7, 0);
-    sh.closePath();
-    const arch = new THREE.ExtrudeGeometry(sh, { depth: 0.18, bevelEnabled: false, curveSegments: 10 });
-    arch.translate(0, 2.3, 0);
-    parts.push(arch);
-    // 迫の内輪(通路の天井)— 開口が「壁に描いた弧」に見えないように
-    const soff = new THREE.CylinderGeometry(0.7, 0.7, 0.30, 12, 1, true, 0, Math.PI);
-    soff.rotateX(Math.PI / 2);
-    soff.rotateZ(Math.PI);
-    soff.translate(0, 2.3, -0.10);
-    parts.push(soff);
-    parts.push(mk(1.5, 0.09, 0, 0.03));
-    return mergeGeoSimple(parts);
-  })();
-  // 扉葉は開口(clear 1.00×2.21)より小さく。大きいと枠を突き抜ける。
-  const leafGeo = (() => {
-    // 一枚板の扉は幅 1.8m の教会正面で必ず嘘になる。中央に合わせ框を入れて両開きに。
-    const l = new THREE.PlaneGeometry(0.455, 2.10); l.translate(-0.248, 1.06, 0.035);
-    const r = new THREE.PlaneGeometry(0.455, 2.10); r.translate(0.248, 1.06, 0.035);
-    const m = new THREE.BoxGeometry(0.045, 2.10, 0.028); m.translate(0, 1.06, 0.045);
-    return mergeGeoSimple([l, r, m]);
-  })();
+  seatDoorways(doors, floorSupport);
+  const frameRectGeo = doorFrameGeometry(false);
+  const frameArchGeo = doorFrameGeometry(true);
+  const leafGeo = doorLeafGeometry();
+  const archTopGeo = doorArchTopGeometry();
+  const ironGeo = doorIronworkGeometry();
+  const seatGeo = new THREE.BoxGeometry(1,1,1);
+  seatGeo.setAttribute('aStonePart',new THREE.Float32BufferAttribute(new Float32Array(seatGeo.attributes.position.count),1));
   const doorFrameMat = new THREE.MeshStandardMaterial({
     map: tex.dressed.map, normalMap: tex.dressed.normalMap,   // 戸口枠も一枚石
     color: 0xb3aa98, roughness: 0.70, envMapIntensity: 0.55,
@@ -1370,9 +1337,19 @@ export function makeBuildings(plan, tex) {
     color: 0xffffff,
   });
   const rectDoors = doors.filter(d => !d.arch), archDoors = doors.filter(d => d.arch);
+  const doorIronMat=new THREE.MeshStandardMaterial({color:0x595751,roughness:.62,metalness:.92,envMapIntensity:.5});
+  patchJoineryMaterial(doorFrameMat,'stone');patchJoineryMaterial(doorLeafMat,'wood');patchJoineryMaterial(doorIronMat,'iron');
+  for(const [geo,list] of [[frameRectGeo,rectDoors],[frameArchGeo,archDoors],[leafGeo,doors],
+    [archTopGeo,archDoors],[ironGeo,doors],[seatGeo,doors]]) {
+    joinerySeeds(geo,list);bakeSkyVisInstanced(geo,list,skyAt0,{offsetY:.9});
+  }
+  patchSkyVisInstanced(doorFrameMat);patchSkyVisInstanced(doorLeafMat);patchSkyVisInstanced(doorIronMat);
   const doorFramesRect = new THREE.InstancedMesh(frameRectGeo, doorFrameMat, rectDoors.length);
   const doorFramesArch = new THREE.InstancedMesh(frameArchGeo, doorFrameMat, archDoors.length);
   const doorLeaves = new THREE.InstancedMesh(leafGeo, doorLeafMat, doors.length);
+  const doorArchTops=new THREE.InstancedMesh(archTopGeo,doorLeafMat,archDoors.length);
+  const doorIronwork=new THREE.InstancedMesh(ironGeo,doorIronMat,doors.length);
+  const doorSeats=new THREE.InstancedMesh(seatGeo,doorFrameMat,doors.length);
   {
     const dummy = new THREE.Object3D();
     const col = new THREE.Color();
@@ -1384,9 +1361,12 @@ export function makeBuildings(plan, tex) {
       mesh.setMatrixAt(i, dummy.matrix);
     };
     rectDoors.forEach((d, i) => place(doorFramesRect, d, i));
-    archDoors.forEach((d, i) => place(doorFramesArch, d, i));
+    archDoors.forEach((d, i) => {
+      place(doorFramesArch,d,i);place(doorArchTops,d,i);
+    });
     doors.forEach((d, i) => {
       place(doorLeaves, d, i);
+      place(doorIronwork,d,i);
       // 扉の色: 木地の茶〜深緑〜灰青(色褪せ)
       // 記念建築の大扉は色くじを引かない。焦げ茶の重い木。
       if (d.big) col.setHSL(0.070, 0.26, 0.62, THREE.SRGBColorSpace);
@@ -1394,12 +1374,21 @@ export function makeBuildings(plan, tex) {
       else if (d.seed < 0.8) col.setHSL(0.345, 0.26, 0.68 + d.seed * 0.12, THREE.SRGBColorSpace);
       else col.setHSL(0.565, 0.16, 0.76, THREE.SRGBColorSpace);
       doorLeaves.setColorAt(i, col);
+      if(d.arch)doorArchTops.setColorAt(archDoors.indexOf(d),col);
+      const s=d.big ? 1.85 : .95+d.seed*.15;
+      const top=d.y-.025*s,bottom=d.supportLow-.025*s,height=Math.max(.004,top-bottom);
+      dummy.position.set(d.x+Math.sin(d.rotY)*(.02+.015*s),bottom+height/2,d.z+Math.cos(d.rotY)*(.02+.015*s));
+      dummy.rotation.set(0,d.rotY,0);dummy.scale.set((d.arch ? 1.5 : 1.4)*s,height,.28*s);
+      dummy.updateMatrix();doorSeats.setMatrixAt(i,dummy.matrix);
     });
   }
-  doorFramesRect.receiveShadow = doorFramesArch.receiveShadow = true;
+  for(const m of [doorFramesRect,doorFramesArch,doorLeaves,doorArchTops,doorIronwork,doorSeats])m.castShadow=m.receiveShadow=true;
   group.add(tagMesh(doorFramesRect, 'door.frameRect', { solid: true, masonry: true, staticDetail: true }),
     tagMesh(doorFramesArch, 'door.frameArch', { solid: true, masonry: true, staticDetail: true }),
-    tagMesh(doorLeaves, 'door.leaf', { thin: true, reason: '扉の葉は板(要立体化)', joinery: true, staticDetail: true }));
+    tagMesh(doorLeaves, 'door.leaf', { solid:true, joinery: true, staticDetail: true }),
+    tagMesh(doorArchTops,'door.archTop',{solid:true,joinery:true,staticDetail:true}),
+    tagMesh(doorIronwork,'door.ironwork',{solid:true,small:true,staticDetail:true}),
+    tagMesh(doorSeats,'door.stoneSeat',{solid:true,masonry:true,groundContact:true,buriedBase:true,staticDetail:true}));
 
   // 城壁の内面の足元。街の中でいちばん面積の大きい石の面なのに、接地の
   // 汚れが 1 枚も無かった(実測 半径 16m に 0 枚)。石の量で言えば街の
