@@ -60,17 +60,23 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
     }
     return found ? {y,source:found.source,entry:found} : null;
   }
-  function disk(x,z,r,ceiling=Infinity,tolerance=.009) {
+  function disk(x,z,r,ceiling=Infinity,tolerance=.009,maxSlope=0) {
     const center=sample(x,z,ceiling);
     if(!center)return null;
-    let lo=center.y,hi=center.y;
+    let lo=center.y,hi=center.y,gx=0,gz=0;const rim=[];
     for(let i=0;i<16;i++) {
       const theta=i*Math.PI/8;
       const h=sample(x+Math.cos(theta)*r,z+Math.sin(theta)*r,ceiling);
-      if(!h || Math.abs(h.y-center.y)>tolerance)return null;
+      if(!h)return null;
+      const dx=Math.cos(theta)*r,dz=Math.sin(theta)*r,dy=h.y-center.y;
+      rim.push({dx,dz,dy});gx+=dx*dy/(8*r*r);gz+=dz*dy/(8*r*r);
       lo=Math.min(lo,h.y);hi=Math.max(hi,h.y);
     }
-    return {x,y:center.y,z,lo,hi,r};
+    if(maxSlope===0){gx=0;gz=0;}
+    else if(Math.hypot(gx,gz)>maxSlope)return null;
+    for(const p of rim)if(Math.abs(p.dy-gx*p.dx-gz*p.dz)>tolerance)return null;
+    const length=Math.hypot(gx,1,gz);
+    return {x,y:center.y,z,lo,hi,r,up:[-gx/length,1/length,-gz/length]};
   }
   function nearbySteps(x,z,radius=1.3) {
     const candidates=new Set();

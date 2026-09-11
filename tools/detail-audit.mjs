@@ -1,6 +1,7 @@
 import { installDomShim } from './structure/domshim.mjs';
 installDomShim();
 import { writeFileSync } from 'node:fs';
+import * as THREE from 'three';
 import { makeGroundSupport } from '../src/support.js';
 import { collectObjects, buildTriangles, Grid, castDown, meshTopology } from './structure/geom.mjs';
 const { buildWorld } = await import('../src/world.js');
@@ -17,10 +18,11 @@ for (const pot of pots) {
   const samples = [];
   for (let k = -1; k < 12; k++) {
     const a = k * Math.PI / 6, r = k === -1 ? 0 : radius;
-    const hit = castDown(grid,owner,x + Math.cos(a)*r,z + Math.sin(a)*r,y+.40);
+    const point=new THREE.Vector3(Math.cos(a)*(k===-1 ? 0 : .229),0,Math.sin(a)*(k===-1 ? 0 : .229)).applyMatrix4(pot.matrix);
+    const hit = castDown(grid,owner,point.x,point.z,point.y+.40);
     if (hit) {
-      samples.push({k,delta:y-hit.y,support:objects[hit.obj]?.tag});
-      const probe=support.sample(x+Math.cos(a)*r,z+Math.sin(a)*r,y+.40);
+      samples.push({k,delta:point.y-hit.y,support:objects[hit.obj]?.tag});
+      const probe=support.sample(point.x,point.z,point.y+.40);
       supportError=Math.max(supportError,probe ? Math.abs(hit.y-probe.y) : Infinity);
     }
   }
@@ -42,9 +44,11 @@ for (const [i,q] of world.stepPool.items.entries()) {
   if(depth>.01)pavedOverSteps.push({i,x:q.x,z:q.z,y:q.y,run:q.run,depth});
 }
 const report = { pots:pots.length,supportError,supportTriangles:support.triangles,
+  seating:world.life.potSeating,
   pavingAboveTreads:pavedOverSteps.length,pavedOverSteps,
   floatingCenters:rows.filter(r=>r.center>.01).length,
   embeddedCenters:rows.filter(r=>r.center<-.04).length,
+  maxBaseGap:Math.max(...rows.map(r=>r.max)),maxBasePenetration:-Math.min(...rows.map(r=>r.min)),
   unsupportedFootprints:rows.filter(r=>r.max>.03 || r.min<-.04).length,
   footprintCases:rows.filter(r=>r.max>.03 || r.min<-.04),meshes,
   roofAxes:world.plan.houses.reduce((a,h)=>(a[h.ridgeAxis]=(a[h.ridgeAxis]||0)+1,a),{}),
@@ -55,3 +59,10 @@ console.log(JSON.stringify({...report,pavedOverSteps:report.pavedOverSteps.slice
   bodyTopology:{...report.bodyTopology,boundarySample:[],nonManifoldSample:[]},
   meshes:meshes.map(m=>({...m,unitTopology:{...m.unitTopology,boundarySample:[],nonManifoldSample:[]}}))},null,2));
 if(supportError>1e-5)throw new Error('Placement support differs from independent triangle raycasts');
+if(process.argv.includes('--strict')) {
+  if(report.maxBaseGap>.009 || report.maxBasePenetration>.009)throw new Error('A rendered vessel base does not fit its support');
+  for(const r of pavedOverSteps) {
+    const q=world.stepPool.items[r.i];
+    if((q.step!==0 && q.step!==q.of) || r.depth>.035)throw new Error('Paving still penetrates a tread away from a landing');
+  }
+}

@@ -52,7 +52,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const surround = makeSurround(plan, tex);
   const seaObj = sea ? makeSea(plan) : null;
   const skyObj = sky ? makeSky(tex) : null;
-  const lifeObj = life ? makeLife(plan, tex, stepPool) : null;
+  const lifeObj = life ? makeLife(plan, tex, stepPool, ground.group) : null;
   const steps = stepPool.finalize(getSharedSkyVis());
 
   const parts = { ground, walls, buildings, monuments, surround, sea: seaObj, sky: skyObj, life: lifeObj };

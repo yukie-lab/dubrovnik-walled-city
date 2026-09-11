@@ -8,6 +8,8 @@ import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { makePottedPlants } from './plants.js';
+import { makeGroundSupport } from './support.js';
+import { seatPottedPlants } from './prop-support.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
 
@@ -24,7 +26,7 @@ function depthFor(mat) {
 }
 
 
-export function makeLife(plan, tex, stepPool) {
+export function makeLife(plan, tex, stepPool, groundGroup) {
   // 時刻で変わるもの。update() が行列を書き換えるだけの設計だったので、
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
@@ -270,7 +272,7 @@ export function makeLife(plan, tex, stepPool) {
   };
 
   // ------------------------------------------------------- 鉢植えと緑 ----
-  const pots = [];    // 階段脇・扉脇
+  let pots = [];    // 階段脇・扉脇
   // 鉢を増やしたら鉢どうしが重なった(実測 19 組)。鉢の外径は 0.335m。
   const putPot = (o) => {
     for (const q of pots) if (Math.hypot(q.x - o.x, q.z - o.z) < 0.78) return;
@@ -310,6 +312,8 @@ export function makeLife(plan, tex, stepPool) {
     const pz5 = (rng() < 0.5 ? -1 : 1) * (3.5 - 0.2);
     putPot({ x, z: pz5, y: onFloor(x, pz5, 2.6), s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
   }
+  const seating=seatPottedPlants(pots,makeGroundSupport(groundGroup,stepPool.items),plan);
+  pots=seating.pots;
   const pottedPlants = makePottedPlants(pots, skyAt, plantTime);
   group.add(pottedPlants.group);
 
@@ -2216,7 +2220,7 @@ export function makeLife(plan, tex, stepPool) {
   }
 
   return {
-    group, update, near, folk,
+    group, update, near, folk, potSeating:seating.report,
     counts: { ropes: ropes.length, cloths: cloths.length, pots: pots.length, chairs: chairPos.length, swifts: NSWIFT, gulls: NGULL },
   };
 }

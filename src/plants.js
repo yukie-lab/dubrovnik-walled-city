@@ -232,15 +232,17 @@ export function makePottedPlants(pots, skyAt, time) {
   let si = 0, li = 0;
   for (let i = 0; i < pots.length; i++) {
     const pot = pots[i], g = growth[i];
-    q.setFromAxisAngle(UP,pot.seed*7);
+    q.setFromUnitVectors(UP,V(...(pot.up||[0,1,0])));
+    q.multiply(new THREE.Quaternion().setFromAxisAngle(UP,pot.seed*7));
     parent.compose(V(pot.x,pot.y,pot.z),q,V(pot.s,pot.s,pot.s));
     batches[0].setMatrixAt(i,parent);
     col.setHSL(.043 + (pot.seed-.5)*.017, .29 + pot.seed*.13, .37 + pot.seed*.105,THREE.SRGBColorSpace);
     batches[0].setColorAt(i,col);
     seeds[i] = pot.seed;
     skies[0][i] = skyAt(pot.x,pot.z,pot.y+.4,0,1,0);
-    parent.setPosition(pot.x,pot.y+.34*pot.s,pot.z);
-    const windRoot = [pot.x,pot.y+.34*pot.s,pot.z,pot.seed];
+    p.set(0,.34,0).applyMatrix4(parent);
+    parent.setPosition(p);
+    const windRoot = [p.x,p.y,p.z,pot.seed];
     for (const stem of g.stems) {
       const d = stem.b.clone().sub(stem.a);
       q.setFromUnitVectors(UP,d.clone().normalize());

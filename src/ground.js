@@ -12,6 +12,7 @@ import { streetY, farHeight } from './plan.js';
 import { specularEnvTargets, sharedSkyVis } from './buildings.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
 import { patchWet } from './wet.js';
+import { cutPavingAtSteps } from './paving-cut.js';
 
 
 
@@ -648,10 +649,14 @@ export function makeGround(plan, tex, stepPool) {
   const paveGeoms = [];
   const stradunGeoms = [];
   for (const s of plan.streets) {
+    const firstStep=stepPool.items.length;
+    if(s.kind==='alley')for(const seg of plan.alleySamples(s).segs) {
+      if(seg.stepped)stepPool.addRun([seg.a,seg.b],s.w+.95);
+    }
     const yAt = (x, z) => streetY(s, x, z);
     const isStradun = s.kind === 'stradun';
     const edges = { left: [], right: [] };
-    const g = stripGeometry(s.pts, s.w + 0.9, yAt, {
+    const strip = stripGeometry(s.pts, s.w + 0.9, yAt, {
       // 帯の幅は **plan が唯一の真実**。置く側(pavedY)と足の側(groundAt)が
       // 同じ表を引く。ここで自前に計算し直すと、また三者が別々の真実を持つ。
       halfAt: (sArc, sign) => plan.paveHalfAt(s, sArc, sign),
@@ -665,6 +670,9 @@ export function makeGround(plan, tex, stepPool) {
       // 気づかれない範囲で刻む(実測 中央 +0.026 → +0.007)。
       lift: isStradun ? 0.012 : s.kind === 'alley' ? 0.002 : 0.007,
     });
+    const g=cutPavingAtSteps(strip,stepPool.items.slice(firstStep));
+    if(g!==strip)strip.dispose();
+    g.userData.surfaceSource=s.id;
     (isStradun ? stradunGeoms : paveGeoms).push(g);
 
     // 縁石。立面の下へ潜っている縁には要らない(屋根の下だから見えない)。
@@ -683,12 +691,6 @@ export function makeGround(plan, tex, stepPool) {
       if (sk) paveGeoms.push(sk);
     }
 
-    // 勾配のきつい路地は階段化(足の量子化と同じ共有サンプル・同じ段フラグ)
-    if (s.kind === 'alley') {
-      for (const seg of plan.alleySamples(s).segs) {
-        if (seg.stepped) stepPool.addRun([seg.a, seg.b], s.w + 0.95);
-      }
-    }
   }
   // 門の敷居。舗装の帯は街路の中心線から (w+0.9)/2 までしか無いので、門が
   // その帯の外に立つと、通路の床だけが素地形に落ちる(実測: ポンテ門で

@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 export async function walkChecks(page,{name,dir,rows,errors,args}) {
   await page.goto('http://localhost:8765/?shot=1&hud=0&x=-138&z=-1.2&yaw=-1.57&pitch=0.015&time=7.9&fov=54',{waitUntil:'domcontentloaded'});
   await page.waitForFunction('window.__READY && window.__captureFrame',{timeout:60000});
-  const stations=await page.evaluate(()=>{
+  let stations=await page.evaluate(()=>{
     const {plan}=window.__world,points=[];
     for(let i=1;i<plan.wallPts.length;i++) {
       const a=plan.wallPts[i-1],b=plan.wallPts[i],x=(a[0]+b[0])/2,z=(a[1]+b[1])/2;
@@ -28,6 +28,7 @@ export async function walkChecks(page,{name,dir,rows,errors,args}) {
     }
     return points;
   });
+  if(args.includes('--stations'))stations=stations.filter(s=>s.id.includes(args[args.indexOf('--stations')+1]));
   // Measure CPU visibility work with a changing camera. A stationary capture
   // skips that work, so its FPS is not an adequate movement benchmark.
   await page.evaluate(()=>{
@@ -35,7 +36,7 @@ export async function walkChecks(page,{name,dir,rows,errors,args}) {
     window.__lodTimes=[];
     lod.update=(...a)=>{const t=performance.now();original(...a);window.__lodTimes.push(performance.now()-t);};
   });
-  for(const mode of ['off','on']) {
+  for(const mode of (args.includes('--no-motion') ? [] : ['off','on'])) {
     await page.evaluate(mode=>{
       const w=window.__world,p=w.player,g=w.plan.groundAt(-138,-1.2,2);
       Object.assign(p,{x:-138,z:-1.2,groundY:g.y,smoothY:g.y,zone:g.zone,yaw:-Math.PI/2,pitch:.015,vx:0,vz:0,bobAmp:0,frozen:false});
