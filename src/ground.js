@@ -3,16 +3,17 @@
 // ・市内の基盤地形(家々と舗装の下地)
 // ・城壁外: 南の海食岩棚 / 北の乾壕と山裾 / 西の入江 / 東の港底
 // ・街路の舗装ストリップ(ストラドゥンだけ鏡面に磨く)
-// ・StepPool: 市中のあらゆる石段を 1 つの InstancedMesh に束ねる
+// ・StepPool: 市中の石段を閉じた立体として 1 つの描画バッチへ束ねる
 // ============================================================================
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, samplePolyline, polylineLength, pointInPoly, vnoise, fbm2, tagMesh } from './util.js';
 import { streetY, farHeight } from './plan.js';
 import { specularEnvTargets, sharedSkyVis } from './buildings.js';
-import { makeSkyVis, patchSkyVis, bakeSkyVis, patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
+import { makeSkyVis, patchSkyVis, bakeSkyVis } from './skyvis.js';
 import { patchWet } from './wet.js';
 import { cutPavingAtSteps } from './paving-cut.js';
+import { makeStepBatch } from './step-batch.js';
 
 
 
@@ -118,80 +119,8 @@ export function makeStepPool(tex) {
       }
     }
   }
-  function finalize(skyAt) {
-    const geo = new THREE.BoxGeometry(1, 1, 1);
-    geo.translate(0, -0.5, 0); // 上面が y=0
-    // テクスチャは共有せず複製(repeat を触ると舗装まで変わる)
-    const stepMap = tex.paving.map.clone();
-    stepMap.repeat.set(0.55, 0.16);   // 踏面は幅 2.9m × 奥行 0.5m。等方の repeat だと石目が 6:1 に伸びる
-    const stepNrm = tex.paving.normalMap.clone();
-    stepNrm.repeat.set(0.55, 0.16);
-    const stepRgh = tex.paving.roughnessMap.clone();
-    stepRgh.repeat.set(0.55, 0.16);
-    const mat = new THREE.MeshStandardMaterial({
-      map: stepMap, normalMap: stepNrm, roughnessMap: stepRgh,
-      vertexColors: true,
-      roughness: 0.70, metalness: 0, envMapIntensity: 0.55,
-    });
-    // 段は箱で、踏面・蹴上・小口が同じ頂点色を共有していた。結果、連続する
-    // 二つの踏面の輝度差が 0.3% しかなく(実測 headroom 0.065 = 32枚の最小値)、
-    // 光が作る線だけが段を読ませていた。**石が段を作る**ようにする。
-    {
-      const nrm = geo.attributes.normal, cnt = nrm.count;
-      const fc = new Float32Array(cnt * 3);
-      for (let i = 0; i < cnt; i++) {
-        const ny = nrm.getY(i);
-        // 踏面 1.00 / 蹴上・小口 0.90 / 下面 0.80。光がどうであろうと段が読める。
-        const v = ny > 0.5 ? 1.0 : ny < -0.5 ? 0.80 : 0.90;
-        fc[i * 3] = v; fc[i * 3 + 1] = v; fc[i * 3 + 2] = v;
-      }
-      geo.setAttribute('color', new THREE.BufferAttribute(fc, 3));
-    }
-    // 摩耗した段鼻は磨かれて丸く、そこだけが空を拾う。幾何は触らず材質で作る。
-    {
-      const prevOBC = mat.onBeforeCompile;
-      mat.onBeforeCompile = (sh, r) => {
-        if (prevOBC) prevOBC.call(mat, sh, r);
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', '#include <common>\n varying vec3 vStepL; varying vec3 vStepN;')
-          .replace('#include <begin_vertex>', '#include <begin_vertex>\n vStepL = position; vStepN = normal;');
-        sh.fragmentShader = sh.fragmentShader
-          .replace('#include <common>', '#include <common>\n varying vec3 vStepL; varying vec3 vStepN;')
-          .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
-            float isTread = step(0.5, vStepN.y);
-            // 幅方向の中央ほど踏まれる(端 20% は靴が通らない)
-            float wearC = 1.0 - smoothstep(0.12, 0.44, abs(vStepL.x));
-            // 段鼻と後端の丸み。どちら向きに昇る段でも同じに効くよう両端を取る。
-            float nose = smoothstep(0.34, 0.50, abs(vStepL.z));
-            float w = isTread * max(wearC, nose);
-            roughnessFactor *= mix(1.0, 0.60, w);`)
-          .replace('#include <color_fragment>', `#include <color_fragment>
-            diffuseColor.rgb *= mix(1.0, 0.93, step(0.5, vStepN.y)
-              * (1.0 - smoothstep(0.12, 0.44, abs(vStepL.x))));`);
-      };
-      const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
-      mat.customProgramCacheKey = () => key + '|stepwear';
-    }
-    // 路地の段は常に日陰側にある。天空可視率が無いと蹴上だけが青く浮く。
-    if (skyAt) { bakeSkyVisInstanced(geo, items, skyAt, { offsetY: 0.25 }); patchSkyVisInstanced(mat); }
-    const mesh = new THREE.InstancedMesh(geo, mat, items.length);
-    const dummy = new THREE.Object3D();
-    const col = new THREE.Color();
-    items.forEach((it, i) => {
-      dummy.position.set(it.x, it.y, it.z);
-      dummy.rotation.set(0, it.rotY, 0);
-      dummy.scale.set(it.w, 0.55, it.d);   // 深めに沈めて隙間を見せない
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-      col.setHSL(0.10, 0.15, 0.775 * it.tint, THREE.SRGBColorSpace);
-      mesh.setColorAt(i, col);
-    });
-    mesh.castShadow = true; mesh.receiveShadow = true;
-    // 石段は「置いた物」なので、1 段ごとに接地と蹴上を検証できるよう素データを渡す。
-    // 段の箱は踏面が y=0、下へ 0.55m 伸びる — 舗装に沈めて隙間を見せないため。
-    // つまり「箱の底」は接地面ではない。浮きだけを主張する物として宣言する。
-    return tagMesh(mesh, 'steps', { solid: true, masonry: true, groundContact: true, buriedBase: true, steps: items });
-  }
+  function finalize(skyAt) { return makeStepBatch(items,tex,skyAt); }
+
   return { addRun, finalize, items, get count() { return items.length; } };
 }
 

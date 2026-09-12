@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import {stepSurfaceAt} from './step-stone.js';
 
 // Static street-level support surfaces, taken from the generated triangles and
 // the same step records used by the rendered step batch. This is for placing
@@ -50,7 +51,7 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
       if(e.type==='step') {
         const q=e.step,dx=x-q.x,dz=z-q.z;
         if(Math.abs(dx*e.co-dz*e.si)>q.w*.5+1e-7 || Math.abs(dx*e.si+dz*e.co)>q.d*.5+1e-7)continue;
-        h=q.y;
+        h=stepSurfaceAt(q,x,z);if(h===null)continue;
       }else {
         const dx=x-e.cx,dz=z-e.cz,u=dx*e.ax+dz*e.az,v=dx*e.bx+dz*e.bz;
         if(u< -1e-7 || v< -1e-7 || u+v>1+1e-7)continue;

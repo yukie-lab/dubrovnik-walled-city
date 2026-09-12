@@ -65,7 +65,7 @@ try {
   }
   if(args.includes('--step-study')) {
     const {stepStudy}=await import('./step-study.mjs');
-    await stepStudy(page,{name,dir,rows,errors});views=[];
+    await stepStudy(page,{name,dir,rows,errors,args});views=[];
   }
   for (let r = 0; r < repeat; r++) for (const [view, query] of views) {
     await page.goto(`${process.env.BASE || 'http://localhost:8765'}/index.html?shot=1&hud=0&${query}`, { waitUntil: 'domcontentloaded' });
