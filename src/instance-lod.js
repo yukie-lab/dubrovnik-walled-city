@@ -132,7 +132,7 @@ export function makeInstanceLOD(root, plan) {
   const actors=[...actorGroups.values()].map(meshes=>new ActorBatchLOD(meshes));
   const view = new THREE.Frustum(), shadow = new THREE.Frustum(), matrix = new THREE.Matrix4();
   const occlusion=plan ? makeHouseOcclusion(plan.houses) : null;
-  const signature=new Float64Array(35).fill(NaN), nextSignature=new Float64Array(35);
+  const signature=new Float64Array(36).fill(NaN), nextSignature=new Float64Array(36);
   return {
     enabled: true,
     occlusionEnabled: true,
@@ -158,13 +158,14 @@ export function makeInstanceLOD(root, plan) {
       const shadowPixelScale = sun.shadow.mapSize.x / (sc.right - sc.left);
       nextSignature[32]=pixelScale;nextSignature[33]=sun.castShadow ? shadowPixelScale : 0;
       nextSignature[34]=this.occlusionEnabled ? 1 : 0;
+      nextSignature[35]=camera.layers.mask;
       // Moving residents need a fresh selection even with a stationary camera.
       for(const actor of actors)actor.update(view.planes,sun.castShadow ? shadow.planes : null,
         camera.position,pixelScale,shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc);
       if(nextSignature.every((n,i)=>n===signature[i]))return;
       signature.set(nextSignature);
       for (const b of batches) b.update(view.planes, sun.castShadow ? shadow.planes : null,
-        camera.position, pixelScale, shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc);
+        camera.position, pixelScale, shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc,camera.layers.mask);
     },
   };
 }

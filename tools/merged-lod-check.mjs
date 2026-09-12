@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {MergedSolidLOD} from '../src/merged-lod.js';
+import {makeHouseOcclusion} from '../src/occlusion.js';
 const parts=[[0,0,-5],[10,0,-5],[0,0,5]].map(xyz=>new THREE.BoxGeometry(1,1,1).translate(...xyz));
 const geometry=mergeGeometries(parts),mesh=new THREE.Mesh(geometry,new THREE.MeshBasicMaterial());
 geometry.userData.solids=parts.map((g,i)=>({x:i,z:0,from:i*12,to:(i+1)*12}));
@@ -18,3 +19,27 @@ lod.update([new THREE.Plane(new THREE.Vector3(1,0,0),-1000)],null);assert.equal(
 lod.restore();assert.deepEqual(geometry.index.array,source);assert.equal(lod.count,108);
 assert(geometry.boundingSphere.radius>5,'Whole-batch bound must survive empty draw');
 console.log('Merged solids: view/shadow union, exact index identity, empty draw and restoration passed.');
+
+{
+  const parts=[[0,0,-8],[3.2,0,-8],[0,0,-2]].map(p=>new THREE.BoxGeometry(.4,.4,.4).translate(...p));
+  const g=mergeGeometries(parts),mesh=new THREE.Mesh(g,new THREE.MeshBasicMaterial());
+  g.userData.solids=parts.map((p,i)=>({x:i,z:0,from:i*12,to:(i+1)*12}));
+  mesh.castShadow=true;
+  const source=g.index.array.slice(),lod=new MergedSolidLOD(mesh),camera=new THREE.PerspectiveCamera(90,1,.1,100);
+  const view=new THREE.Frustum().setFromProjectionMatrix(camera.projectionMatrix);
+  const occlusion=makeHouseOcclusion([{x:0,z:-4,w:3,d:1,yBase:-2,eaves:2}]);
+  lod.update(view.planes,null,camera.position,1,1,occlusion,null,1);
+  assert.equal(lod.count,72,'A whole solid hidden behind a real building is omitted');
+  assert.deepEqual(g.index.array.subarray(0,72),source.subarray(36),'Visible edge and foreground geometry retain their exact indices');
+  const sideSun=new THREE.OrthographicCamera(-10,10,10,-10,.1,30);
+  sideSun.position.set(10,0,-8);sideSun.lookAt(0,0,-8);sideSun.updateMatrixWorld();
+  const sf=new THREE.Frustum().setFromProjectionMatrix(new THREE.Matrix4().multiplyMatrices(sideSun.projectionMatrix,sideSun.matrixWorldInverse));
+  lod.update(view.planes,sf.planes,camera.position,1,1,occlusion,sideSun,1);
+  assert.equal(lod.count,108,'A hidden solid still visible to the sun must keep its shadow');
+  mesh.layers.enable(1);
+  lod.update(view.planes,null,camera.position,1,1,occlusion,null,1);
+  assert.equal(lod.count,108,'Occluders absent from a second render layer must not erase its geometry');
+  mesh.layers.set(0);lod.update(view.planes,null,camera.position,1,1,occlusion,null,1);
+  assert.equal(lod.count,72);lod.restore();assert.deepEqual(g.index.array,source);
+  console.log('Merged occlusion: hidden solids, silhouette retention, side-lit shadows and secondary render layers passed.');
+}

@@ -22,12 +22,26 @@ export class MergedSolidLOD {
     this.count=this.source.length;
     mesh.geometry.computeBoundingSphere();
   }
-  update(viewPlanes,shadowPlanes) {
+  update(viewPlanes,shadowPlanes,cameraPosition,pixelScale,shadowPixelScale,occlusion=null,shadowView=null,viewMask=1) {
     const inside=(planes,s)=>planes.every(p=>p.distanceToPoint(s.center)>=-s.radius-.02);
+    // A mesh also submitted to another render layer needs that layer's view.
+    // Main-view buildings cannot hide geometry from a water/reflection pass
+    // in which those buildings are absent. Keep such batches conservatively.
+    const canOcclude=occlusion && (this.mesh.layers.mask & ~viewMask)===0;
     let changed=false;
     for(let i=0;i<this.groups.length;i++) {
-      const sphere=this.groups[i].sphere;
-      this.next[i]=inside(viewPlanes,sphere)||(this.mesh.castShadow && shadowPlanes && inside(shadowPlanes,sphere)) ? 1 : 0;
+      const sphere=this.groups[i].sphere,{x,y,z}=sphere.center,r=sphere.radius+.02;
+      let visible=inside(viewPlanes,sphere);
+      if(visible && canOcclude)visible=!occlusion.blocked(cameraPosition.x,cameraPosition.y,cameraPosition.z,x,y,z,r);
+      let shadow=this.mesh.castShadow && shadowPlanes && inside(shadowPlanes,sphere);
+      if(shadow && canOcclude && shadowView) {
+        const e=shadowView.matrixWorldInverse.elements,travel=-(x*e[2]+y*e[6]+z*e[10]+e[14])-shadowView.near;
+        if(travel>2*r) {
+          const m=shadowView.matrixWorld.elements;
+          shadow=!occlusion.blocked(x+m[8]*travel,y+m[9]*travel,z+m[10]*travel,x,y,z,r);
+        }
+      }
+      this.next[i]=visible||shadow ? 1 : 0;
       if(this.next[i]!==this.kept[i])changed=true;
     }
     if(!changed)return;
