@@ -55,6 +55,18 @@ try {
     const {uiChecks}=await import('./ui-check.mjs');
     await uiChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--folk')) {
+    const {folkChecks}=await import('./folk-capture.mjs');
+    await folkChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--tour')) {
+    const {tourChecks}=await import('./tour-capture.mjs');
+    await tourChecks(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--step-study')) {
+    const {stepStudy}=await import('./step-study.mjs');
+    await stepStudy(page,{name,dir,rows,errors});views=[];
+  }
   for (let r = 0; r < repeat; r++) for (const [view, query] of views) {
     await page.goto(`${process.env.BASE || 'http://localhost:8765'}/index.html?shot=1&hud=0&${query}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction('window.__READY && window.__captureFrame', { timeout: 60000 });
@@ -116,6 +128,9 @@ try {
     if (row.drawCalls > 200 || !row.instances || row.instances > row.instanceCapacity
       || row.instances !== row.exposedInstances || row.dpr > 2 || !row.stableFrames) errors.push(`${view}: telemetry/stability/budget check failed`);
   }
+} catch(e) {
+  errors.push(String(e.stack||e));
+  throw e;
 } finally {
   await browser.close();
   writeFileSync(new URL(name + '.json', dir), JSON.stringify({ errors, rows }, null, 2) + '\n');

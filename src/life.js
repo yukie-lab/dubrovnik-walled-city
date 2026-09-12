@@ -8,6 +8,8 @@ import * as THREE from 'three';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { makePottedPlants } from './plants.js';
+import { makeFolkGeometry } from './folk-shape.js';
+import { patchFolkPose } from './folk-pose.js';
 import { seatPottedPlants } from './prop-support.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
@@ -898,169 +900,17 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     const box = (w, h, d, x, y, z = 0) => {
       const g = new THREE.BoxGeometry(w, h, d); g.translate(x, y + h / 2, z); return g;
     };
-    const taper = (wt, wb, h, d, x, y) => {
-      const g = new THREE.CylinderGeometry(wt, wb, h, 10);
-      g.scale(1, 1, d); g.translate(x, y + h / 2, 0); return g;
-    };
-    // 胴(シャツ)
-    // 実測の人体は肩幅 0.42m・胸厚 0.24m(幅:厚 = 1.75:1)。
-    // 前後に長い円柱にすると、背面から見たとき一枚の板になる。
-    const torsoGeo = mergeGeo([
-      limbOf(taper(0.21, 0.185, 0.52, 0.58, 0, 1.16), 0),         // 胴(横に広く前後に薄い)
-      (() => { const g = new THREE.SphereGeometry(0.092, 8, 6); g.scale(1, 0.80, 0.60); g.translate(-0.190, 1.60, 0); return limbOf(g, 0); })(),
-      (() => { const g = new THREE.SphereGeometry(0.092, 8, 6); g.scale(1, 0.80, 0.60); g.translate(0.190, 1.60, 0); return limbOf(g, 0); })(),
-    ]);
-    // 腕は上腕・前腕・肩を分けず 1 本の連続体に(境目の段差が「部品の寄せ集め」に見える)
-    const armGeo = mergeGeo([
-      (() => { const g = new THREE.CylinderGeometry(0.050, 0.042, 0.60, 6); g.scale(1, 1, 1.12); g.translate(-0.205, 1.32, 0); return limbOf(g, -2); })(),
-      (() => { const g = new THREE.CylinderGeometry(0.050, 0.042, 0.60, 6); g.scale(1, 1, 1.12); g.translate(0.205, 1.32, 0); return limbOf(g, 2); })(),   // 腕は脚と対側に振る
-      limbOf(box(0.072, 0.105, 0.048, -0.205, 0.925), -2),
-      limbOf(box(0.072, 0.105, 0.048, 0.205, 0.925), 2),
-    ]);
-    // 脚(ズボン)。腰と腿を 0.03m 重ねる — 隙間があると製図用コンパスに見える。
-    const legGeo = mergeGeo([
-      limbOf(box(0.300, 0.30, 0.225, 0, 0.88), 0),                // 腰
-      limbOf(box(0.145, 0.47, 0.165, -0.086, 0.44), 1),           // 腿 左
-      limbOf(box(0.145, 0.47, 0.165, 0.086, 0.44), -1),           // 腿 右
-      limbOf(box(0.115, 0.42, 0.140, -0.094, 0.03), 1),           // 脛 左
-      limbOf(box(0.115, 0.42, 0.140, 0.094, 0.03), -1),           // 脛 右
-      // box(w,h,d,x,y,z) の y は **底**(中心ではない)。足裏は元から原点にある。
-      // 「中心 y=0 だから足裏が 0.028m 下」と読み違えて持ち上げ、逆に 2.75cm
-      // 浮かせたことがある。箱の定義を読んでから直すこと。
-      limbOf(box(0.118, 0.055, 0.245, -0.096, 0.0, 0.042), 1),    // 足 左
-      limbOf(box(0.118, 0.055, 0.245, 0.096, 0.0, 0.042), -1),    // 足 右
-    ]);
-    // 頭・首(肌)
-    const headGeo = (() => {
-      const h = new THREE.SphereGeometry(0.108, 8, 6);
-      h.scale(0.78, 1.12, 0.88); h.translate(0, 1.80, 0);   // 頭幅は 0.17m。0.20 だと顔が大きい
-      const nose = new THREE.BoxGeometry(0.028, 0.042, 0.034); nose.translate(0, 1.782, 0.094);
-      const neck = new THREE.CylinderGeometry(0.055, 0.062, 0.12, 6); neck.translate(0, 1.68, 0);
-      return mergeGeo([limbOf(h, 0), limbOf(nose, 0), limbOf(neck, 0)]);
-    })();
-
-    const walkShader = (mat) => {
-      mat.onBeforeCompile = (sh) => {
-        sh.uniforms.uT = clothTime;
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', `#include <common>
-            uniform float uT; attribute float aLimb; attribute float aPh; attribute float aWalk;
-            attribute float aCad; attribute float aSit; attribute float aPose;`)
-          .replace('#include <begin_vertex>', `#include <begin_vertex>
-            float ph = aPh + uT * aCad;
-            float sw = sin(ph) * aWalk;
-            // 立ち止まっている人の姿勢(0=直立 1=片手を腰 2=腕組み 3=片脚に体重)
-            float stand = 1.0 - aWalk;
-            float pz = floor(aPose + 0.5);
-            float breathe = sin(uT * 0.55 + aPh) * 0.012 * stand;   // 呼吸と重心の揺れ
-            if (abs(aLimb) > 0.5) {
-              float side = sign(aLimb);
-              float isArm = step(1.5, abs(aLimb));
-              float amp = mix(0.40, 0.30, isArm);   // 散歩の股関節は片側 12〜14°
-              float piv = mix(0.90, 1.62, isArm);
-              float a = sw * side * amp;
-              // 立位の腕は左右で別の角度をとる。同じ角度だと必ずブリキの兵隊になる。
-              // 肩から丸ごと回すと腕が水平に突き出るので、肘から先にだけ効かせる。
-              float tArm = clamp((piv - transformed.y) / 0.62, 0.0, 1.0);
-              float elbow = smoothstep(0.44, 1.0, tArm);
-              if (isArm > 0.5) {
-                a += sin(uT * 0.42 + aPh + side) * 0.04 * stand;
-              } else if (pz == 3.0) {
-                a += side * 0.10 * stand;                               // 片脚に体重
-              }
-              // 膝。脛(y<0.45)を後ろへ折る。これが無いと 200 人全員が黒い筒になる。
-              if (isArm < 0.5) {
-                float knee = max(0.0, -sin(ph) * side) * 0.62 * aWalk;
-                float dyK = transformed.y - 0.45;
-                if (dyK < 0.0) {
-                  transformed.z += sin(knee) * dyK;
-                  transformed.y = 0.45 + cos(knee) * dyK;
-                }
-              }
-              float dy = transformed.y - piv;
-              float ca = cos(a), sa = sin(a);
-              transformed.z += sa * dy;
-              transformed.y = piv + ca * dy;
-              // 腕組みは前腕を体の前で内側へ寄せる
-              // 剛体の円柱は「肩から回す」と必ずスキーのストックになる。
-              // 手先の位置だけを動かして、肘の曲がりを暗示する。
-              if (isArm > 0.5 && stand > 0.5) {
-                if (pz == 1.0 && side > 0.0) {          // 片手を腰へ
-                  transformed.x -= 0.098 * elbow;
-                  transformed.y += 0.075 * elbow;
-                  transformed.z -= 0.030 * elbow;
-                } else if (pz == 2.0 && side < 0.0) {
-                  // 片手で反対の肘を持つ。左右対称に寄せると前腕が融合して
-                  // 「胸の白い塊」になる(実測 シャツとの段差 L* 16.6)。片腕だけ動かす。
-                  transformed.x += 0.115 * elbow;
-                  transformed.y += 0.185 * elbow;
-                  transformed.z += 0.085 * elbow;
-                }
-              }
-            }
-            // 剛体回転で足裏が 0.90·(1−cos a) 浮く。骨盤を同じだけ下げて接地を保つ。
-            // ただし体ごと下げると **接地している側の足も** 一緒に沈む。
-            // 歩いている人は最大 0.071m 舗石に埋まっていた(実測 404 体中 149 体)。
-            // 沈み込みは足首より上だけに効かせる — 脛が少し伸びるが、足は残る。
-            transformed.y -= 0.90 * (1.0 - cos(sw * 0.40)) * aWalk
-              * smoothstep(0.02, 0.30, transformed.y);
-            // 片脚に体重を乗せると腰が数センチ傾く
-            transformed.x += (pz == 3.0 ? 0.024 : 0.0) * stand * smoothstep(0.55, 1.20, transformed.y);
-            transformed.y -= breathe * smoothstep(0.9, 1.7, transformed.y);
-            transformed.x += sin(uT * 0.8 + aPh) * 0.006 * stand;
-            // 座位: 腰は座面 0.50m、腿は水平、脛は垂直、上体は 0.40m 下がる。
-            if (aSit > 1.5) {
-              // 石段に座る。踏面 0.50m・蹴上げ 0.155m の階段では、足は 3 段下
-              // (前方 1.35m・下方 0.45m)に着く。椅子と同じ式だと脛が石に埋まる。
-              if (abs(aLimb) > 1.5) transformed.z += 0.20 * smoothstep(1.62, 1.00, transformed.y);
-              // 足は座面より 0.55m 下に着く姿勢だった。実測ではその位置の床は
-              // 0.30m 下しかなく、40 人全員の脛が舗装に 0.15〜0.26m 埋まって
-              // 「足の無い人」になっていた。膝を高く、足は座面 −0.30m へ。
-              if (transformed.y >= 0.91) {
-                transformed.y -= 0.40;
-              } else if (transformed.y >= 0.45) {
-                float t3 = 0.91 - transformed.y;
-                transformed.z += t3 * 1.90;
-                transformed.y = 0.50 - t3 * 0.10;
-              } else {
-                transformed.z += 1.35;
-                transformed.y = 0.454 - (0.45 - transformed.y) * 0.66;
-              }
-            } else if (aSit > 0.5) {
-              // 腕は前へ。卓は椅子から z ±0.58 にあるので、0.26m 出すと手が天板に届く。
-              if (abs(aLimb) > 1.5) transformed.z += 0.26 * smoothstep(1.62, 1.00, transformed.y);
-              if (transformed.y >= 0.91) {
-                transformed.y -= 0.40;
-              } else if (transformed.y >= 0.45) {
-                float t2 = 0.91 - transformed.y;
-                transformed.z += t2 * 0.98;
-                transformed.y = 0.50 + t2 * 0.12;
-              } else {
-                transformed.z += 0.45;
-                transformed.y *= 1.11;
-              }
-            }`);
-      };
-    };
-    const skinMat = new THREE.MeshStandardMaterial({ roughness: 0.82 , envMapIntensity: 0.32 });
-    const shirtMat = new THREE.MeshStandardMaterial({ roughness: 0.88 , envMapIntensity: 0.32 });
-    const legMat = new THREE.MeshStandardMaterial({ roughness: 0.90 , envMapIntensity: 0.32 });
+    const folkGeometry = makeFolkGeometry();
+    const {torso:torsoGeo, arms:armGeo, legs:legGeo, head:headGeo}=folkGeometry;
+    const walkShader = mat => patchFolkPose(mat, clothTime);
+    const skinMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, envMapIntensity: 0.32 });
+    const shirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, envMapIntensity: 0.32 });
+    const legMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.90, envMapIntensity: 0.32 });
     walkShader(skinMat); walkShader(shirtMat); walkShader(legMat);
     patchSkyVisInstanced(skinMat); patchSkyVisInstanced(shirtMat); patchSkyVisInstanced(legMat);
-    const hairGeo = (() => {
-      // 髪が頭より大きいとヘルメットに見える。ただし余裕が 2mm だと、
-      // 6 段の低ポリ面が頭の面と交差して「白い横縞」になる。頭と同じ段数にし、
-      // 8mm の余裕を取る。
-      const h = new THREE.SphereGeometry(0.122, 8, 6, 0, Math.PI * 2, 0, Math.PI * 0.47);
-      h.scale(0.80, 1.10, 0.90); h.translate(0, 1.799, -0.009);
-      return mergeGeo([h].map(g => {
-        const n = g.attributes.position.count;
-        g.setAttribute('aLimb', new THREE.BufferAttribute(new Float32Array(n), 1));
-        return g;
-      }));
-    })();
-    const hairMat = new THREE.MeshStandardMaterial({ roughness: 0.94 , envMapIntensity: 0.32 });
-    const armMat2 = new THREE.MeshStandardMaterial({ roughness: 0.84 , envMapIntensity: 0.32 });
+    const hairGeo = folkGeometry.hair;
+    const hairMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.94, envMapIntensity: 0.32 });
+    const armMat2 = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.84, envMapIntensity: 0.32 });
     walkShader(hairMat); walkShader(armMat2);
     patchSkyVisInstanced(hairMat); patchSkyVisInstanced(armMat2);
     // 売り子。台の後ろ 0.95m に立たせる(既存の 5 本のメッシュに相乗り = draw call 増ゼロ)
@@ -1250,6 +1100,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
       f._cad = cd[i];
       st[i] = f.sit || 0;        // 0=立/歩 1=椅子 2=石段
       po[i] = f.sit ? 0 : ((hash2((f.z * 23) | 0, (f.x * 29) | 0) * 4) | 0);
+      f._pose = po[i];
     });
     // 座っている人の脚は宙に浮く(それが「座る」ということ)。接地を問える
     // のは立っている人だけなので、どちらかを検査に伝える。
@@ -1261,7 +1112,10 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     walkAmt = wk;
     walkAttr = new THREE.InstancedBufferAttribute(wk, 1);
     walkAttr.setUsage(THREE.DynamicDrawUsage);
+    const gait = new Float32Array(folk.length * 4);
+    folk.forEach((f,i)=>gait.set([ph[i],cd[i],st[i],po[i]],i*4));
     for (const g of [torsoGeo, legGeo, headGeo, hairGeo, armGeo]) {
+      g.setAttribute('aGait', new THREE.InstancedBufferAttribute(gait.slice(), 4));
       g.setAttribute('aSkyI', new THREE.InstancedBufferAttribute(skI.slice(), 1));
       g.setAttribute('aPose', new THREE.InstancedBufferAttribute(po.slice(), 1));
       g.setAttribute('aPh', new THREE.InstancedBufferAttribute(ph.slice(), 1));
@@ -1271,6 +1125,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     }
     for (const m of [torso, legs, heads, hair, arms]) {
       m.castShadow = true; m.receiveShadow = true;
+      m.userData.actorFamily = 'folk';
       // 影も同じ姿勢で落とす(これが無いと全員が直立の影を落とす)
       m.customDepthMaterial = depthFor(m.material);
     }
@@ -1304,44 +1159,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
       };
       const accGeo = mergeGeoK([kindOf(bagGeo, 1), kindOf(hatGeo, 2), kindOf(packGeo, 3)]);
       const accMat = new THREE.MeshStandardMaterial({ roughness: 0.86, envMapIntensity: 0.32 });
-      accMat.onBeforeCompile = (sh) => {
-        sh.uniforms.uT = clothTime;
-        sh.vertexShader = sh.vertexShader
-          .replace('#include <common>', `#include <common>
-            uniform float uT; attribute float aLimb; attribute float aKind;
-            attribute float aPh; attribute float aWalk; attribute float aHas; attribute float aCad;
-            attribute float aSit;`)
-          .replace('#include <begin_vertex>', `#include <begin_vertex>
-            if (abs(aKind - aHas) > 0.5) { transformed = vec3(0.0); }
-            float ph = aPh + uT * aCad;
-            float sw = sin(ph) * aWalk;
-            if (abs(aLimb) > 0.5) {
-              float side = sign(aLimb);
-              float isArm = step(1.5, abs(aLimb));
-              float amp = mix(0.40, 0.30, isArm);
-              float piv = mix(0.90, 1.62, isArm);
-              float a = sw * side * amp;
-              float dy = transformed.y - piv;
-              transformed.z += sin(a) * dy;
-              transformed.y = piv + cos(a) * dy;
-            }
-            // 剛体回転で足裏が 0.90·(1−cos a) 浮く。骨盤を同じだけ下げて接地を保つ。
-            transformed.y -= 0.90 * (1.0 - cos(sw * 0.40)) * aWalk;
-            // 座った人の帽子と鞄は、胴と同じだけ下がらないと 40cm 宙に浮く
-            if (aSit > 0.5) {
-              if (transformed.y >= 0.91) transformed.y -= 0.40;
-              else if (transformed.y >= 0.45) { float t2 = 0.91 - transformed.y; transformed.z += t2 * 0.98; transformed.y = 0.50 + t2 * 0.12; }
-              else {
-                // 脛と足。z を 0.45 前へ出すだけで高さを 1.11 倍していたので、
-                // 足裏は座面の 0.44m **下** に置かれた。ところが前へ出るのは
-                // 0.42m しかない。踏面 0.5m・蹴上 0.155m の階段が 0.42m で
-                // 落ちる高さは 0.155m — **その姿勢は階段の上に存在できない**。
-                // 実測 48 体すべてが腰まで石に埋まっていた。
-                // 浅い段に座る人は膝が上がる。足裏を座面の 0.19m 下に置く。
-                transformed.z += 0.45; transformed.y = transformed.y * 0.55 + 0.30;
-              }
-            }`);
-      };
+      patchFolkPose(accMat, clothTime, {accessory:true});
       const PAL = [[0x6b5a44, 0x2e3238, 0x8a4a3a, 0x4a5a52],
         [0xd8cfb4, 0xb8ac90, 0x2e2e30, 0xc0b8a4],
         [0x2f3a4a, 0x4a4436, 0x6b3a34, 0x3c4a3a]];
@@ -1354,10 +1172,11 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
       if (accList.length) {
         patchSkyVisInstanced(accMat);   // walkShader の後に掛ける(先に掛けると上書きで消える)
         const im = new THREE.InstancedMesh(accGeo, accMat, accList.length);
+        im.userData.actorFamily = 'folkAccessory';
         im.customDepthMaterial = depthFor(accMat);
         const ph2 = new Float32Array(accList.length), wk2 = new Float32Array(accList.length);
         const hs = new Float32Array(accList.length), cd2 = new Float32Array(accList.length);
-        const st2 = new Float32Array(accList.length);
+        const st2 = new Float32Array(accList.length), po2 = new Float32Array(accList.length);
         accList.forEach((a, i) => {
           dummy.position.set(a.f.x, a.f.y, a.f.z);
           dummy.rotation.set(0, a.f.rotY, 0);
@@ -1370,7 +1189,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
           wk2[i] = a.f.walk ? 1 : 0;
           hs[i] = a.kind;
           cd2[i] = a.f.walk ? (a.f.walk.sp / (0.70 * a.f.h)) * Math.PI : 1.3;
-          st2[i] = a.f.sit || 0;
+          st2[i] = a.f.sit || 0; po2[i] = a.f._pose;
         });
         accGeo.setAttribute('aPh', new THREE.InstancedBufferAttribute(ph2, 1));
         accWalkAmt = wk2;
@@ -1380,6 +1199,10 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
         accGeo.setAttribute('aHas', new THREE.InstancedBufferAttribute(hs, 1));
         accGeo.setAttribute('aCad', new THREE.InstancedBufferAttribute(cd2, 1));
         accGeo.setAttribute('aSit', new THREE.InstancedBufferAttribute(st2, 1));
+        accGeo.setAttribute('aPose', new THREE.InstancedBufferAttribute(po2, 1));
+        const gait2 = new Float32Array(accList.length * 4);
+        accList.forEach((a,i)=>gait2.set([ph2[i],cd2[i],st2[i],po2[i]],i*4));
+        accGeo.setAttribute('aGait', new THREE.InstancedBufferAttribute(gait2, 4));
         {
           const sk3 = new Float32Array(accList.length);
           accList.forEach((a, i) => { sk3[i] = skyOf(a.f.x, a.f.z, (a.f.y ?? 0) + 1.3); });

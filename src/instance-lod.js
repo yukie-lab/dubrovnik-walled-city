@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { makeHouseOcclusion } from './occlusion.js';
 import { MergedSolidLOD } from './merged-lod.js';
+import { ActorBatchLOD } from './actor-lod.js';
 
 // Compact static detail batches without changing the source instances. The
 // camera and the shadow camera both participate, so an offscreen window frame
@@ -118,11 +119,17 @@ function intersects(planes, x, y, z, radius) {
 }
 
 export function makeInstanceLOD(root, plan) {
-  const batches = [];
+  const batches = [], actorGroups = new Map();
   root.traverse(mesh => {
     if (mesh.userData.staticDetail) batches.push(new StaticInstanceLOD(mesh,{minPixels:mesh.userData.lodMinPixels ?? .4}));
-    if(mesh.geometry?.userData.solids?.length)batches.push(new MergedSolidLOD(mesh));
+    if(!mesh.isInstancedMesh && mesh.geometry?.userData.solids?.length)batches.push(new MergedSolidLOD(mesh));
+    if(mesh.userData.actorFamily) {
+      const family=mesh.userData.actorFamily;
+      if(!actorGroups.has(family))actorGroups.set(family,[]);
+      actorGroups.get(family).push(mesh);
+    }
   });
+  const actors=[...actorGroups.values()].map(meshes=>new ActorBatchLOD(meshes));
   const view = new THREE.Frustum(), shadow = new THREE.Frustum(), matrix = new THREE.Matrix4();
   const occlusion=plan ? makeHouseOcclusion(plan.houses) : null;
   const signature=new Float64Array(35).fill(NaN), nextSignature=new Float64Array(35);
@@ -130,7 +137,11 @@ export function makeInstanceLOD(root, plan) {
     enabled: true,
     occlusionEnabled: true,
     batches,
+    actors,
+    restoreActors() { for(const actor of actors)actor.restore(); },
     update(camera, sun, renderer) {
+      // All shared streams must be captured before any family is compacted.
+      for(const actor of actors)actor.capture();
       if (!this.enabled) { for (const b of batches) b.restore(); signature.fill(NaN); return; }
       camera.updateMatrixWorld();
       matrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
@@ -147,6 +158,9 @@ export function makeInstanceLOD(root, plan) {
       const shadowPixelScale = sun.shadow.mapSize.x / (sc.right - sc.left);
       nextSignature[32]=pixelScale;nextSignature[33]=sun.castShadow ? shadowPixelScale : 0;
       nextSignature[34]=this.occlusionEnabled ? 1 : 0;
+      // Moving residents need a fresh selection even with a stationary camera.
+      for(const actor of actors)actor.update(view.planes,sun.castShadow ? shadow.planes : null,
+        camera.position,pixelScale,shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc);
       if(nextSignature.every((n,i)=>n===signature[i]))return;
       signature.set(nextSignature);
       for (const b of batches) b.update(view.planes, sun.castShadow ? shadow.planes : null,
