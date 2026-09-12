@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {writeFileSync} from 'node:fs';
 import {installDomShim} from './structure/domshim.mjs';
-import {houseCoreGeometry,roofDrop,roofShellGeometry} from '../src/roof-solid.js';
+import {houseCoreGeometry,roofShellGeometry} from '../src/roof-solid.js';
 installDomShim();
 const {buildWorld}=await import('../src/world.js');
 const world=buildWorld(),body=world.root.getObjectByName('house.body'),roofs=world.root.getObjectByName('house.roof');
@@ -35,25 +35,33 @@ assert.equal(bad.length,0,'Every generated architectural volume must be closed a
 const unit=closed(roofShellGeometry());assert(unit.invalid===0 && unit.zeroArea===0 && unit.volume>0);
 
 const material=new THREE.MeshBasicMaterial({side:THREE.DoubleSide}),ray=new THREE.Raycaster();
-const houses=world.plan.houses.filter(h=>!h.garden),matrix=new THREE.Matrix4();
+const houses=world.plan.houses.filter(h=>!h.garden);
 const ridges=world.root.getObjectByName('house.ridgeTile');
-roofs.geometry.computeBoundingSphere();ridges.geometry.computeBoundingSphere();
+// Extract the triangles actually submitted by each merged roof, not a second
+// idealised generator. Re-index locally so bounds and rays see that house only.
+function piece(geometry,range) {
+  const positions=[],indices=[],ids=new Map(),p=geometry.attributes.position,ix=geometry.index;
+  for(let k=range.from*3;k<range.to*3;k++) {
+    const j=ix.getX(k);
+    if(!ids.has(j)) {ids.set(j,ids.size);positions.push(p.getX(j),p.getY(j),p.getZ(j));}
+    indices.push(ids.get(j));
+  }
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setIndex(indices);
+  return g;
+}
+const roofRanges=roofs.geometry.userData.solids,ridgeRanges=ridges.geometry.userData.solids;
+assert.equal(roofRanges.length,houses.length);assert.equal(ridgeRanges.length,houses.length);
 let maxContactError=0,minimumThickness=Infinity,samples=0;
 for(let i=0;i<houses.length;i++) {
-  const h=houses[i],g=roofShellGeometry(),p=g.attributes.position;
-  for(let j=0;j<p.count;j++)p.setY(j,p.getY(j)-roofDrop(p.getX(j),p.getZ(j),h.seed));
-  roofs.getMatrixAt(i,matrix);g.applyMatrix4(matrix);
-  const sphere=roofs.geometry.boundingSphere.clone().applyMatrix4(matrix);
-  for(let j=0;j<p.count;j++)assert(sphere.containsPoint(new THREE.Vector3().fromBufferAttribute(p,j)),'Roof LOD bounds must contain deformation');
-  ridges.getMatrixAt(i,matrix);
-  const rs=ridges.geometry.boundingSphere.clone().applyMatrix4(matrix),rp=ridges.geometry.attributes.position;
-  const ratio=ridges.geometry.attributes.aRidgeRatio.getX(i);
-  for(let j=0;j<rp.count;j++) {
-    const raw=rp.getX(j),x=Math.abs(raw)<.49 ? raw/ratio : raw,t=x*ratio;
-    const k=Math.min(7,Math.floor((t+.5)*8)),a=k/8-.5,b=a+.125;
-    const drop=THREE.MathUtils.lerp(roofDrop(a,0,h.seed),roofDrop(b,0,h.seed),(t-a)*8);
-    const point=new THREE.Vector3(x,rp.getY(j)-drop*h.roofH,rp.getZ(j)).applyMatrix4(matrix);
-    assert(point.distanceTo(rs.center)<=rs.radius+1e-6,'Ridge LOD bounds must contain deformation');
+  const h=houses[i],g=piece(roofs.geometry,roofRanges[i]);
+  for(const [geometry,range] of [[roofs.geometry,roofRanges[i]],[ridges.geometry,ridgeRanges[i]]]) {
+    const result=closed(geometry,range);
+    assert(result.invalid===0 && result.zeroArea===0 && result.volume>0,'Rendered roof and ridge must be closed');
+    const p=geometry.attributes.position,n=geometry.attributes.normal;
+    for(let k=range.from*3;k<range.to*3;k++) {
+      const j=geometry.index.getX(k),length=Math.hypot(n.getX(j),n.getY(j),n.getZ(j));
+      assert(Number.isFinite(p.getX(j)+p.getY(j)+p.getZ(j)) && Math.abs(length-1)<1e-5,'Finite positions and unit baked normals');
+    }
   }
   const roofMesh=new THREE.Mesh(g,material),coreMesh=new THREE.Mesh(houseCoreGeometry(h),material);
   for(const u of [-.49,-.23,0,.19,.49])for(const v of [-.49,-.21,.07,.25,.49]) {

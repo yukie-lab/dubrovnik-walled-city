@@ -12,8 +12,8 @@ import { rngFor } from './seed.js';
 import { facadeHeightAttribute } from './facade.js';
 import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkGeometry,
   joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
-import { houseCoreGeometry, roofShellGeometry, deformRoofShader, roofDepthMaterial,
-  deformRidgeShader, ridgeDepthMaterial, roofDimensions, profilePrismGeometry } from './roof-solid.js';
+import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
+import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, urbanTint, bounceRad, groundRefY,
   patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
@@ -185,16 +185,8 @@ function patchRoofMaterial(mat, coverM) {
         varying vec2 vTileUv; attribute float aRoofSurface; varying float vRoofSurface;`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
         vSeed = aSeed; vRoofSurface=aRoofSurface;
-        // 実寸 UV: インスタンスのスケールで補正(瓦が伸びない)
-        vec2 instScale = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[2].xyz));
-        // **斜面は z 方向に D/2 しか張らないのに、uv.y は 0..1 を張る。**
-        // そのため x は 1 単位 = 2m、y は 1 単位 = 1m の非等方(実測 2.000 / 1.000)。
-        // 結果、瓦の働き長さが 181mm(実物 290〜330mm)に潰れ、さらに下の
-        // シェーダの縞(0.36/0.185 を「m」のつもりで書いてある)が実寸 383/370mm
-        // になって、アルベドの目と 2.06〜2.12 倍の **二重の格子** を作っていた。
-        // 城壁から屋根海を見る 72〜149m の帯は、まさに偽の 370mm の縞しか
-        // 見えない距離帯。y を半分にして等方に戻す。
-        vTileUv = uv * vec2(instScale.x, instScale.y * 0.5) / ${coverM.toFixed(2)};
+        // 実寸 UV と沈みは生成時に確定。影も同じ頂点位置を描画する。
+        vTileUv = uv;
         #ifdef USE_NORMALMAP
           vNormalMapUv = vTileUv;   // 法線マップも実寸 UV で引く(生の uv だと色と 2〜3 倍ずれる)
         #endif`);
@@ -246,9 +238,8 @@ function patchRoofMaterial(mat, coverM) {
         if (pj > 0.93 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.80, 0.44, 0.30), 0.38);
         else if (pj < 0.04 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.44, 0.36, 0.30), 0.30);
         diffuseColor *= sampledDiffuseColor;`);
-    deformRoofShader(shader,{seedDeclared:true});
   };
-  mat.customProgramCacheKey=()=> 'solid-roof-deformation-v1';
+  mat.customProgramCacheKey=()=> 'baked-solid-roof-v1';
 }
 
 // ---- 開口部の配置 ----------------------------------------------------------
@@ -438,7 +429,7 @@ export function makeBuildings(plan, tex, floorSupport) {
   bodies.castShadow = true; bodies.receiveShadow = true;
   group.add(tagMesh(bodies, 'house.body', { solid: true, masonry: true, groundContact: true, merged: 'plan.houses' }));
 
-  // ===== 屋根(インスタンス)— テラコッタの海
+  // ===== 屋根 — 各家の形と色を生成時に確定し、1バッチへまとめる。
   const roofUnit = roofShellGeometry();
   const roofMat = new THREE.MeshStandardMaterial({
     map: tex.roof.map, normalMap: tex.roof.normalMap,
@@ -448,22 +439,14 @@ export function makeBuildings(plan, tex, floorSupport) {
     // 石が青灰に落ちるなかで瓦だけが煉瓦色で残っていた(実測 夜の相対彩度
     // C/L が 正午 0.69 → 夜 1.33 と **倍近く増える**逆転)。
     // 釉なし多孔質の鏡面の弱さは roughness 0.82 が担当する量で、環境の重みではない。
-    roughness: 0.82, metalness: 0, envMapIntensity: 0.62,   // 釉なし多孔質の素焼き
+    vertexColors: true, roughness: 0.82, metalness: 0, envMapIntensity: 0.62,
   });
   patchRoofMaterial(roofMat, tex.roof.coverM);
   const roofHouses = plan.houses.filter(h => !h.garden);
-  const roofs = new THREE.InstancedMesh(roofUnit, roofMat, roofHouses.length);
-  const seeds = new Float32Array(roofHouses.length);
+  const roofPieces = [];
   {
-    const dummy = new THREE.Object3D();
     const col = new THREE.Color();
     roofHouses.forEach((h, i) => {
-      dummy.position.set(h.x, h.eaves, h.z);
-      const zAx = h.ridgeAxis === 'z';
-      dummy.scale.set((zAx ? h.d : h.w) + 0.62, h.roofH, (zAx ? h.w : h.d) + 0.70);
-      dummy.rotation.set(0, zAx ? Math.PI / 2 : 0, 0);
-      dummy.updateMatrix();
-      roofs.setMatrixAt(i, dummy.matrix);
       // 基調のパッチワーク: 新しい鮮やかな瓦 / 中庸 / 褪せた古瓦
       const r = hash2((h.x * 3) | 0, (h.z * 3) | 0);
       // 実物のドゥブロヴニクの屋根は「一色の赤」ではなく、明度の幅が非常に広い
@@ -490,14 +473,13 @@ export function makeBuildings(plan, tex, floorSupport) {
       // 「暗くて黄色い瓦」「明るくて赤い瓦」が原理的に存在しなかった。別の種にする。
       col.setHSL(hueR + (h.seed - 0.5) * 0.048, Math.max(0.04, satR - r2 * 0.055),
         litR + (r2 - 0.5) * 0.105, THREE.SRGBColorSpace);
-      roofs.setColorAt(i, col);
-      seeds[i] = h.seed;
+      roofPieces.push(bakeRoofPiece(roofUnit,h,col,{coverM:tex.roof.coverM}));
     });
-    roofUnit.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
   }
+  const roofs = new THREE.Mesh(mergeRoofPieces(roofPieces,roofHouses,'roofShell'),roofMat);
+  roofUnit.dispose();
   roofs.castShadow = true; roofs.receiveShadow = true;
-  roofs.customDepthMaterial=roofDepthMaterial();
-  group.add(tagMesh(roofs, 'house.roof', { solid: true, tileOverlap: true, staticDetail: true, lodMinPixels: 0 }));
+  group.add(tagMesh(roofs, 'house.roof', { solid: true, tileOverlap: true }));
 
   // ===== 妻壁(火返し)— 屋根の海を家1軒(4.5〜6m)の粒に刻む石のフィン。
   // これが無いと軒線が10m以上つながり、屋根が「1枚の大きな面」に見える。
@@ -688,32 +670,12 @@ export function makeBuildings(plan, tex, floorSupport) {
   // 色は個体色だけが持つ。地図も与える(棟だけ無地だった)。
   const ridgeMat = new THREE.MeshStandardMaterial({
     map: tex.roof.map, normalMap: tex.roof.normalMap,
-    roughness: 0.84, envMapIntensity: 0.62,
+    vertexColors: true, roughness: 0.84, envMapIntensity: 0.62,
   });
-  // 屋根が沈むのに棟だけ真っ直ぐだと、棟が空中に残る。同じ式を掛ける。
-  // 棟瓦はワールド寸法なので、単位空間の沈み量に roofH を掛ける必要がある。
+  const ridgePieces=[];
   {
-    const rh = new Float32Array(roofHouses.length);
-    roofHouses.forEach((h, i) => { rh[i] = h.roofH; });
-    ridgeGeo.setAttribute('aRoofH', new THREE.InstancedBufferAttribute(rh, 1));
-    ridgeGeo.setAttribute('aRidgeRatio',new THREE.InstancedBufferAttribute(Float32Array.from(roofHouses,
-      h=>((h.ridgeAxis==='z' ? h.d : h.w)+.10)/roofDimensions(h).length),1));
-    ridgeMat.onBeforeCompile=sh=>deformRidgeShader(sh);
-    ridgeMat.customProgramCacheKey=()=> 'solid-ridge-deformation-v1';
-  }
-  const ridges = new THREE.InstancedMesh(ridgeGeo, ridgeMat, roofHouses.length);
-  {
-    const dummy = new THREE.Object3D();
     const col = new THREE.Color();
-    const seedsR = new Float32Array(roofHouses.length);
-    roofHouses.forEach((h, i) => { seedsR[i] = h.seed; });
-    ridgeGeo.setAttribute('aSeedR', new THREE.InstancedBufferAttribute(seedsR, 1));
     roofHouses.forEach((h, i) => {
-      dummy.position.set(h.x, h.eaves + h.roofH + 0.02, h.z);
-      dummy.rotation.set(0, h.ridgeAxis === 'z' ? Math.PI / 2 : 0, 0);
-      dummy.scale.set((h.ridgeAxis === 'z' ? h.d : h.w) + 0.10, 1, 1);   // 0.4 だと両妻から 0.20m ずつ飛び出す
-      dummy.updateMatrix();
-      ridges.setMatrixAt(i, dummy.matrix);
       // 棟瓦は屋根と同じ窯の瓦を伏せたもの。**独立の色ではない。**
       // 586 軒すべてに同じ HSL を配っていたので、暗い古屋根には明るすぎる棒が、
       // 明るい新屋根には暗すぎる棒が載っていた(t3gold で棟 L*39 対 屋根 L*10.9)。
@@ -726,12 +688,13 @@ export function makeBuildings(plan, tex, floorSupport) {
       else { hR = 0.080; sR = 0.42; lR = 0.392; }
       col.setHSL(hR + (h.seed - 0.5) * 0.048 - 0.004, Math.max(0.04, sR - rr2 * 0.055) * 0.94,
         (lR + (rr2 - 0.5) * 0.105) * 0.90, THREE.SRGBColorSpace);
-      ridges.setColorAt(i, col);
+      ridgePieces.push(bakeRoofPiece(ridgeGeo,h,col,{ridge:true}));
     });
   }
+  const ridges=new THREE.Mesh(mergeRoofPieces(ridgePieces,roofHouses,'ridgeTile'),ridgeMat);
+  ridgeGeo.dispose();
   ridges.castShadow = true;
-  ridges.customDepthMaterial=ridgeDepthMaterial();
-  group.add(tagMesh(ridges, 'house.ridgeTile', { solid: true, tileOverlap: true, staticDetail: true, lodMinPixels: 0 }));
+  group.add(tagMesh(ridges, 'house.ridgeTile', { solid: true, tileOverlap: true }));
 
   // ===== 煙突(ドゥブロヴニク特有の小さな傘つき)
   const chimneyGeo = (() => {
