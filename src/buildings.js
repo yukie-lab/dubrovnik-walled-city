@@ -7,6 +7,7 @@
 // ・窓枠・ガラス・鎧戸・扉・煙突・汚れ帯 = すべてインスタンス
 // ============================================================================
 import * as THREE from 'three';
+import { metricMasonryUV } from './masonry-uv.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { facadeHeightAttribute } from './facade.js';
@@ -14,6 +15,7 @@ import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkG
   joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
+import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, urbanTint, bounceRad, groundRefY,
   patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
@@ -335,10 +337,11 @@ export function makeBuildings(plan, tex, floorSupport) {
   bodyGeo.setIndex(I);
   bodyGeo.userData.solids=solids;
   bodyGeo.setAttribute('aWallUp', new THREE.BufferAttribute(facadeHeightAttribute(bodyGeo, plan), 1));
+  bodyGeo.setAttribute('aRoughStone',masonryFinishAttribute(bodyGeo,plan.houses));
   const bodyMat = new THREE.MeshStandardMaterial({
     map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
-    normalScale: new THREE.Vector2(1.7, 1.7),
-    vertexColors: true, roughness: 0.82, metalness: 0,
+    ...stoneFinish(tex.wallStone,.82,1.7),
+    vertexColors: true, metalness: 0,
     envMapIntensity: 0.60,   // 日陰の主光源は IBL。ここを絞ると影が黒紙になる
   });
   // 石と漆喰を 1 マテリアルで混ぜる(ドローコールは増やさない)。
@@ -346,15 +349,20 @@ export function makeBuildings(plan, tex, floorSupport) {
     sh.uniforms.uPlasMap = { value: tex.plaster.map };
     sh.uniforms.uPlasNrm = { value: tex.plaster.normalMap };
     sh.uniforms.uPlasScale = { value: tex.wallStone.coverM / tex.plaster.coverM };
+    sh.uniforms.uRubbleMap = {value:tex.wallRubble.map};
+    sh.uniforms.uRubbleNormal = {value:tex.wallRubble.normalMap};
+    sh.uniforms.uRubbleRoughness = {value:tex.wallRubble.roughnessMap};
     sh.uniforms.uUrban = urbanTint;
     sh.uniforms.uBounce = bounceRad;
     sh.uniforms.uGroundY = groundRefY;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; attribute float aWallUp; varying float vPlas; varying float vSky; varying float vBnc; varying float vUp; uniform float uGroundY;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vPlas = aPlas; vSky = aSky; vUp = aWallUp;\n vBnc = clamp(0.75 - normal.y * 0.35, 0.25, 1.0) * exp(-max(position.y - uGroundY, 0.0) / 2.4);');
+      .replace('#include <common>', '#include <common>\n attribute float aPlas; attribute float aSky; attribute float aWallUp; attribute float aRoughStone; varying float vRoughStone; varying float vPlas; varying float vSky; varying float vBnc; varying float vUp; uniform float uGroundY;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\n vPlas = aPlas; vSky = aSky; vUp = aWallUp; vRoughStone=aRoughStone;\n vBnc = clamp(0.75 - normal.y * 0.35, 0.25, 1.0) * exp(-max(position.y - uGroundY, 0.0) / 2.4);');
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>
         uniform sampler2D uPlasMap; uniform sampler2D uPlasNrm; uniform float uPlasScale;
+        uniform sampler2D uRubbleMap; uniform sampler2D uRubbleNormal; uniform sampler2D uRubbleRoughness;
+        varying float vRoughStone;
         uniform vec3 uUrban; uniform vec3 uBounce;
         varying float vPlas; varying float vSky; varying float vBnc; varying float vUp;
         float wnHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -382,7 +390,7 @@ export function makeBuildings(plan, tex, floorSupport) {
         vec2 wv = ((vec2(wnNoise(vMapUv * 0.21), wnNoise(vMapUv * 0.21 + 37.1)) - 0.5) * 0.62
                 +  (vec2(wnNoise(vMapUv * 0.53 + 7.3), wnNoise(vMapUv * 0.53 + 61.7)) - 0.5) * 0.38) * 0.18;
         vec2 mUv = vMapUv + wv;
-        vec4 sd = texture2D(map, mUv);
+        vec4 sd = vRoughStone>.5 ? texture2D(uRubbleMap,mUv) : texture2D(map, mUv);
         if (vPlas > 0.5) sd = texture2D(uPlasMap, mUv * uPlasScale);
         // 一枚の壁に「二色目」を置く唯一の機構。ここが空回りしていた。
         // 変調源に石テクスチャ自身の .g を使っていたが、sRGB 復号後の実測は
@@ -416,15 +424,16 @@ export function makeBuildings(plan, tex, floorSupport) {
         // 雨に洗われた面は寒色へ、庇の下と風下は暖色へ。**色相は動かさず色温度だけ。**
         sd.rgb *= mix(vec3(1.020, 1.000, 0.955), vec3(0.975, 0.995, 1.030), lf);
         diffuseColor *= sd;`)
+      .replace('#include <roughnessmap_fragment>', `
+        float roughnessFactor = vPlas>.5 ? .82 : (vRoughStone>.5 ? texture2D(uRubbleRoughness,mUv).g : texture2D(roughnessMap,mUv).g);`)
       .replace('#include <normal_fragment_maps>', `
-        vec3 mapN = (vPlas > 0.5 ? texture2D(uPlasNrm, (vMapUv + wv) * uPlasScale) : texture2D(normalMap, vNormalMapUv + wv)).xyz * 2.0 - 1.0;
-        // タイリングを消す(2): 法線にも約分できない第二層を重ねる。
-        // 3.2m と 7.7m は約分できないので、合成の見かけの周期は 25m 近くなる。
-        mapN.xy += (texture2D(normalMap, vNormalMapUv * 0.413 + vec2(0.37, 0.62)).xy - 0.5) * 0.45;
-        mapN.xy *= normalScale;
+        vec3 mapN = (vPlas > 0.5 ? texture2D(uPlasNrm, mUv * uPlasScale)
+          : (vRoughStone>.5 ? texture2D(uRubbleNormal,mUv) : texture2D(normalMap, mUv))).xyz * 2.0 - 1.0;
+        // 色・目地・凹凸は同じ石の位置を参照する。
+        mapN.xy *= vPlas>.5 ? vec2(1.7) : normalScale;
         normal = normalize(tbn * mapN);`);
   };
-  bodyMat.customProgramCacheKey = () => 'houseBodyPlaster|groundedDamp';
+  bodyMat.customProgramCacheKey = () => 'houseBodyPlaster|groundedDamp|physicalMasonry';
   const bodies = new THREE.Mesh(bodyGeo, bodyMat);
   bodies.castShadow = true; bodies.receiveShadow = true;
   group.add(tagMesh(bodies, 'house.body', { solid: true, masonry: true, groundContact: true, merged: 'plan.houses' }));
@@ -631,10 +640,11 @@ export function makeBuildings(plan, tex, floorSupport) {
     g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
     g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
     g.setIndex(IDX);
+    metricMasonryUV(g,tex.wallStone.coverM);
     const fmat = new THREE.MeshStandardMaterial({
       map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
-      normalScale: new THREE.Vector2(1.35, 1.35),
-      vertexColors: true, roughness: 0.84, metalness: 0, envMapIntensity: 0.55,
+      ...stoneFinish(tex.wallStone, .84, 1.35),
+      vertexColors: true, metalness: 0, envMapIntensity: 0.55,
     });
     // 16,992 三角の大面。天空可視率が無いと、屋根の海の中でここだけスレート緑灰になる。
     bakeSkyVis(g, skyAt0, { offsetY: 0.2 });
@@ -711,7 +721,7 @@ export function makeBuildings(plan, tex, floorSupport) {
     parts.push(cap);
     const drip = new THREE.BoxGeometry(0.68, 0.05, 0.68); drip.translate(0, 1.15 + 0.26 + 0.115, 0);
     parts.push(drip);
-    return mergeGeoSimple(parts);
+    return metricMasonryUV(mergeGeoSimple(parts),tex.wallStone.coverM);
   })();
   const chimneyPos = [];
   roofHouses.forEach(h => {
@@ -723,8 +733,8 @@ export function makeBuildings(plan, tex, floorSupport) {
     }
   });
   const chimneyMat = new THREE.MeshStandardMaterial({
-    map: tex.wallStone.map, normalMap: tex.wallStone.normalMap, roughness: 0.85,
-    normalScale: new THREE.Vector2(1.7, 1.7), envMapIntensity: 0.55,
+    map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
+    ...stoneFinish(tex.wallStone, .85, 1.7), envMapIntensity: 0.55,
   });
   bakeSkyVisInstanced(chimneyGeo, chimneyPos, skyAt0, { offsetY: 0.9 });
   patchSkyVisInstanced(chimneyMat);

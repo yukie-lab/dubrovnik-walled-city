@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { mulberry32, clamp, lerp } from './util.js';
 import { rngFor } from './seed.js';
+import { replaceMasonryTextures } from './masonry.js';
 
 function canvas(size, h = size) {
   const c = document.createElement('canvas');
@@ -951,7 +952,7 @@ function streakTex(rng, { size = 256 } = {}) {
 
 export function makeTextures() {
   const rng = rngFor(0xd0b0);
-  return {
+  const tex = {
     wallStone: limestoneWall(rng, {}),
     wallStoneWarm: limestoneWall(rng, { tone: 1 }),
     // 記念建築(スポンザ・レクトル館・大聖堂)の切石は民家より大きい。
@@ -978,6 +979,7 @@ export function makeTextures() {
     signs: signAtlas(rng, {}),
     awning: awningTex(rng, {}),
   };
+  return replaceMasonryTextures(tex);
 }
 
 

@@ -51,9 +51,14 @@ try {
     await walkChecks(page,{name,dir,rows,errors,args});
     views=[];
   }
+  if(args.includes('--ui')) {
+    const {uiChecks}=await import('./ui-check.mjs');
+    await uiChecks(page,{name,dir,rows,errors});views=[];
+  }
   for (let r = 0; r < repeat; r++) for (const [view, query] of views) {
     await page.goto(`${process.env.BASE || 'http://localhost:8765'}/index.html?shot=1&hud=0&${query}`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction('window.__READY && window.__captureFrame', { timeout: 60000 });
+    if(errors.length)throw new Error(errors.join('\n'));
     const stem = `${name}-${view}-${r}`;
     let fullStats = null, lodDifference = null;
     if (checkLOD) {
@@ -71,6 +76,7 @@ try {
     for (let f = 0; f < 10; f++) {
       png = Buffer.from((await page.evaluate(() => window.__captureFrame())).split(',')[1], 'base64');
       hashes.push(createHash('sha256').update(png).digest('hex'));
+      if(errors.length)throw new Error(errors.join('\n'));
     }
     const direct = new URL(stem + '-direct.png', dir), composited = new URL(stem + '-page.png', dir);
     writeFileSync(direct, png);
@@ -98,6 +104,13 @@ try {
     const row = { view, query, run: r, stableFrames: new Set(hashes.slice(-6)).size === 1,
       hashes, ...result, fullStats, lodDifference, compositorDifference: diff.stdout.split('\n')[0] };
     rows.push(row);
+    if(args.includes('--textures')) {
+      const {textureAudit}=await import('./texture-audit.mjs');await textureAudit(page,{name,dir});
+    }
+    if(args.includes('--profile')) {
+      const {profileGPU}=await import('./gpu-profile.mjs');
+      row.gpu=await profileGPU(page,1000/row.actualFps);console.log(JSON.stringify(row.gpu));
+    }
     console.log(`${view} #${r}: calls=${row.drawCalls} instances=${row.instances}/${row.instanceCapacity} fps=${row.actualFps.toFixed(1)} stable=${row.stableFrames}  ${row.compositorDifference}`);
     if (checkLOD) console.log(`  LOD culled=${row.culledInstances}, tris ${fullStats.triangles} → ${row.triangles}: ${lodDifference}`);
     if (row.drawCalls > 200 || !row.instances || row.instances > row.instanceCapacity

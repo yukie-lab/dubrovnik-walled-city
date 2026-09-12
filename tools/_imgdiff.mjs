@@ -25,11 +25,14 @@ const s2l=v=>(v<=0.04045?v/12.92:((v+0.055)/1.055)**2.4);
 const [pa, pb] = process.argv.slice(2);
 const A = readPNG(pa), B = readPNG(pb);
 if (A.w !== B.w || A.h !== B.h) { console.error('寸法が違う'); process.exit(1); }
+const ri=process.argv.indexOf('--rect');
+const [rx,ry,rw,rh]=ri<0 ? [0,0,A.w,A.h] : process.argv[ri+1].split(':').map(Number);
+if(![rx,ry,rw,rh].every(Number.isFinite)||rx<0||ry<0||rw<=0||rh<=0||rx+rw>A.w||ry+rh>A.h)throw new Error('Invalid comparison rectangle');
 const GX = 8, GY = 6;
 const g = Array.from({ length: GY }, () => new Array(GX).fill(0));
 const gn = Array.from({ length: GY }, () => new Array(GX).fill(0));
 let n = 0, chg = 0, sum = 0, mx = 0, mxAt = '';
-for (let y = 0; y < A.h; y++) for (let x = 0; x < A.w; x++) {
+for (let y = ry; y < ry+rh; y++) for (let x = rx; x < rx+rw; x++) {
   const o = (y * A.w + x) * A.ch;
   const ob = (y * B.w + x) * B.ch;
   const ya = 0.2126*s2l(A.px[o]/255)+0.7152*s2l(A.px[o+1]/255)+0.0722*s2l(A.px[o+2]/255);
@@ -43,4 +46,4 @@ for (let y = 0; y < A.h; y++) for (let x = 0; x < A.w; x++) {
 }
 console.log(`変化した画素 ${(100*chg/n).toFixed(2)}%   平均ΔY ${(sum/n).toFixed(5)}   最大|ΔY| ${mx.toFixed(4)} @${mxAt}`);
 console.log('# 画面を 8×6 に割った平均ΔY(×1000)');
-for (let j = 0; j < GY; j++) console.log('  ' + g[j].map((s,i)=>String(Math.round(1000*s/gn[j][i])).padStart(6)).join(''));
+for (let j = 0; j < GY; j++) console.log('  ' + g[j].map((s,i)=>String(gn[j][i] ? Math.round(1000*s/gn[j][i]) : '—').padStart(6)).join(''));

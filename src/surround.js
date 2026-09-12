@@ -4,6 +4,8 @@
 // スルジ山頂の十字架。遠景も「同じ世界の続き」であること。
 // ============================================================================
 import * as THREE from 'three';
+import { metricMasonryUV } from './masonry-uv.js';
+import { stoneFinish } from './masonry.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, fbm2, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { LOKRUM, LOVRIJENAC } from './plan.js';
@@ -249,11 +251,12 @@ export function makeSurround(plan, tex) {
     const P = [], N = [], U = [], C = [];
     const push = (g, tint) => {
       const gg = g.index ? g.toNonIndexed() : g;
+      metricMasonryUV(gg,tex.fortStone.coverM);
       const pos = gg.attributes.position, nor = gg.attributes.normal, uv = gg.attributes.uv;
       for (let i = 0; i < pos.count; i++) {
         P.push(pos.getX(i), pos.getY(i), pos.getZ(i));
         N.push(nor.getX(i), nor.getY(i), nor.getZ(i));
-        U.push(uv ? uv.getX(i) * 3 : 0, uv ? uv.getY(i) * 3 : 0);
+        U.push(uv ? uv.getX(i) : 0, uv ? uv.getY(i) : 0);
         C.push(tint, tint, tint);
       }
     };
@@ -326,8 +329,8 @@ export function makeSurround(plan, tex) {
     // 城壁と一字一句同じにする。
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
       map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
-      normalScale: new THREE.Vector2(1.35, 1.35),
-      color: 0xc9c0ad, vertexColors: true, roughness: 0.88, envMapIntensity: 0.55,
+      ...stoneFinish(tex.fortStone, .88, 1.35),
+      color: 0xc9c0ad, vertexColors: true, envMapIntensity: 0.55,
     }));
     m.castShadow = true;
     group.add(tagMesh(m, 'surround.lovrijenac', { solid: true, masonry: true, groundContact: true }));
@@ -517,9 +520,11 @@ export function makeSurround(plan, tex) {
     g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
     g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
     g.setIndex(I);
+    metricMasonryUV(g,tex.fortStone.coverM);
     const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
       map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
-      color: 0xa8a08e, roughness: 0.84, side: THREE.DoubleSide, envMapIntensity: 0.45,
+      ...stoneFinish(tex.fortStone, .84, 1),
+      color: 0xa8a08e, side: THREE.DoubleSide, envMapIntensity: 0.45,
     }));
     m.castShadow = true; m.receiveShadow = true;
     group.add(tagMesh(m, 'surround.pileBridge', { solid: true, masonry: true }));
@@ -727,9 +732,11 @@ export function makeSurround(plan, tex) {
       g.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
       g.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
       g.setIndex(I);
+      metricMasonryUV(g,tex.fortStone.coverM);
       const m = new THREE.Mesh(g, new THREE.MeshStandardMaterial({
         map: tex.fortStone.map, normalMap: tex.fortStone.normalMap, vertexColors: true,
-        color: 0xb8b09d, roughness: 0.86, envMapIntensity: 0.5,
+        ...stoneFinish(tex.fortStone, .86, 1),
+        color: 0xb8b09d, envMapIntensity: 0.5,
       }));
       m.castShadow = true; m.receiveShadow = true;
       group.add(tagMesh(m, 'surround.arsenal', { solid: true, masonry: true, groundContact: true }));
@@ -751,7 +758,8 @@ export function makeSurround(plan, tex) {
     };
     const stoneMat = new THREE.MeshStandardMaterial({
       map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
-      color: 0xa79c88, roughness: 0.92, envMapIntensity: 0.45,
+      ...stoneFinish(tex.fortStone, .92, 1),
+      color: 0xa79c88, envMapIntensity: 0.45,
     });
     // 帝国要塞 — 1806年ナポレオン期。低い矩形の稜堡に四隅の塔。
     {
@@ -765,7 +773,7 @@ export function makeSurround(plan, tex) {
         parts.push(bx(9, 15, 9, sx * 21, FY + 12, sz * 8));  // 四隅の塔
         parts.push(bx(10.2, 1.2, 10.2, sx * 21, FY + 27, sz * 8));
       }
-      const g = mergeSimple(parts);
+      const g = metricMasonryUV(mergeSimple(parts),tex.fortStone.coverM);
       const m = new THREE.Mesh(g, stoneMat);
       m.position.set(FX, 0, FZ);
       group.add(tagMesh(m, 'surround.fortImperial', { solid: true, masonry: true, groundContact: true, backdrop: true }));

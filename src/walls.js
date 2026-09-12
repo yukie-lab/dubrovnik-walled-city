@@ -4,6 +4,7 @@
 // 狭間胸壁(メルロン)とミンチェタの持ち送りだけインスタンス。
 // ============================================================================
 import * as THREE from 'three';
+import { stoneFinish } from './masonry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hash2, clamp, lerp, smoothstep, nearestOnPolyline, tagMesh } from './util.js';
 import { sharedSkyVis } from './buildings.js';
@@ -1734,11 +1735,11 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   geo.setIndex(I);
   const mat = new THREE.MeshStandardMaterial({
     map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
-    normalScale: new THREE.Vector2(1.35, 1.35),   // 粒を細かくしたぶん強度を落とす(tex.js の fortStone)
+    ...stoneFinish(tex.fortStone, .88, 1.35),
     // color を省くと白(アルベド 1.0)。日向と日陰の差が 3/255 しか出ず、
     // 要塞の面の向きが読めなくなる。実物のコルチュラ石は生成り。
     color: 0xc9c0ad,
-    vertexColors: true, roughness: 0.88, metalness: 0,
+    vertexColors: true, metalness: 0,
     envMapIntensity: 0.55,
     // FrontSide。城壁の全部位を閉じた立体にしたので、両面材で中空の殻を
     // 隠す必要がなくなった。裏返った面はここで即座に「穴」として見える —
@@ -1851,8 +1852,8 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     return g2;
   })();
   const merlonMat = new THREE.MeshStandardMaterial({
-    map: tex.fortStone.map, normalMap: tex.fortStone.normalMap, roughness: 0.88,
-    normalScale: new THREE.Vector2(1.35, 1.35),   // 粒を細かくしたぶん強度を落とす(tex.js の fortStone) color: 0xc9c0ad,
+    map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
+    ...stoneFinish(tex.fortStone, .88, 1.35),
     envMapIntensity: 0.55,
   });
   // 天空可視率が無いと、日陰のメルロンだけが胸壁と違う色で塗装金属に見える。
@@ -1861,10 +1862,12 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // 石目を個体ごとにずらす(全部同じ模様の行列は一目で複製とわかる)
   const merlonUv = new Float32Array(merlons.length * 2);
   // ずらしは頂点側で行う(vMapUv はフラグメントでは入力なので代入できない)
-  merlonMat.onBeforeCompile = (sh) => {
+  const merlonSky=merlonMat.onBeforeCompile;
+  merlonMat.onBeforeCompile = (sh,renderer) => {
+    merlonSky(sh,renderer);
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec2 aUvOff;')
-      .replace('#include <uv_vertex>', '#include <uv_vertex>\n\tvMapUv += aUvOff;\n\tvNormalMapUv += aUvOff;');
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\n\tvMapUv += aUvOff;\n\tvNormalMapUv += aUvOff;\n#ifdef USE_ROUGHNESSMAP\n vRoughnessMapUv += aUvOff;\n#endif');
   };
   const merlonMesh = new THREE.InstancedMesh(merlonGeo, merlonMat, merlons.length);
   {

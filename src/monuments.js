@@ -5,6 +5,8 @@
 // 流し込み、屋根・窓・経年を自動で受け取る。
 // ============================================================================
 import * as THREE from 'three';
+import { metricMasonryUV } from './masonry-uv.js';
+import { stoneFinish } from './masonry.js';
 import { mulberry32, hash2, lerp, nearestOnPolyline, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { sharedSkyVis, specularEnvTargets } from './buildings.js';
@@ -192,12 +194,13 @@ export function makeMonuments(plan, tex) {
   function appendGeo(g, tint = 1, flat = false) {
     const gg = g.index ? g.toNonIndexed() : g;
     if (flat) gg.computeVertexNormals();
+    metricMasonryUV(gg,tex.monumentStone.coverM);
     const pos = gg.attributes.position, nor = gg.attributes.normal, uv = gg.attributes.uv;
     const i0 = P.length / 3;
     for (let i = 0; i < pos.count; i++) {
       P.push(pos.getX(i), pos.getY(i), pos.getZ(i));
       N.push(nor.getX(i), nor.getY(i), nor.getZ(i));
-      U.push(uv ? uv.getX(i) * 2 : 0, uv ? uv.getY(i) * 2 : 0);
+      U.push(uv ? uv.getX(i) : 0, uv ? uv.getY(i) : 0);
       const tt = Math.min(tint, 1);
       C.push(tt, tt, tt * 0.99);
     }
@@ -863,6 +866,7 @@ export function makeMonuments(plan, tex) {
   // 7cm の隙間が空き、近くで見ると柱が浮いて見える。柱身だけを
   // インスタンスごとに伸ばして、天端を迫元にぴたりと合わせる。
   const COL_SH0 = 2.20;   // 素の柱身の天端(この上が頸+冠板)
+  const columnTex=tex.dressed;
   const colGeo = (() => {
     const shaft = new THREE.CylinderGeometry(0.16, 0.185, COL_SH0, 12);
     shaft.translate(0, COL_SH0 / 2, 0);
@@ -872,7 +876,7 @@ export function makeMonuments(plan, tex) {
     cap.translate(0, COL_SH0 + 0.16, 0);
     const base = new THREE.BoxGeometry(0.40, 0.16, 0.40);
     base.translate(0, 0.08, 0);
-    return mergeSimple([shaft, ast, cap, base]);
+    return mergeSimple([shaft, ast, cap, base].map(g=>metricMasonryUV(g,columnTex.coverM)));
   })();
   const colPositions = [];
   // ---- アーケード(柱 + 半円アーチ + 蛇腹)
@@ -973,7 +977,8 @@ export function makeMonuments(plan, tex) {
     // color を省くと白(1,1,1)。民家には tint が掛かっているので、記念建築だけが
     // 白いプラスチックに見えていた。実物のコルチュラ石は暖かい生成り。
     color: 0xd4c9b4,
-    vertexColors: true, roughness: 0.8, metalness: 0, envMapIntensity: 0.60,
+    vertexColors: true, metalness: 0, envMapIntensity: 0.60,
+    ...stoneFinish(tex.monumentStone, .8, 1.7),
   });
   // 記念建築の大面も 3.2m で反復する。壁と同じ低周波のうねりを重ねる。
   {
@@ -1022,18 +1027,32 @@ export function makeMonuments(plan, tex) {
     mat.onBeforeCompile = (sh) => {
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', `#include <common>\n attribute float aColH; const float SH0 = ${COL_SH0.toFixed(2)};`)
+        .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+          if(position.y>.16 && position.y<=SH0) objectNormal.y/=(aColH-.16)/(SH0-.16);`)
         .replace('#include <begin_vertex>', `#include <begin_vertex>
           if (position.y > 0.16) {
             if (position.y <= SH0) transformed.y = 0.16 + (position.y - 0.16) * ((aColH - 0.16) / (SH0 - 0.16));
             else transformed.y = position.y + (aColH - SH0);
+          }
+          if(abs(normal.y)<.8) {
+            float dv=(transformed.y-position.y)/${columnTex.coverM.toFixed(2)};
+            #ifdef USE_MAP
+              vMapUv.y+=dv;
+            #endif
+            #ifdef USE_NORMALMAP
+              vNormalMapUv.y+=dv;
+            #endif
+            #ifdef USE_ROUGHNESSMAP
+              vRoughnessMapUv.y+=dv;
+            #endif
           }`);
     };
     mat.customProgramCacheKey = () => 'colshaft';
     return mat;
   };
   const colMat = stretchShaft(new THREE.MeshStandardMaterial({
-    map: tex.monumentStone.map, normalMap: tex.monumentStone.normalMap,
-    color: 0xc8bfa8, roughness: 0.62, envMapIntensity: 0.6,
+    map: columnTex.map, normalMap: columnTex.normalMap,
+    color: 0xc8bfa8, roughness: 0.82, envMapIntensity: 0.6,
   }));
   const cols = new THREE.InstancedMesh(colGeo, colMat, colPositions.length);
   {
@@ -1047,8 +1066,12 @@ export function makeMonuments(plan, tex) {
       colH[i] = (c.top ?? 2.45) - 0.25 + (c.dy ?? 0);
     });
     colGeo.setAttribute('aColH', new THREE.InstancedBufferAttribute(colH, 1));
+    colGeo.computeBoundingBox();colGeo.boundingBox.max.y=Math.max(...colH)+.25;
+    colGeo.boundingSphere=colGeo.boundingBox.getBoundingSphere(new THREE.Sphere());
   }
   cols.castShadow = true;
+  cols.receiveShadow = true;
+  cols.customDepthMaterial=stretchShaft(new THREE.MeshDepthMaterial({depthPacking:THREE.RGBADepthPacking}));
   group.add(tagMesh(cols, 'monument.column', { solid: true, masonry: true, groundContact: true }));
 
   // 時計の文字盤(鐘楼の西面 — ストラドゥンの正面)
