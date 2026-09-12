@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { makeHouseOcclusion } from './occlusion.js';
+import { MergedSolidLOD } from './merged-lod.js';
 
 // Compact static detail batches without changing the source instances. The
 // camera and the shadow camera both participate, so an offscreen window frame
@@ -120,6 +121,7 @@ export function makeInstanceLOD(root, plan) {
   const batches = [];
   root.traverse(mesh => {
     if (mesh.userData.staticDetail) batches.push(new StaticInstanceLOD(mesh,{minPixels:mesh.userData.lodMinPixels ?? .4}));
+    if(mesh.geometry?.userData.solids?.length)batches.push(new MergedSolidLOD(mesh));
   });
   const view = new THREE.Frustum(), shadow = new THREE.Frustum(), matrix = new THREE.Matrix4();
   const occlusion=plan ? makeHouseOcclusion(plan.houses) : null;

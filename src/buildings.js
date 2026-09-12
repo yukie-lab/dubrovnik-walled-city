@@ -12,6 +12,8 @@ import { rngFor } from './seed.js';
 import { facadeHeightAttribute } from './facade.js';
 import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkGeometry,
   joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
+import { houseCoreGeometry, roofShellGeometry, deformRoofShader, roofDepthMaterial,
+  deformRidgeShader, ridgeDepthMaterial, roofDimensions, profilePrismGeometry } from './roof-solid.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, urbanTint, bounceRad, groundRefY,
   patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
@@ -40,7 +42,7 @@ function pushFace(P, N, U, C, verts, normal, uvScale, tint, A, plas, S, skyFn) {
   return [i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3];
 }
 
-function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
+function houseBody(P, N, U, C, I, h, tint, A, S, skyFn, solids) {
   const pushFaceP = (v, n, u, t) => pushFace(P, N, U, C, v, n, u, t, A, h.plaster ? 1 : 0, S, skyFn);
 
   const x0 = h.x - h.w / 2, x1 = h.x + h.w / 2;
@@ -48,6 +50,18 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
   const y0 = h.yBase, y1 = h.eaves;
   const H = y1 - y0;
   const um = 1 / WALL_COVER;
+  const record=(kind,from)=>solids.push({kind,x:h.x,z:h.z,from,to:I.length/3});
+  const geometryP=(geometry,tt,kind)=>{
+    const from=I.length/3,base=P.length/3,p=geometry.attributes.position,n=geometry.attributes.normal,uv=geometry.attributes.uv;
+    for(let i=0;i<p.count;i++) {
+      const x=p.getX(i),y=p.getY(i),z=p.getZ(i),normal=[n.getX(i),n.getY(i),n.getZ(i)];
+      P.push(x,y,z);N.push(...normal);U.push(uv.getX(i),uv.getY(i));C.push(tt.r,tt.g,tt.b);
+      A.push(h.plaster ? 1 : 0);S.push(skyFn(x,z,y,normal));
+    }
+    const index=geometry.index;
+    for(let i=0;i<(index ? index.count : p.count);i++)I.push(base+(index ? index.getX(i) : i));
+    record(kind,from);geometry.dispose();
+  };
   // ---- 閉じた箱を積む。
   // 以前は「4 面(上面は屋根が覆う・底面不要)」としていた。見えないから
   // 張らない、は板を立てているのと同じで、掠める角度・軒の下・帯の下端から
@@ -56,6 +70,7 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
   // 閉じた箱にすれば、余分な面は石の中に隠れて外からは何も増えない。
   // 巻きの約束: cross(b-a, d-a) が与えた法線と同じ向きになること。
   const boxP = (bx0, bx1, by0, by1, bz0, bz1, tt, uvS) => {
+    const from=I.length/3;
     const W2 = bx1 - bx0, D2 = bz1 - bz0, H2 = by1 - by0;
     const uv = uvS || [W2 * um, H2 * um];
     const uvD = uvS || [D2 * um, H2 * um];
@@ -65,10 +80,10 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
     I.push(...pushFaceP([[bx0, by0, bz0], [bx0, by0, bz1], [bx0, by1, bz1], [bx0, by1, bz0]], [-1, 0, 0], uvD, tt));
     I.push(...pushFaceP([[bx0, by1, bz1], [bx1, by1, bz1], [bx1, by1, bz0], [bx0, by1, bz0]], [0, 1, 0], [W2 * um, D2 * um], tt));
     I.push(...pushFaceP([[bx0, by0, bz0], [bx1, by0, bz0], [bx1, by0, bz1], [bx0, by0, bz1]], [0, -1, 0], [W2 * um, D2 * um], tt));
+    record('box',from);
   };
-  boxP(x0, x1, y0, y1, z0, z1, tint);
-  // 妻壁(棟は東西 → 三角は東西の面)
-  const ridgeY = y1 + h.roofH, zm = (z0 + z1) / 2;
+  if(h.garden)boxP(x0,x1,y0,y1,z0,z1,tint);
+  else geometryP(houseCoreGeometry(h,WALL_COVER),tint,'houseCore');
   // 立面に走る水平の帯。実測の近景平坦率は 59% — カメラから 3〜4m の壁の
   // 半分が無地だった。石の帯を出すと、その下に必ず影の線が一本入る。
   // 頂点を積むだけなのでドローコールは増えない。
@@ -138,95 +153,25 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn) {
       const fz0 = along ? (fnz > 0 ? z1 : z0) : h.z;
       // 面座標 → ワールド(u = 面に沿う, v = 面法線方向の出)
       const W3 = (u, v, y) => (along ? [fx0 + u, y, fz0 + fnz * v] : [fx0 + fnx * v, y, fz0 + u]);
-      // 巻きは必ず法線に合わせる。逆に巻いた面は背面カリングで丸ごと消える。
-      const wind = (a, b, c, nn) => {
-        const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
-        const vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-        const gx = uy * vz - uz * vy, gy2 = uz * vx - ux * vz, gz = ux * vy - uy * vx;
-        return (gx * nn[0] + gy2 * nn[1] + gz * nn[2]) >= 0;
-      };
-      const quadN = (q, nn, uv, tt) => {
-        const ok = wind(q[0], q[1], q[2], nn);
-        I.push(...pushFaceP(ok ? q : [q[3], q[2], q[1], q[0]], nn, uv, tt));
-      };
-      const tri = (a0, b0, c0, nn, tt) => {
-        const ok = wind(a0, b0, c0, nn);
-        const [a, b, c] = ok ? [a0, b0, c0] : [b0, a0, c0];
-        const i0 = P.length / 3;
-        P.push(...a, ...b, ...c);
-        for (let k = 0; k < 3; k++) {
-          N.push(...nn); C.push(tt.r, tt.g, tt.b);
-          A.push(0); S.push(0.95);
-        }
-        U.push(0, 0, pw * 2 * um, 0, pw * um, rise * um);
-        I.push(i0, i0 + 1, i0 + 2);
-      };
       const pale = new THREE.Color(tint).multiplyScalar(1.1);
-      // アティック(軒とペディメントの間の帯)— これが無いと衝立が屋根に埋まる
-      for (const [v, nn] of [[0.34, [fnx, 0, fnz]], [0.34, [0, 1, 0]]]) {
-        if (nn[1] === 1) continue;
-        const q = [W3(-pw - 0.5, v, y1 - 0.30), W3(pw + 0.5, v, y1 - 0.30), W3(pw + 0.5, v, yB), W3(-pw - 0.5, v, yB)];
-        const ok = (() => { const a = q[0], b = q[1], c = q[2];
-          const gx = (b[1] - a[1]) * (c[2] - a[2]) - (b[2] - a[2]) * (c[1] - a[1]);
-          const gz = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]);
-          return gx * nn[0] + gz * nn[2] >= 0; })();
-        I.push(...pushFaceP(ok ? q : [q[3], q[2], q[1], q[0]], nn, [(pw + 0.5) * 2 * um, (yB - y1 + 0.3) * um], pale));
-      }
-      // ティンパヌム。アティック帯の出は 0.34 なので、それより手前でないと裏に隠れる。
-      for (const [v, nn] of [[0.46, [fnx, 0, fnz]], [0.02, [-fnx, 0, -fnz]]]) {
-        tri(W3(-pw, v, yB), W3(pw, v, yB), W3(0, v, yB + rise), nn, pale);
-      }
-      // 斜辺の蛇腹(勾配に沿う板)+ 水平の蛇腹
-      const NR = 8;
-      for (let side = -1; side <= 1; side += 2) {
-        for (let k = 0; k < NR; k++) {
-          const t0 = k / NR, t1 = (k + 1) / NR;
-          const u0 = side * pw * (1 - t0), u1 = side * pw * (1 - t1);
-          const h0 = yB + rise * t0, h1 = yB + rise * t1;
-          quadN([W3(u0, 0.58, h0), W3(u1, 0.58, h1), W3(u1, 0.58, h1 + 0.34), W3(u0, 0.58, h0 + 0.34)],
-            [fnx, 0, fnz], [pw * um, 0.34 * um], pale);
-          quadN([W3(u0, 0.02, h0 + 0.34), W3(u1, 0.02, h1 + 0.34), W3(u1, 0.58, h1 + 0.34), W3(u0, 0.58, h0 + 0.34)],
-            [0, 1, 0], [pw * um, 0.4 * um], pale);
+      const prism=(profile,back,front,kind)=>geometryP(profilePrismGeometry(profile,
+        (u,y,v)=>W3(u,v,y),back,front,WALL_COVER),pale,kind);
+      // Full-depth attic, tympanum and raking cornices. Their side and rear
+      // faces are generated with the front, including under the overhang.
+      prism([[-pw-.5,y1-.30],[pw+.5,y1-.30],[pw+.5,yB],[-pw-.5,yB]],-.10,.34,'attic');
+      prism([[-pw,yB],[pw,yB],[0,yB+rise]],.02,.46,'tympanum');
+      for(const side of [-1,1])prism([[side*pw,yB],[0,yB+rise],[0,yB+rise+.34],[side*pw,yB+.34]],.02,.58,'rakingCornice');
+      if(h.steps) {
+        const sw=Math.min(W*.5,11)/2,base=y0-.2,section=[[.1,base],[.1+h.steps*.38,base]];
+        for(let k=h.steps-1;k>=0;k--) {
+          const v0=.1+k*.38,v1=v0+.38,yy=y0+.75-(k+1)*.155;
+          section.push([v1,yy],[v0,yy]);
         }
-      }
-      // 記念階段(正面の中央 3 ベイぶん)
-      if (h.steps) {
-        const sw = Math.min(W * 0.5, 11) / 2;
-        for (let k = 0; k < h.steps; k++) {
-          const v0 = 0.1 + k * 0.38, v1 = v0 + 0.38;
-          const yy = y0 + 0.75 - (k + 1) * 0.155;
-          quadN([W3(-sw, v1, yy), W3(sw, v1, yy), W3(sw, v0, yy), W3(-sw, v0, yy)],
-            [0, 1, 0], [sw * 2 * um, 0.38 * um], pale);
-          quadN([W3(-sw, v1, yy - 0.155), W3(sw, v1, yy - 0.155), W3(sw, v1, yy), W3(-sw, v1, yy)],
-            [fnx, 0, fnz], [sw * 2 * um, 0.155 * um], pale);
-        }
+        geometryP(profilePrismGeometry(section,(v,y,u)=>W3(u,v,y),-sw,sw,WALL_COVER),pale,'ceremonialSteps');
       }
     }
   }
 
-  const xm = (x0 + x1) / 2;
-  if (h.ridgeAxis === 'z') {
-    // 棟が南北 → 妻壁は南北の面
-    const gz = (z, nz) => {
-      const i0 = P.length / 3;
-      P.push(nz > 0 ? x1 : x0, y1, z, nz > 0 ? x0 : x1, y1, z, xm, ridgeY, z);
-      N.push(0, 0, nz, 0, 0, nz, 0, 0, nz);
-      for (let k = 0; k < 3; k++) { C.push(tint.r, tint.g, tint.b); A.push(h.plaster ? 1 : 0); S.push(1); }
-      U.push(0, 0, h.w * um, 0, h.w * um / 2, h.roofH * um);
-      I.push(i0, i0 + 1, i0 + 2);
-    };
-    gz(z1, 1); gz(z0, -1);
-  } else {
-    const gable = (x, nx) => {
-      const i0 = P.length / 3;
-      P.push(x, y1, nx > 0 ? z1 : z0, x, y1, nx > 0 ? z0 : z1, x, ridgeY, zm);
-      N.push(nx, 0, 0, nx, 0, 0, nx, 0, 0);
-      for (let k = 0; k < 3; k++) { C.push(tint.r, tint.g, tint.b); A.push(h.plaster ? 1 : 0); S.push(1); }
-      U.push(0, 0, h.d * um, 0, h.d * um / 2, h.roofH * um);
-      I.push(i0, i0 + 1, i0 + 2);
-    };
-    gable(x1, 1); gable(x0, -1);
-  }
 }
 
 // ---- 屋根のシェーダ注入 ----------------------------------------------------
@@ -237,20 +182,9 @@ function patchRoofMaterial(mat, coverM) {
       .replace('#include <common>', `#include <common>
         attribute float aSeed;
         varying float vSeed;
-        varying vec2 vTileUv;`)
-      .replace('#include <begin_vertex>', `#include <begin_vertex>
-        // 何百年ぶんの沈み。**棟がいちばん下がり、軒と妻の端では 0** になる形にすると、
-        // 鼻隠し・軒天・妻の三角・棟瓦の取り合いを一切変えずに屋根だけがうねる。
-        //   t = position.x ∈ [-0.5, 0.5](棟方向)、端で (1-4t²) = 0
-        //   s = 1 - 2|position.z| (棟で 1、軒で 0)
-        {
-          float st = 1.0 - 4.0 * position.x * position.x;
-          float ss = max(0.0, 1.0 - 2.0 * abs(position.z));
-          float wob = sin(position.x * 11.0 + aSeed * 6.2832);
-          transformed.y -= (0.040 + 0.022 * wob) * st * ss;
-        }`)
+        varying vec2 vTileUv; attribute float aRoofSurface; varying float vRoofSurface;`)
       .replace('#include <uv_vertex>', `#include <uv_vertex>
-        vSeed = aSeed;
+        vSeed = aSeed; vRoofSurface=aRoofSurface;
         // 実寸 UV: インスタンスのスケールで補正(瓦が伸びない)
         vec2 instScale = vec2(length(instanceMatrix[0].xyz), length(instanceMatrix[2].xyz));
         // **斜面は z 方向に D/2 しか張らないのに、uv.y は 0..1 を張る。**
@@ -267,7 +201,7 @@ function patchRoofMaterial(mat, coverM) {
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>
         varying float vSeed;
-        varying vec2 vTileUv;
+        varying vec2 vTileUv; varying float vRoofSurface;
         float hashR(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`)
       .replace('#include <map_fragment>', `
         vec4 sampledDiffuseColor = texture2D(map, vTileUv);
@@ -284,7 +218,7 @@ function patchRoofMaterial(mat, coverM) {
                                         0.84 + rj * 0.26 + (rh - 0.5) * 0.20);
         // 瓦の谷の陰。屋根の海を上から見るとき、これが無いと赤い板になる。
         // 垂直な鼻隠し(小口)には谷影も稜も掛けない — 掛けると軒に黒帯が出る
-        float faceUp = step(0.30, abs(vNormal.y));
+        float faceUp = vRoofSurface;
         // 段の重なりの影。地図側でも引いていたので **同じ横線が二回** 出ていた。
         // 地図側を微かにしたぶん、こちらは据え置き。周期は 1 段 = 0.30m。
         float vv = fract(vTileUv.y / 0.15);
@@ -312,7 +246,9 @@ function patchRoofMaterial(mat, coverM) {
         if (pj > 0.93 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.80, 0.44, 0.30), 0.38);
         else if (pj < 0.04 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.44, 0.36, 0.30), 0.30);
         diffuseColor *= sampledDiffuseColor;`);
+    deformRoofShader(shader,{seedDeclared:true});
   };
+  mat.customProgramCacheKey=()=> 'solid-roof-deformation-v1';
 }
 
 // ---- 開口部の配置 ----------------------------------------------------------
@@ -374,7 +310,7 @@ export function makeBuildings(plan, tex, floorSupport) {
   const rng = rngFor(0xca5a);
 
   // ===== 家体(マージ)
-  const P = [], N = [], U = [], C = [], I = [], A = [], S = [];
+  const P = [], N = [], U = [], C = [], I = [], A = [], S = [], solids = [];
   const tint = new THREE.Color();
   const skyAt0 = makeSkyVis(plan);
   sharedSkyVis = skyAt0;
@@ -396,7 +332,7 @@ export function makeBuildings(plan, tex, floorSupport) {
     if (h.plaster) tint.setHSL(0.098, 0.15 + t * 0.05, 0.775 + (t - 0.5) * 0.15, THREE.SRGBColorSpace);
     else if (t > 0.9) tint.setHSL(0.098, 0.19 + t * 0.04, 0.735 + (t - 0.9) * 0.85, THREE.SRGBColorSpace);
     else tint.setHSL(0.098 + (t - 0.5) * 0.012, 0.16 + t * 0.05, 0.742 + (t - 0.5) * 0.19, THREE.SRGBColorSpace);
-    houseBody(P, N, U, C, I, h, tint, A, S, skyAt);
+    houseBody(P, N, U, C, I, h, tint, A, S, skyAt, solids);
   }
   const bodyGeo = new THREE.BufferGeometry();
   bodyGeo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
@@ -406,6 +342,7 @@ export function makeBuildings(plan, tex, floorSupport) {
   bodyGeo.setAttribute('aPlas', new THREE.Float32BufferAttribute(A, 1));
   bodyGeo.setAttribute('aSky', new THREE.Float32BufferAttribute(S, 1));
   bodyGeo.setIndex(I);
+  bodyGeo.userData.solids=solids;
   bodyGeo.setAttribute('aWallUp', new THREE.BufferAttribute(facadeHeightAttribute(bodyGeo, plan), 1));
   const bodyMat = new THREE.MeshStandardMaterial({
     map: tex.wallStone.map, normalMap: tex.wallStone.normalMap,
@@ -502,89 +439,7 @@ export function makeBuildings(plan, tex, floorSupport) {
   group.add(tagMesh(bodies, 'house.body', { solid: true, masonry: true, groundContact: true, merged: 'plan.houses' }));
 
   // ===== 屋根(インスタンス)— テラコッタの海
-  const roofUnit = new THREE.BufferGeometry();
-  {
-    // 単位屋根: x∈[-0.5,0.5] 棟, z∈[-0.5,0.5], y∈[0,1]。軒の張り出しは スケール側で吸収。
-    const p = [], n = [], u = [], idx = [];
-    // **一斜面が四角一枚だった。平面は、定義上、うねれない。**
-    // 手で伏せた瓦の屋根は波打ち、棟の線も軒の線もまっすぐではない。
-    // 何百年ぶんの沈みを置く場所を作るために、棟方向 6 × 勾配方向 2 に割る。
-    // 三角は 586 × +80 = 47k 増(全体 3.0M に対し 1.6%)、draw call は不変。
-    const NS = 8, NT = 3;
-    const slope = (sgn) => {
-      const i0 = p.length / 3;
-      for (let j = 0; j <= NT; j++) for (let k = 0; k <= NS; k++) {
-        const t = -0.5 + k / NS, q = j / NT;            // q: 0 = 棟, 1 = 軒
-        p.push(sgn > 0 ? t : -t, 1 - q, sgn * 0.5 * q);
-        u.push(t + 0.5, 1 - q);   // 元の 4 頂点版と同じ向き(北斜面は x=+0.5 側が u=0)
-      }
-      for (let j = 0; j < NT; j++) for (let k = 0; k < NS; k++) {
-        const a = i0 + j * (NS + 1) + k, b = a + 1, c = a + NS + 1, d = c + 1;
-        idx.push(a, c, d, a, d, b);
-      }
-    };
-    slope(1); slope(-1);
-    // 単位形状の勾配は dy/dz = 1/0.5 = 2。法線は (0, 0.5, ±1) の正規化。
-    // 0.55/0.84 は 33° 相当で、実勾配 17〜24° と 10〜16° ずれ、両斜面の N·L が
-    // ほぼ同じになって屋根の海が平板になる(インスタンスの非一様スケールは
-    // normalMatrix が補正するので、基準法線さえ正しければよい)。
-    // **基準法線は斜面ごとに一つのまま。** 沈みから頂点法線を計算し直すと、
-    // 南北二斜面の N·L 比 1.50(真昼の屋根の海に「折り目」を作っている唯一の物)が
-    // 崩れる。沈みは position だけを動かす。
-    const nrmS = [0, 0.4472, 0.8944], nrmN = [0, 0.4472, -0.8944];
-    const nSlope = (NS + 1) * (NT + 1);
-    for (let k = 0; k < nSlope; k++) n.push(...nrmS);
-    for (let k = 0; k < nSlope; k++) n.push(...nrmN);
-    // 軒先の小口(瓦の厚み)と軒天。ここに濃い陰が入るかどうかで、
-    // 屋根が「載っている」か「紙が浮いている」かが決まる。
-    const FA = 0.05;   // 単位高さでの鼻隠しの深さ(実寸 0.05〜0.09m。0.16 だと 0.30m の黒帯になる)
-    const eave = (zs, nz) => {
-      const i0 = p.length / 3;
-      p.push(-0.5, 0, zs, 0.5, 0, zs, 0.5, -FA, zs, -0.5, -FA, zs);   // 鼻隠し(垂直)
-      for (let k = 0; k < 4; k++) n.push(0, 0, nz);
-      u.push(0, 0.12, 1, 0.12, 1, 0, 0, 0);
-      // 裏面カリングは「法線の属性」ではなく「巻き」で決まる。同じ巻きで
-      // 南北の軒を作っていたので、南の鼻隠しは面が家の中を向いて消え、
-      // 軒先が「厚みゼロの紙」になっていた(実測 s09 で 11,549px)。
-      if (nz > 0) idx.push(i0, i0 + 2, i0 + 1, i0, i0 + 3, i0 + 2);
-      else idx.push(i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3);
-      const i1 = p.length / 3;
-      // 単位屋根の座標なので、非一様スケールで実寸が建物の大きさに比例する。
-      // 0.10 だと大聖堂(d=27)で軒天の奥行が 2.77m の黒帯になる。
-      const zi = zs - nz * 0.024;
-      p.push(-0.5, -FA, zs, 0.5, -FA, zs, 0.5, -FA, zi, -0.5, -FA, zi);  // 軒天(下向き)
-      for (let k = 0; k < 4; k++) n.push(0, -1, 0);
-      u.push(0, 0, 1, 0, 1, 0.06, 0, 0.06);
-      // 軒天も同じ。北側は巻きが上を向いていた(下から見ると消える)。
-      if (nz > 0) idx.push(i1, i1 + 2, i1 + 1, i1, i1 + 3, i1 + 2);
-      else idx.push(i1, i1 + 1, i1 + 2, i1, i1 + 2, i1 + 3);
-    };
-    eave(0.5, 1); eave(-0.5, -1);
-    // 妻側の小口(三角)と底。屋根は 2 枚の斜面と軒先だけの筒だったので、
-    // 妻側から中が抜けて見え、下からは「浮いた紙」に見えた。
-    const gableEnd = (xs, nx2) => {
-      const i0 = p.length / 3;
-      if (nx2 > 0) p.push(xs, 1, 0, xs, 0, 0.5, xs, 0, -0.5);
-      else p.push(xs, 1, 0, xs, 0, -0.5, xs, 0, 0.5);
-      for (let k = 0; k < 3; k++) n.push(nx2, 0, 0);
-      u.push(0.5, 1, 1, 0, 0, 0);
-      idx.push(i0, i0 + 1, i0 + 2);
-    };
-    gableEnd(0.5, 1); gableEnd(-0.5, -1);
-    {
-      const zi = 0.5 - 0.024, i0 = p.length / 3;
-      p.push(-0.5, -FA, -zi, 0.5, -FA, -zi, 0.5, -FA, zi, -0.5, -FA, zi);
-      for (let k = 0; k < 4; k++) n.push(0, -1, 0);
-      u.push(0, 0, 1, 0, 1, 1, 0, 1);
-      // 巻きは下向き(cross(b-a, d-a) が -Y)。逆に巻くと屋根の底が
-      // 内向きになり、下から見て「板が浮いている」ままになる。
-      idx.push(i0, i0 + 1, i0 + 2, i0, i0 + 2, i0 + 3);
-    }
-    roofUnit.setAttribute('position', new THREE.Float32BufferAttribute(p, 3));
-    roofUnit.setAttribute('normal', new THREE.Float32BufferAttribute(n, 3));
-    roofUnit.setAttribute('uv', new THREE.Float32BufferAttribute(u, 2));
-    roofUnit.setIndex(idx);
-  }
+  const roofUnit = roofShellGeometry();
   const roofMat = new THREE.MeshStandardMaterial({
     map: tex.roof.map, normalMap: tex.roof.normalMap,
     // 家の本体(buildings.js の bodyMat)は 0.60 で「日陰の主光源は IBL。
@@ -641,7 +496,8 @@ export function makeBuildings(plan, tex, floorSupport) {
     roofUnit.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seeds, 1));
   }
   roofs.castShadow = true; roofs.receiveShadow = true;
-  group.add(tagMesh(roofs, 'house.roof', { solid: true, tileOverlap: true }));
+  roofs.customDepthMaterial=roofDepthMaterial();
+  group.add(tagMesh(roofs, 'house.roof', { solid: true, tileOverlap: true, staticDetail: true, lodMinPixels: 0 }));
 
   // ===== 妻壁(火返し)— 屋根の海を家1軒(4.5〜6m)の粒に刻む石のフィン。
   // これが無いと軒線が10m以上つながり、屋根が「1枚の大きな面」に見える。
@@ -813,13 +669,13 @@ export function makeBuildings(plan, tex, floorSupport) {
   // 7 角では見えている上半分に 51° 刻みの面が並び、太陽から外れた面が平均を下げる。
   // 長さ分割 1 では「継ぎ目の無い塩ビ管」。棟瓦は 400mm の半円筒を重ねて伏せる物で、
   // **重ね目が棟の表情のすべて**。三角は 586 × +40 = 23k 増、draw call は不変。
-  const ridgeGeo = new THREE.CylinderGeometry(0.125, 0.125, 1, 10, 5, false);
+  const ridgeGeo = new THREE.CylinderGeometry(0.125, 0.125, 1, 10, 8, false);
   {
     // 分割ごとに半径を刻んで、瓦一枚ずつの重なりを出す
     const pos = ridgeGeo.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       const y = pos.getY(i);                       // -0.5..0.5(回転前は長さ方向)
-      const k = Math.round((y + 0.5) * 5);
+      const k = Math.round((y + 0.5) * 8);
       const rk = 1 + (k % 2 === 0 ? 0.055 : -0.03);
       pos.setX(i, pos.getX(i) * rk); pos.setZ(i, pos.getZ(i) * rk);
     }
@@ -840,16 +696,10 @@ export function makeBuildings(plan, tex, floorSupport) {
     const rh = new Float32Array(roofHouses.length);
     roofHouses.forEach((h, i) => { rh[i] = h.roofH; });
     ridgeGeo.setAttribute('aRoofH', new THREE.InstancedBufferAttribute(rh, 1));
-    const prevOBC = ridgeMat.onBeforeCompile;
-    ridgeMat.onBeforeCompile = (sh, r) => {
-      if (prevOBC) prevOBC.call(ridgeMat, sh, r);
-      sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\n attribute float aRoofH; attribute float aSeedR;')
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          { float st = 1.0 - 4.0 * position.x * position.x;
-            transformed.y -= (0.040 + 0.022 * sin(position.x * 11.0 + aSeedR * 6.2832)) * st * aRoofH; }`);
-    };
-    ridgeMat.customProgramCacheKey = () => 'ridgeSag';
+    ridgeGeo.setAttribute('aRidgeRatio',new THREE.InstancedBufferAttribute(Float32Array.from(roofHouses,
+      h=>((h.ridgeAxis==='z' ? h.d : h.w)+.10)/roofDimensions(h).length),1));
+    ridgeMat.onBeforeCompile=sh=>deformRidgeShader(sh);
+    ridgeMat.customProgramCacheKey=()=> 'solid-ridge-deformation-v1';
   }
   const ridges = new THREE.InstancedMesh(ridgeGeo, ridgeMat, roofHouses.length);
   {
@@ -880,7 +730,8 @@ export function makeBuildings(plan, tex, floorSupport) {
     });
   }
   ridges.castShadow = true;
-  group.add(tagMesh(ridges, 'house.ridgeTile', { solid: true, tileOverlap: true }));
+  ridges.customDepthMaterial=ridgeDepthMaterial();
+  group.add(tagMesh(ridges, 'house.ridgeTile', { solid: true, tileOverlap: true, staticDetail: true, lodMinPixels: 0 }));
 
   // ===== 煙突(ドゥブロヴニク特有の小さな傘つき)
   const chimneyGeo = (() => {
