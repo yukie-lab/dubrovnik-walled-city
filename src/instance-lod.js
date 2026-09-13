@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { makeHouseOcclusion } from './occlusion.js';
 import { MergedSolidLOD } from './merged-lod.js';
 import { ActorBatchLOD } from './actor-lod.js';
+import { WoodlandLeafLOD,WoodlandWoodLOD } from './woodland-lod.js';
 
 // Compact static detail batches without changing the source instances. The
 // camera and the shadow camera both participate, so an offscreen window frame
@@ -123,6 +124,8 @@ export function makeInstanceLOD(root, plan) {
   root.traverse(mesh => {
     if (mesh.userData.staticDetail) batches.push(new StaticInstanceLOD(mesh,{minPixels:mesh.userData.lodMinPixels ?? .4}));
     if(!mesh.isInstancedMesh && mesh.geometry?.userData.solids?.length)batches.push(new MergedSolidLOD(mesh));
+    if(mesh.geometry?.userData.trees?.length)batches.push(new WoodlandWoodLOD(mesh));
+    if(mesh.userData.woodlandLeaves)batches.push(new WoodlandLeafLOD(mesh));
     if(mesh.userData.actorFamily) {
       const family=mesh.userData.actorFamily;
       if(!actorGroups.has(family))actorGroups.set(family,[]);
@@ -132,17 +135,20 @@ export function makeInstanceLOD(root, plan) {
   const actors=[...actorGroups.values()].map(meshes=>new ActorBatchLOD(meshes));
   const view = new THREE.Frustum(), shadow = new THREE.Frustum(), matrix = new THREE.Matrix4();
   const occlusion=plan ? makeHouseOcclusion(plan.houses) : null;
-  const signature=new Float64Array(36).fill(NaN), nextSignature=new Float64Array(36);
+  const signature=new Float64Array(37).fill(NaN), nextSignature=new Float64Array(37);
   return {
     enabled: true,
     occlusionEnabled: true,
+    vegetationDetailEnabled: true,
     batches,
     actors,
     restoreActors() { for(const actor of actors)actor.restore(); },
     update(camera, sun, renderer) {
       // All shared streams must be captured before any family is compacted.
       for(const actor of actors)actor.capture();
-      if (!this.enabled) { for (const b of batches) b.restore(); signature.fill(NaN); return; }
+      // Detail sampling is distinct from exact view/shadow culling. Its own
+      // switch allows full-detail comparisons and reports the actual instance
+      // count even when culling is disabled for visibility regression checks.
       camera.updateMatrixWorld();
       matrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
       nextSignature.set(matrix.elements,0);
@@ -156,9 +162,13 @@ export function makeInstanceLOD(root, plan) {
       shadow.setFromProjectionMatrix(matrix, sc.coordinateSystem, sc.reversedDepth);
       const pixelScale = renderer.domElement.height * camera.projectionMatrix.elements[5] * 0.5;
       const shadowPixelScale = sun.shadow.mapSize.x / (sc.right - sc.left);
+      for(const b of batches)b.prepareDetail?.(camera.position,pixelScale,this.vegetationDetailEnabled,
+        sun.castShadow ? shadowPixelScale : 0,sun.castShadow ? shadow.planes : null);
+      if (!this.enabled) { for (const b of batches) b.restore(); signature.fill(NaN); return; }
       nextSignature[32]=pixelScale;nextSignature[33]=sun.castShadow ? shadowPixelScale : 0;
       nextSignature[34]=this.occlusionEnabled ? 1 : 0;
       nextSignature[35]=camera.layers.mask;
+      nextSignature[36]=this.vegetationDetailEnabled ? 1 : 0;
       // Moving residents need a fresh selection even with a stationary camera.
       for(const actor of actors)actor.update(view.planes,sun.castShadow ? shadow.planes : null,
         camera.position,pixelScale,shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc);

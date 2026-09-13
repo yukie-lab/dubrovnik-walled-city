@@ -12,7 +12,7 @@ import { LOKRUM, LOVRIJENAC } from './plan.js';
 import { monumentTime } from './monuments.js';
 import { farHeight } from './ground.js';
 import { patchWet } from './wet.js';
-import { TreeBuf, aleppoPine, cypress, olive, maquis, patchTreeWind } from './trees.js';
+import { TreeBuf, aleppoPine, cypress, olive, maquis, patchTreeWind, woodlandDepthMaterial, patchWoodlandSurface, woodlandLeafMesh } from './trees.js';
 
 export function makeSurround(plan, tex) {
   const group = new THREE.Group();
@@ -87,10 +87,8 @@ export function makeSurround(plan, tex) {
   // 配置は生態。勾配・斜面の向き・標高・谷筋・汀からの距離で密度が決まる。
   // 一様なランダム散布は失敗状態 — それは「木を置いた」であって「森」ではない。
   const vegChunks = new Map();
-  const OPQ = tex.needle.userData?.opaqueUV ?? 0.04;
-  const OPS = tex.needle.userData?.opaqueSize ?? 0.085;
   const vegBuf = (key) => {
-    if (!vegChunks.has(key)) vegChunks.set(key, new TreeBuf(OPQ, OPS));
+    if (!vegChunks.has(key)) vegChunks.set(key, new TreeBuf());
     return vegChunks.get(key);
   };
   let treeCount = 0;
@@ -226,24 +224,31 @@ export function makeSurround(plan, tex) {
 
   // 塊ごとにメッシュにする。島と本土で風の強さを変える —
   // 露出した島の梢は、町に囲まれた木よりよく動く。
+  const woodlands=new Map();
+  for(const [key,B] of vegChunks) {
+    const region=key[0];if(!woodlands.has(region))woodlands.set(region,new TreeBuf());
+    woodlands.get(region).absorb(B);
+  }
+  vegChunks.clear();
   const vegMats = {};
-  for (const [key, B] of vegChunks) {
+  for (const [key, B] of woodlands) {
     if (!B.tris) continue;
     const isLok = key[0] === 'L';
     const mk = isLok ? 'L' : 'M';
     if (!vegMats[mk]) {
-      vegMats[mk] = patchTreeWind(new THREE.MeshStandardMaterial({
-        map: tex.needle, vertexColors: true, roughness: 0.92, metalness: 0,
+      vegMats[mk] = patchWoodlandSurface(patchTreeWind(new THREE.MeshStandardMaterial({
+        vertexColors: true, roughness: 0.95, metalness: 0,
         envMapIntensity: 0.12,
-        // 房の絵はアルファで抜ける。alphaTest なら深度も影も素直に効く
-        // (transparent にすると並べ替えが要り、樹冠が前後で瞬く)。
-        alphaTest: 0.42,
-        side: THREE.DoubleSide,          // 葉の板は裏からも見える(1 枚で 2 面)
-      }), { wind: isLok ? 0.115 : 0.062, time: monumentTime });
+      }), { wind: isLok ? 0.115 : 0.062, time: monumentTime }));
     }
     const m = new THREE.Mesh(B.geometry(), vegMats[mk]);
+    m.customDepthMaterial = patchWoodlandSurface(woodlandDepthMaterial(vegMats[mk]),{depth:true});
     m.castShadow = true; m.receiveShadow = true;
-    group.add(tagMesh(m, 'surround.pine', { thin: true, reason: '葉は板', noCollide: true }));
+    group.add(tagMesh(m, 'surround.pine', { noCollide: true }));
+    const leafMaterial=patchTreeWind(new THREE.MeshStandardMaterial({vertexColors:true,roughness:.98,metalness:0,envMapIntensity:.08}),
+      {wind:isLok ? .115 : .062,time:monumentTime,instanced:true});
+    const leaves=woodlandLeafMesh(B,leafMaterial,woodlandDepthMaterial(leafMaterial));
+    group.add(tagMesh(leaves,'surround.foliage',{noCollide:true}));
   }
 
   // ---- ロヴリイェナツ要塞(西の岩上 — 三角の量塊)

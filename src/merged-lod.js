@@ -3,24 +3,29 @@ import * as THREE from 'three';
 // Cull complete closed buildings within a single indexed draw. The full source
 // vertex streams and bounds stay resident; only the submitted index range changes.
 export class MergedSolidLOD {
-  constructor(mesh) {
+  constructor(mesh,{ranges=mesh.geometry.userData.solids,padding=()=>0}={}) {
     if(!mesh.geometry.index)throw new Error('Indexed merged geometry required');
     this.mesh=mesh;this.source=mesh.geometry.index.array.slice();
     mesh.geometry.index.setUsage(THREE.DynamicDrawUsage);
     mesh.updateWorldMatrix(true,false);
     const p=mesh.geometry.attributes.position,v=new THREE.Vector3(),groups=new Map();
-    for(const solid of mesh.geometry.userData.solids) {
+    const scale=mesh.matrixWorld.getMaxScaleOnAxis();let maxPadding=0;
+    for(const solid of ranges) {
       const key=`${solid.x},${solid.z}`;
-      if(!groups.has(key))groups.set(key,{from:solid.from*3,to:solid.to*3,box:new THREE.Box3()});
+      if(!groups.has(key))groups.set(key,{from:solid.from*3,to:solid.to*3,box:new THREE.Box3(),padding:0});
       const g=groups.get(key);g.to=solid.to*3;
+      const extra=padding(solid);maxPadding=Math.max(maxPadding,extra);g.padding=Math.max(g.padding,extra*scale);
       for(let i=solid.from*3;i<solid.to*3;i++) {
         const j=this.source[i];v.fromBufferAttribute(p,j).applyMatrix4(mesh.matrixWorld);g.box.expandByPoint(v);
       }
     }
-    this.groups=[...groups.values()].map(g=>({...g,sphere:g.box.getBoundingSphere(new THREE.Sphere())}));
+    this.groups=[...groups.values()].map(g=>{
+      const sphere=g.box.getBoundingSphere(new THREE.Sphere());sphere.radius+=g.padding;return {...g,sphere};
+    });
     this.kept=new Uint8Array(this.groups.length).fill(1);this.next=new Uint8Array(this.groups.length);
     this.count=this.source.length;
     mesh.geometry.computeBoundingSphere();
+    mesh.geometry.boundingSphere.radius+=maxPadding;
   }
   update(viewPlanes,shadowPlanes,cameraPosition,pixelScale,shadowPixelScale,occlusion=null,shadowView=null,viewMask=1) {
     const inside=(planes,s)=>planes.every(p=>p.distanceToPoint(s.center)>=-s.radius-.02);

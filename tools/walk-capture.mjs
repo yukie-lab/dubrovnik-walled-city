@@ -67,6 +67,15 @@ export async function walkChecks(page,{name,dir,rows,errors,args}) {
       writeFileSync(reference,JSON.stringify(stations,null,2)+'\n');
     }
   }
+  if(args.includes('--tree-views')) {
+    const targets=JSON.parse(readFileSync(new URL('../docs/september-tree-views.json',import.meta.url),'utf8'));
+    stations=await page.evaluate(targets=>targets.flatMap(t=>[1.8,4].map(distance=>{
+      const [tx,ty,tz]=t.base,d=Math.max(t.height*distance,3.2),x=tx+d*.3,z=tz+d*.95;
+      const gy=window.__world.plan.outsideHeight(x,z);
+      return {id:`tree-${t.species}-${distance}`,x,z,gy,zone:'outside',yaw:Math.atan2(x-tx,z-tz),
+        pitch:Math.atan2(ty+t.height*.52-gy-1.62,Math.hypot(x-tx,z-tz)),fov:54};
+    })),targets);
+  }
   if(args.includes('--stations'))stations=stations.filter(s=>s.id.includes(args[args.indexOf('--stations')+1]));
   // Measure CPU visibility work with a changing camera. A stationary capture
   // skips that work, so its FPS is not an adequate movement benchmark.

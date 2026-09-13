@@ -59,6 +59,14 @@ try {
     const {folkChecks}=await import('./folk-capture.mjs');
     await folkChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--trees')) {
+    const {woodlandChecks}=await import('./woodland-capture.mjs');
+    await woodlandChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--leaf-wind')) {
+    const {woodlandInstanceChecks}=await import('./woodland-instance-capture.mjs');
+    await woodlandInstanceChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--tour')) {
     const {tourChecks}=await import('./tour-capture.mjs');
     await tourChecks(page,{name,dir,rows,errors,args});views=[];
@@ -72,6 +80,9 @@ try {
     await page.waitForFunction('window.__READY && window.__captureFrame', { timeout: 60000 });
     if(errors.length)throw new Error(errors.join('\n'));
     const stem = `${name}-${view}-${r}`;
+    if(args.includes('--veg-pixel-area'))await page.evaluate(value=>{
+      for(const b of window.__world.instanceLOD.batches)if('pixelArea' in b)b.pixelArea=value;
+    },Number(option('--veg-pixel-area')));
     let fullStats = null, lodDifference = null;
     if (checkLOD) {
       await page.evaluate(() => { window.__world.instanceLOD.enabled = false; });
