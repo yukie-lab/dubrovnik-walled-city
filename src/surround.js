@@ -13,6 +13,7 @@ import { monumentTime } from './monuments.js';
 import { farHeight } from './ground.js';
 import { patchWet } from './wet.js';
 import { TreeBuf, aleppoPine, cypress, olive, maquis, patchTreeWind, woodlandDepthMaterial, patchWoodlandSurface, woodlandLeafMesh } from './trees.js';
+import {patchNeedleSurface} from './needle-surface.js';
 
 export function makeSurround(plan, tex) {
   const group = new THREE.Group();
@@ -245,9 +246,9 @@ export function makeSurround(plan, tex) {
     m.customDepthMaterial = patchWoodlandSurface(woodlandDepthMaterial(vegMats[mk]),{depth:true});
     m.castShadow = true; m.receiveShadow = true;
     group.add(tagMesh(m, 'surround.pine', { noCollide: true }));
-    const leafMaterial=patchTreeWind(new THREE.MeshStandardMaterial({vertexColors:true,roughness:.98,metalness:0,envMapIntensity:.08}),
-      {wind:isLok ? .115 : .062,time:monumentTime,instanced:true});
-    const leaves=woodlandLeafMesh(B,leafMaterial,woodlandDepthMaterial(leafMaterial));
+    const leafMaterial=patchNeedleSurface(patchTreeWind(new THREE.MeshStandardMaterial({vertexColors:true,roughness:.98,metalness:0,envMapIntensity:.08}),
+      {wind:isLok ? .115 : .062,time:monumentTime,instanced:true}));
+    const leaves=woodlandLeafMesh(B,leafMaterial,patchNeedleSurface(woodlandDepthMaterial(leafMaterial)));
     group.add(tagMesh(leaves,'surround.foliage',{noCollide:true}));
   }
 

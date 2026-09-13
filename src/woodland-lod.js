@@ -40,24 +40,27 @@ export class WoodlandWoodLOD extends MergedSolidLOD {
 export class WoodlandLeafLOD {
   constructor(mesh) {
     this.mesh=mesh;this.capacity=mesh.count;
-    this.pixelArea=.85;
-    this.streams=[mesh.instanceMatrix,mesh.instanceColor,mesh.geometry.attributes.aTree].map(attribute=>
+    this.pixelArea=1.5;
+    this.streams=[mesh.instanceMatrix,mesh.instanceColor,mesh.geometry.attributes.aTree,mesh.geometry.attributes.aNeedle].map(attribute=>
       ({attribute,source:attribute.array.slice(),size:attribute.itemSize}));
+    let maxLeafRadius=0;
     this.groups=mesh.userData.woodlandLeaves.map(t=>{
       const box=new THREE.Box3(),p=new THREE.Vector3(),matrix=this.streams[0].source;let radius=0,area=0;
       for(let i=t.leafFrom;i<t.leafTo;i++) {
         const o=i*16;p.set(matrix[o+12],matrix[o+13],matrix[o+14]);box.expandByPoint(p);
         radius=Math.max(radius,.5*Math.max(Math.hypot(matrix[o],matrix[o+1],matrix[o+2]),
           Math.hypot(matrix[o+4],matrix[o+5],matrix[o+6]),Math.hypot(matrix[o+8],matrix[o+9],matrix[o+10])));
-        area+=Math.hypot(matrix[o],matrix[o+1],matrix[o+2])*Math.hypot(matrix[o+4],matrix[o+5],matrix[o+6])*.5;
+        const coverage=mesh.geometry.attributes.aNeedle.getX(i)>.5 ? mesh.geometry.userData.needleCoverage : 1;
+        area+=Math.hypot(matrix[o],matrix[o+1],matrix[o+2])*Math.hypot(matrix[o+4],matrix[o+5],matrix[o+6])*.5*coverage;
       }
       const sphere=box.getBoundingSphere(new THREE.Sphere());
+      maxLeafRadius=Math.max(maxLeafRadius,radius);
       sphere.radius+=radius*15+woodlandWindMargin(t.height,mesh.material.userData.treeWind.value,t.strength);
       return {from:t.leafFrom,to:t.leafTo,sphere,area:area/(t.leafTo-t.leafFrom)};
     });
     this.kept=new Uint8Array(this.groups.length).fill(1);this.next=new Uint8Array(this.groups.length);
     this.detail=new Uint16Array(this.groups.length);this.appliedDetail=new Uint16Array(this.groups.length);
-    mesh.boundingSphere.radius+=3+Math.max(...mesh.userData.woodlandLeaves.map(t=>woodlandWindMargin(t.height,mesh.material.userData.treeWind.value,t.strength)));
+    mesh.boundingSphere.radius+=14*maxLeafRadius+Math.max(...mesh.userData.woodlandLeaves.map(t=>woodlandWindMargin(t.height,mesh.material.userData.treeWind.value,t.strength)));
     for(const {attribute} of this.streams)attribute.setUsage(THREE.DynamicDrawUsage);
   }
   prepareDetail(camera,pixelScale,enabled=true) {

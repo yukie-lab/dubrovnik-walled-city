@@ -67,6 +67,10 @@ try {
     const {woodlandInstanceChecks}=await import('./woodland-instance-capture.mjs');
     await woodlandInstanceChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--veg-study')) {
+    const {woodlandDensityChecks}=await import('./woodland-density-capture.mjs');
+    await woodlandDensityChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--tour')) {
     const {tourChecks}=await import('./tour-capture.mjs');
     await tourChecks(page,{name,dir,rows,errors,args});views=[];

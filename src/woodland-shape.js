@@ -7,7 +7,7 @@ export class WoodlandBuffer {
   constructor() {
     this.P=[];this.N=[];this.C=[];this.U=[];this.W=[];this.L=[];this.G=[];this.I=[];
     this.tris=0;this.trees=[];this.closedParts=[];this.current=null;
-    this.FM=[];this.FC=[];this.FT=[];
+    this.FM=[];this.FC=[];this.FT=[];this.FK=[];
   }
   begin(base,height,phase,strength=1) {
     if(this.current)throw new Error('Finish the previous tree');
@@ -17,6 +17,7 @@ export class WoodlandBuffer {
     const t=this.current;if(!t)throw new Error('Begin a tree before adding foliage');
     for(const v of matrix.elements)this.FM.push(v);
     this.FC.push(...color);this.FT.push(t.base[1],1/t.height,t.phase,t.strength);
+    this.FK.push(t.kind==='pine'||t.kind==='cypress' ? 1 : 0);
   }
   append(g,color,leaf=0,fineDiameter=0) {
     if(!this.current)throw new Error('Begin a tree before adding its wood');
@@ -44,7 +45,7 @@ export class WoodlandBuffer {
   absorb(B) {
     if(this.current || B.current)throw new Error('Only completed tree chunks can merge');
     const offset=this.P.length/3,tri=this.tris,leaf=this.FM.length/16;
-    for(const key of ['P','N','C','U','W','L','G','FM','FC','FT'])for(const v of B[key])this[key].push(v);
+    for(const key of ['P','N','C','U','W','L','G','FM','FC','FT','FK'])for(const v of B[key])this[key].push(v);
     for(const i of B.I)this.I.push(i+offset);
     for(const t of B.trees)this.trees.push({...t,from:t.from+tri,to:t.to+tri,leafFrom:t.leafFrom+leaf,leafTo:t.leafTo+leaf,
       mainRanges:t.mainRanges.map(r=>({from:r.from+tri,to:r.to+tri})),fineRanges:t.fineRanges.map(r=>({from:r.from+tri,to:r.to+tri}))});
