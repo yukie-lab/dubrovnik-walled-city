@@ -25,6 +25,7 @@ if (args.includes('--sweep')) {
   views = fixed.flatMap(([v, [x,z,yaw,pitch,extra]]) => times.map(([t,h]) =>
     [`${v}_${t}`, `x=${x}&z=${z}&yaw=${yaw}&pitch=${pitch}&time=${h}${extra || ''}`]));
 }
+if(args.includes('--query'))views=[[option('--view','custom'),option('--query')]];
 if(args.includes('--view'))views=views.filter(([v])=>v.includes(option('--view')));
 const dir = new URL('../shots/rendercheck/', import.meta.url);
 mkdirSync(dir, { recursive: true });
@@ -69,6 +70,10 @@ try {
   if(args.includes('--north-motion')) {
     const {woodlandMotionChecks}=await import('./woodland-motion-capture.mjs');
     await woodlandMotionChecks(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--rainware')) {
+    const {rainwareChecks}=await import('./rainware-capture.mjs');
+    await rainwareChecks(page,{name,dir,rows,errors,args});views=[];
   }
   if(args.includes('--ui')) {
     const {uiChecks}=await import('./ui-check.mjs');

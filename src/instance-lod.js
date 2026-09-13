@@ -28,11 +28,16 @@ export class StaticInstanceLOD {
     mesh.geometry.computeBoundingSphere();
     // Keep this original conservative bound after compaction. An empty batch
     // must not cache an empty bound and disappear forever when it fills again.
-    mesh.computeBoundingSphere();
-    const matrix = new THREE.Matrix4(), center = new THREE.Vector3();
-    const unit = mesh.geometry.boundingSphere;
+    const deformedBounds=mesh.userData.instanceBounds;
+    if(deformedBounds)mesh.boundingSphere=new THREE.Sphere().makeEmpty();
+    else mesh.computeBoundingSphere();
+    const matrix = new THREE.Matrix4(), center = new THREE.Vector3(), instanceUnit=new THREE.Sphere(), local=new THREE.Sphere();
     for (let i = 0; i < this.capacity; i++) {
       mesh.getMatrixAt(i, matrix);
+      // Shader-shaped details provide their actual instance-local bound.
+      // Include it both in the per-detail tests and the renderer's batch bound.
+      const unit=deformedBounds ? deformedBounds(i,instanceUnit) : mesh.geometry.boundingSphere;
+      if(deformedBounds)mesh.boundingSphere.union(local.copy(unit).applyMatrix4(matrix));
       matrix.premultiply(mesh.matrixWorld);
       center.copy(unit.center).applyMatrix4(matrix);
       this.spheres.set([center.x, center.y, center.z, unit.radius * matrix.getMaxScaleOnAxis()], i * 4);

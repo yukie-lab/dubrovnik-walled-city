@@ -42,4 +42,15 @@ assert.deepEqual(mesh.instanceMatrix.array, sourceMatrix);
 assert.deepEqual(mesh.instanceColor.array, sourceColor);
 assert.deepEqual([...geometry.attributes.aWeather.array], [0.1, 0.2, 0.3, 0.4].map(Math.fround));
 assert(mesh.boundingSphere.radius > 2000, 'Original bounds must survive an empty frame');
+// A shader displaces a whole component into view from an offscreen base mesh.
+// Both the per-instance cull and the renderer's whole-batch bound must see it.
+const stretched=new THREE.InstancedMesh(new THREE.BoxGeometry(.1,.1,.1),new THREE.MeshBasicMaterial(),1);
+stretched.setMatrixAt(0,new THREE.Matrix4().makeTranslation(4,0,-5));
+stretched.userData.instanceBounds=(i,sphere)=>{sphere.center.set(-4,0,0);sphere.radius=.1;return sphere;};
+const deformed=new StaticInstanceLOD(stretched,{margin:0}),front=new THREE.OrthographicCamera(-1,1,1,-1,.1,20);
+const narrow=new THREE.Frustum().setFromProjectionMatrix(front.projectionMatrix);
+deformed.update(narrow.planes,null,front.position,500,0);
+assert.equal(stretched.count,1,'A deformed visible component must survive');
+assert(narrow.intersectsSphere(stretched.boundingSphere),'Its renderer bound must also remain visible');
+assert(stretched.boundingSphere.containsPoint(new THREE.Vector3(0,0,-5)));
 console.log('Static detail LOD passed: view/shadow union, subpixel cutoff, attribute identity, empty-to-full restoration.');

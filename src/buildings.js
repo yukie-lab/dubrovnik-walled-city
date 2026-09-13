@@ -7,6 +7,7 @@
 // ・窓枠・ガラス・鎧戸・扉・煙突・汚れ帯 = すべてインスタンス
 // ============================================================================
 import * as THREE from 'three';
+import {makeRainware} from './rainware.js';
 import { metricMasonryUV } from './masonry-uv.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
@@ -837,7 +838,7 @@ export function makeBuildings(plan, tex, floorSupport) {
           const o2 = nPipe === 1 ? 0.06 : (q === 0 ? 0.045 : 0.955);
           const pxp = alongX ? fx + (o2 - 0.5) * (wallLen - 0.35) : fx;
           const pzp = alongX ? fz : fz + (o2 - 0.5) * (wallLen - 0.35);
-          pipes.push({ x: pxp + f.nx * 0.09, z: pzp + f.nz * 0.09, y: groundY, h: Math.max(2.5, h.eaves - groundY - 0.1), seed: hash2((pxp * 13) | 0, (pzp * 13) | 0) });
+          pipes.push({ x: pxp + f.nx * 0.09, z: pzp + f.nz * 0.09, nx:f.nx, nz:f.nz, houseX:h.x, houseZ:h.z, y: groundY, h: Math.max(2.5, h.eaves - groundY - 0.1), seed: hash2((pxp * 13) | 0, (pzp * 13) | 0) });
         }
       }
       // 実物の立面は「1階(店)→ ピアノ・ノビレ(最も高い)→ 上へ行くほど低い」。
@@ -1701,23 +1702,7 @@ export function makeBuildings(plan, tex, floorSupport) {
       }
     }
 
-    const pipeGeo = new THREE.CylinderGeometry(0.055, 0.055, 1, 7);
-    pipeGeo.translate(0, 0.5, 0);
-    // metalness 0.30 は物理的に存在しない(半金属)。亜鉛は金属。
-    const pipeMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.42, metalness: 0.85, envMapIntensity: 0.85 });
-    const pipeMesh = new THREE.InstancedMesh(pipeGeo, pipeMat, pipes.length);
-    const col2 = new THREE.Color();
-    pipes.forEach((p2, i) => {
-      dummy.position.set(p2.x, p2.y, p2.z);
-      dummy.rotation.set(0, 0, 0);
-      dummy.scale.set(1, p2.h, 1);
-      dummy.updateMatrix();
-      pipeMesh.setMatrixAt(i, dummy.matrix);
-      col2.setHSL(0.09, 0.05, 0.27 + p2.seed * 0.10, THREE.SRGBColorSpace);   // 亜鉛のグレー
-      pipeMesh.setColorAt(i, col2);
-    });
-    pipeMesh.castShadow = true;
-  group.add(tagMesh(pipeMesh, 'house.downpipe', { solid: true, small: true, staticDetail: true }));
+    group.add(makeRainware(pipes,floorSupport,bodies).group);
   }
 
   const counts = {
