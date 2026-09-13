@@ -36,20 +36,39 @@ const errors = [], rows = [];
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
-  if(args.includes('--buildings-source')) {
-    const source=readFileSync(option('--buildings-source'),'utf8');
+  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source')) {
+    const overrides=new Map();
+    if(args.includes('--buildings-source'))overrides.set('/src/buildings.js',readFileSync(option('--buildings-source'),'utf8'));
+    if(args.includes('--masonry-source'))overrides.set('/src/masonry.js',readFileSync(option('--masonry-source'),'utf8'));
+    if(args.includes('--leaf-cpu'))overrides.set('/src/woodland-leaf-lod.js',readFileSync(new URL('./fixtures/woodland-cpu-lod.mjs',import.meta.url),'utf8').replace('../../src/woodland-wind.js','/src/woodland-wind.js'));
     await page.setRequestInterception(true);
     page.on('request',request=>{
-      if(new URL(request.url()).pathname==='/src/buildings.js')request.respond({status:200,contentType:'text/javascript',body:source});
+      const source=overrides.get(new URL(request.url()).pathname);
+      if(source!==undefined)request.respond({status:200,contentType:'text/javascript',body:source});
       else request.continue();
     });
   }
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
+  if(args.includes('--reference-photographs')) {
+    for(const [id,url] of [
+      ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],
+      ['parapet','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100817-Large-1024x576.jpg'],
+    ]) {
+      const response=await page.goto(url,{waitUntil:'load',timeout:60000});
+      if(!response.ok())throw new Error('Reference photograph HTTP '+response.status());
+      writeFileSync(new URL(`${name}-${id}.jpg`,dir),await response.buffer());rows.push({view:id,source:url});
+    }
+    views=[];
+  }
   if(args.includes('--walk')) {
     const { walkChecks }=await import('./walk-capture.mjs');
     await walkChecks(page,{name,dir,rows,errors,args});
     views=[];
+  }
+  if(args.includes('--north-motion')) {
+    const {woodlandMotionChecks}=await import('./woodland-motion-capture.mjs');
+    await woodlandMotionChecks(page,{name,dir,rows,errors,args});views=[];
   }
   if(args.includes('--ui')) {
     const {uiChecks}=await import('./ui-check.mjs');

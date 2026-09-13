@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {woodlandLeafMesh,woodlandLeafGeometry} from '../src/woodland-leaves.js';
-import {WoodlandLeafLOD,WoodlandWoodLOD} from '../src/woodland-lod.js';
+// Area and attachment invariants on the saved CPU reference. The production
+// GPU path is compared to it in woodland-morph-check and the GPU capture.
+import {WoodlandLeafLOD} from './fixtures/woodland-cpu-lod.mjs';
+import {WoodlandWoodLOD} from '../src/woodland-lod.js';
 import {WoodlandBuffer} from '../src/woodland-shape.js';
 import {growPine} from '../src/woodland-growth.js';
 import {mulberry32} from '../src/util.js';
