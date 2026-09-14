@@ -156,7 +156,7 @@ try {
       hashes, ...result, fullStats, lodDifference, compositorDifference: diff.stdout.split('\n')[0] };
     rows.push(row);
     if(args.includes('--textures')) {
-      const {textureAudit}=await import('./texture-audit.mjs');await textureAudit(page,{name,dir});
+      const {textureAudit}=await import('./texture-audit.mjs');await textureAudit(page,{name,dir,repeat:args.includes('--texture-repeat')?2:1});
     }
     if(args.includes('--profile')) {
       const {profileGPU}=await import('./gpu-profile.mjs');

@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
-import {masonryFields} from '../src/masonry.js';
+const alternate=process.argv.indexOf('--source');
+const {masonryFields,masonryFinishes}=await import(alternate<0 ? '../src/masonry.js' : new URL('../'+process.argv[alternate+1],import.meta.url));
 import {setWorldSeed,DEFAULT_SEED} from '../src/seed.js';
 
 const digest=a=>createHash('sha256').update(a).digest('hex');
-const options=[{}, {roughCut:1,stoneM:.52,salt:0x51a51},
+const options=masonryFinishes ? Object.values(masonryFinishes) : [{}, {roughCut:1,stoneM:.52,salt:0x51a51},
   {coverM:5,courseM:.46,stoneM:1.4,tone:1,salt:0x51a54},
   {coverM:4.2,courseM:.4,stoneM:.90,fort:true,salt:0x51a55}];
 setWorldSeed(DEFAULT_SEED);

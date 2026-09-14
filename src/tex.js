@@ -531,15 +531,19 @@ function woodTex(rng, { size = 512 }) {
 
 // ---------------------------------------------------------------- 布 ----
 function clothTex(rng, { size = 256 }) {
+  // The weave used Math.random, so even fixed reference views changed across
+  // reloads. Keep its stream independent: consuming rng here would move every
+  // later rock, scrub, cloud and foliage texture in the shared factory.
+  const weave=rngFor(0xc1074);
   const [c, ctx] = canvas(size);
   ctx.fillStyle = 'hsl(40,26%,92%)'; ctx.fillRect(0, 0, size, size);
   // 織り目
   for (let y = 0; y < size; y += 3) {
-    ctx.fillStyle = `hsla(40,20%,${86 + Math.random() * 8}%,0.5)`;
+    ctx.fillStyle = `hsla(40,20%,${86 + weave() * 8}%,0.5)`;
     ctx.fillRect(0, y, size, 1.4);
   }
   for (let x = 0; x < size; x += 3) {
-    ctx.fillStyle = `hsla(40,14%,${88 + Math.random() * 6}%,0.35)`;
+    ctx.fillStyle = `hsla(40,14%,${88 + weave() * 6}%,0.35)`;
     ctx.fillRect(x, 0, 1.4, size);
   }
   // 裾の縫い目

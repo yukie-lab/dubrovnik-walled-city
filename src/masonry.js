@@ -30,15 +30,24 @@ export function masonryFields({size=1024,coverM=3.2,courseM=.26,stoneM=.65,fort=
     for(let k=0;k<count;k++) {
       const w=widths[k]/sum*size,id=stones.length+1,seed=(rng()*4294967296)>>>0;
       const wear=Math.pow(rng(),.65),joint=(.006+rng()*.007+roughCut*.005)*px;
-      const bevel=(.0015+wear*.007)*(1+roughCut*.8)*px;
-      const level=.006+rng()*.004+roughCut*.004,lit=(fort ? .682 : .704)+tone*.023+(rng()-.5)*.13;
+      const bevel=(.0012+wear*.0032)*(1+roughCut*.5)*px;
+      const level=.0025+rng()*.002+roughCut*.0025,lit=(fort ? .682 : .704)+tone*.023+(rng()-.5)*.13;
       // Neutral calcite, occasional iron staining. Variation stays within the
       // local limestone palette and is independent of how rounded the stone is.
-      rgb.setHSL((40+(rng()-.5)*5)/360,.08+rng()*.10,lit,THREE.SRGBColorSpace).convertLinearToSRGB();
+      rgb.setHSL((40+(rng()-.5)*5)/360,.045+rng()*.070,lit,THREE.SRGBColorSpace).convertLinearToSRGB();
       const base=[rgb.r,rgb.g,rgb.b],rough=.78+rng()*.15;
       const ang=rng()*Math.PI,cang=Math.cos(ang),sang=Math.sin(ang),stained=rng()<.22;
       const corners=Array.from({length:4},()=>px*(.004+roughCut*(.008+rng()*.025))*wear);
       const faceRough=roughCut*(.22+.78*Math.pow(rng(),.7));
+      const erosion=(distance,side)=>{
+        const broad=Math.max(0,noise(distance/(px*.15),side,seed+71)-.52);
+        const cell=Math.floor(distance/(px*.08)),chance=hash(cell,side,seed+73);
+        const center=(cell+.15+hash(cell,side,seed+79)*.7)*px*.08;
+        const halfWidth=px*(.006+hash(cell,side,seed+83)*.016);
+        const notch=chance<.08+roughCut*.13 ? Math.max(0,1-Math.abs(distance-center)/halfWidth) : 0;
+        const depth=.003+hash(cell,side,seed+89)*(.005+roughCut*.012);
+        return wear*px*broad*broad*(.006+roughCut*.021)+wear*wear*notch*depth*px;
+      };
       stones.push({id,x:x0/px,y:y0/px,w:w/px,h:h/px,wear,joint:joint/px,bevel:bevel/px,seed,roughness:rough});
       const xEnd=Math.ceil(x0+w-.5),yEnd=Math.ceil(y0+h-.5);
       for(let iy=Math.ceil(y0-.5);iy<yEnd;iy++)for(let ix=Math.ceil(x0-.5);ix<xEnd;ix++) {
@@ -46,9 +55,8 @@ export function masonryFields({size=1024,coverM=3.2,courseM=.26,stoneM=.65,fort=
         const i=wy*size+wx,o=i*4;
         // Edge erosion is correlated over centimetres. It narrows the stone;
         // adjacent blocks keep their own edge and the joint never protrudes.
-        const ex=(noise(dy/(px*.035),0,seed)-.25)*wear*px*(.007+roughCut*.028);
-        const ey=(noise(dx/(px*.048),1,seed)-.25)*wear*px*(.006+roughCut*.024);
-        const edge=Math.min(dx-joint*.5-ex,w-dx-joint*.5-ex,dy-joint*.5-ey,h-dy-joint*.5-ey,
+        const edge=Math.min(dx-joint*.5-erosion(dy,0),w-dx-joint*.5-erosion(dy,1),
+          dy-joint*.5-erosion(dx,2),h-dy-joint*.5-erosion(dx,3),
           (dx+dy-corners[0])/1.414,(w-dx+dy-corners[1])/1.414,(dx+h-dy-corners[2])/1.414,(w-dx+h-dy-corners[3])/1.414);
         const face=smooth(0,Math.max(.8,bevel),edge);
         const grain=hash(ix,iy,seed),fine=noise(dx*.38,dy*.38,seed+3)-.5;
@@ -70,7 +78,7 @@ export function masonryFields({size=1024,coverM=3.2,courseM=.26,stoneM=.65,fort=
         const patina=1+patch*(.09+roughCut*.12)+weather*(.09+roughCut*.13)+fine*.018+fracture*roughCut*.045
           -pit*.12-tool*.014-crust-dirtyEdge*.16;
         const border=(1-smooth(0,bevel+px*.004,edge))*face;
-        const mortar=.53+patch*.070+(grain-.5)*.023;
+        const mortar=.60+patch*.045+(grain-.5)*.023;
         for(let c=0;c<3;c++) {
           const stone=base[c]*patina+border*.014;
           const cement=mortar*[1.018,1,.965][c];
@@ -108,14 +116,15 @@ export function masonryTextures(options) {
     coverM:f.coverM,physicalRelief:true,stones:f.stones};
 }
 
-export function replaceMasonryTextures(tex) {
-  const finishes={
+export const masonryFinishes={
     wallStone:{roughCut:.10},
     wallRubble:{stoneM:.52,roughCut:1,salt:0x51a51},
     monumentStone:{coverM:5,courseM:.46,stoneM:1.4,roughCut:.1,tone:1,salt:0x51a54},
-    fortStone:{coverM:4.2,courseM:.4,stoneM:.90,fort:true,salt:0x51a55},
-  };
-  for(const [key,options] of Object.entries(finishes)) {
+    fortStone:{coverM:4.2,courseM:.29,stoneM:.69,fort:true,salt:0x51a55},
+};
+
+export function replaceMasonryTextures(tex) {
+  for(const [key,options] of Object.entries(masonryFinishes)) {
     // The preceding legacy texture pass consumes the original shared RNG in
     // its original order. Discard only these maps after that pass; all other
     // generated textures retain their exact source pixels.

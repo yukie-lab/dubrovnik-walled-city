@@ -6,6 +6,15 @@ import * as THREE from 'three';
 import {writeFileSync} from 'node:fs';
 const {buildWorld}=await import('../src/world.js');
 const w=buildWorld(), rows=[];
+const finishMaps=new Map(['wallStone','wallRubble','monumentStone','fortStone'].map(key=>[w.tex[key].map,key])),finishUsage=[];
+w.root.traverse(mesh=>{
+  if(!mesh.isMesh)return;
+  for(const material of Array.isArray(mesh.material)?mesh.material:[mesh.material]) {
+    const family=finishMaps.get(material.map);
+    if(family)finishUsage.push({tag:mesh.name,family,instances:mesh.isInstancedMesh?mesh.count:1});
+  }
+});
+console.log('Shared masonry consumers',JSON.stringify(finishUsage));
 const tags=new Map([
   ['house.body',3.2],['house.gableFin',3.2],['house.chimney',3.2],
   ['monument.stone',5],['monument.column',.9],['wall.curtain',4.2],['wall.merlon',4.2],
@@ -32,5 +41,5 @@ w.root.traverse(m=>{
 });
 const folk=w.life.folk.map(f=>({x:f.x,y:f.y,z:f.z,h:f.h,wx:f.wx,wz:f.wz,rotY:f.rotY,seed:f.seed,sit:f.sit||0}));
 console.log('People',folk.length,'seated',folk.filter(f=>f.sit).length);
-if(process.argv[2])writeFileSync(process.argv[2],JSON.stringify({rows,folk},null,2)+'\n');
+if(process.argv[2])writeFileSync(process.argv[2],JSON.stringify({rows,finishUsage,folk},null,2)+'\n');
 if(rows.length!==tags.size||rows.some(r=>r.invalid))process.exitCode=1;
