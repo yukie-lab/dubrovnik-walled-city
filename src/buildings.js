@@ -199,10 +199,23 @@ function patchRoofMaterial(mat, coverM) {
         varying vec2 vTileUv; varying float vRoofSurface;
         float hashR(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }`)
       .replace('#include <map_fragment>', `
-        vec4 sampledDiffuseColor = texture2D(map, vTileUv);
-        // 列ごとの焼きむら(瓦は一列ずつ違う窯から来た)
-        // 一度に葺くのは 1 列ではなく 4〜6 段。窯むらはその単位で変わる。
-        float row = floor(vTileUv.y / 0.375 + vSeed * 7.0);
+        // Select a complete source tile for each physical tile. The cropped
+        // final column and row of the bitmap never reset the roof's lattice.
+        vec2 tileSize = vec2(0.18, 0.30) / ${coverM.toFixed(8)};
+        vec2 tileId = floor(vTileUv / tileSize);
+        vec2 tileLocal = fract(vTileUv / tileSize);
+        vec2 atlasId = vec2(1.0) + floor(vec2(hashR(tileId + vSeed * 71.13),
+          hashR(tileId.yx + vec2(53.7, 11.9) + vSeed * 137.7)) * vec2(${(Math.floor(coverM/.18)-1).toFixed(1)}, ${(Math.floor(coverM/.30)-1).toFixed(1)}));
+        // Canvas textures flip vertically: start at a complete row's lower
+        // edge, then move upward with the metric roof coordinate. Keep the
+        // original derivatives for both mip selection and the tangent frame.
+        vec2 roofAtlasUv = vec2((atlasId.x + tileLocal.x) * tileSize.x,
+          1.0 - (atlasId.y + 1.0 - tileLocal.y) * tileSize.y);
+        vec2 roofDx = dFdx(vTileUv), roofDy = dFdy(vTileUv);
+        vec4 roofBase = textureGrad(map, roofAtlasUv, roofDx, roofDy);
+        vec4 sampledDiffuseColor = roofBase;
+        // 焼きむらは5段のまとまり。境界も補修区画も瓦の縁に揃える。
+        float row = floor((tileId.y + floor(vSeed * 35.0)) / 5.0);
         float rj = hashR(vec2(row, vSeed * 91.0));
         float rh = hashR(vec2(row * 3.7, vSeed * 17.0));
         // リニア空間の乗算スカラーは **色度を変えない**。窯むらとは本来
@@ -216,33 +229,36 @@ function patchRoofMaterial(mat, coverM) {
         float faceUp = vRoofSurface;
         // 段の重なりの影。地図側でも引いていたので **同じ横線が二回** 出ていた。
         // 地図側を微かにしたぶん、こちらは据え置き。周期は 1 段 = 0.30m。
-        float vv = fract(vTileUv.y / 0.15);
+        float vv = fract(vTileUv.y / tileSize.y);
         sampledDiffuseColor.rgb *= mix(1.0, 0.70 + 0.30 * smoothstep(0.0, 0.32, vv), faceUp);
         // クパ・カナリツァは「幅の広い凹んだ溝瓦」と「幅の狭い高い丸瓦」の交互。
         // 対称な半正弦は同じ山が並ぶだけで、これはトタンの波板の断面。
         // 1 モジュール 180mm を 丸 76mm(0.42)+ 溝 104mm に割り、非対称にする。
-        float uu = fract(vTileUv.x / 0.09);
+        float uu = fract(vTileUv.x / tileSize.x);
         float crown = sin(clamp(uu / 0.42, 0.0, 1.0) * 3.14159);
         float chan = max(0.0, 1.0 - abs((uu - 0.71) / 0.29));
         float prof = uu < 0.42 ? (0.76 + 0.36 * crown) : (0.64 + 0.14 * chan);
         sampledDiffuseColor.rgb *= mix(1.0, prof, faceUp);
         // 縞は fract/sin なのでミップに落ちない。遠景でエイリアスになるので、
         // 画素あたりの UV の伸び(fwidth)で振幅を殺す。1 命令。
-        float lodK = 1.0 - smoothstep(0.35, 1.1, length(fwidth(vTileUv)) / 0.09);
-        sampledDiffuseColor.rgb = mix(texture2D(map, vTileUv).rgb, sampledDiffuseColor.rgb, lodK);
+        float lodK = 1.0 - smoothstep(0.35, 1.1, length(fwidth(vTileUv)) / tileSize.x);
+        sampledDiffuseColor.rgb = mix(roofBase.rgb, sampledDiffuseColor.rgb, lodK);
         // 補修の継ぎ当て(明るい新品の区画がまだらに)
-        // 葺き替えの継ぎ当ては、瓦の列(0.185 × 0.36m)にスナップし、
+        // 葺き替えの継ぎ当ては、既存の瓦格子(0.18 × 0.30m)にスナップし、
         // 縁を段々にする。軸に平行な長方形は付箋にしか見えない。
-        vec2 tile = vTileUv / vec2(0.09, 0.15);
-        // 一度に葺く単位は百枚 = 約 3.5m 角。5×3 枚(0.45×0.45m)は付箋。
-        vec2 cell = floor(tile / vec2(18.0, 12.0) + vSeed * 13.0);
+        // 18列×12段の区画。種によるずらしも整数の瓦数にする。
+        vec2 cell = floor((tileId + floor(vSeed * vec2(234.0, 156.0))) / vec2(18.0, 12.0));
         float pj = hashR(cell + vSeed * 7.7);
-        float edge = hashR(floor(tile) + cell * 3.1);        // 瓦 1 枚単位で縁を崩す
+        float edge = hashR(tileId + cell * 3.1);        // 瓦 1 枚単位で縁を崩す
         if (pj > 0.93 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.80, 0.44, 0.30), 0.38);
         else if (pj < 0.04 && edge > 0.25) sampledDiffuseColor.rgb = mix(sampledDiffuseColor.rgb, vec3(0.44, 0.36, 0.30), 0.30);
-        diffuseColor *= sampledDiffuseColor;`);
+        diffuseColor *= sampledDiffuseColor;`)
+      .replace('#include <normal_fragment_maps>',`
+        vec3 mapN = textureGrad(normalMap, roofAtlasUv, roofDx, roofDy).xyz * 2.0 - 1.0;
+        mapN.xy *= normalScale;
+        normal = normalize(tbn * mapN);`);
   };
-  mat.customProgramCacheKey=()=> 'baked-solid-roof-v1';
+  mat.customProgramCacheKey=()=> 'baked-solid-roof-cells-v3:'+coverM;
 }
 
 // ---- 開口部の配置 ----------------------------------------------------------
