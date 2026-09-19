@@ -8,7 +8,9 @@ export function makeHouseOcclusion(houses) {
   const minZ=Math.floor(Math.min(...houses.map(h=>h.z-h.d/2))/cellSize);
   const width=Math.floor(Math.max(...houses.map(h=>h.x+h.w/2))/cellSize)-minX+1;
   const depth=Math.floor(Math.max(...houses.map(h=>h.z+h.d/2))/cellSize)-minZ+1;
+  const minY=Math.min(...houses.map(h=>h.yBase)),maxY=Math.max(...houses.map(h=>h.eaves));
   const cells=Array.from({length:width*depth},()=>[]),empty=[];
+  const cellLow=new Float64Array(cells.length).fill(Infinity),cellHigh=new Float64Array(cells.length).fill(-Infinity);
   const seen=new Int32Array(houses.length);
   let stamp=0;
   houses.forEach((h,i)=>{
@@ -16,19 +18,24 @@ export function makeHouseOcclusion(houses) {
     boxes.set([x0,x1,h.yBase,h.eaves,z0,z1],i*6);
     for(let z=Math.floor(z0/cellSize);z<=Math.floor(z1/cellSize);z++)
       for(let x=Math.floor(x0/cellSize);x<=Math.floor(x1/cellSize);x++) {
-        cells[(z-minZ)*width+x-minX].push(i);
+        const cell=(z-minZ)*width+x-minX;cells[cell].push(i);
+        cellLow[cell]=Math.min(cellLow[cell],h.yBase);cellHigh[cell]=Math.max(cellHigh[cell],h.eaves);
       }
   });
   function blocked(ox,oy,oz,x,y,z,radius) {
     const dx=x-ox,dy=y-oy,dz=z-oz,length=Math.hypot(dx,dy,dz);
     if(length<=radius*2)return false;
     const maxT=1-radius/length;
-    // Clip long shadow rays to the city index before traversing it. Empty
-    // kilometres above/outside the city have no possible occluders.
+    // Clip long shadow rays to the city's footprint AND occupied height.
+    // The slack only widens these broad bounds against roundoff; it never
+    // changes the exact eroded solid used to establish occlusion below.
+    const heightSlack=1e-7;
     let firstT=0,lastT=maxT;
-    for(let axis=0;axis<2;axis++) {
-      const origin=axis===0 ? ox : oz,delta=axis===0 ? dx : dz;
-      const lo=(axis===0 ? minX : minZ)*cellSize,hi=lo+(axis===0 ? width : depth)*cellSize;
+    for(let axis=0;axis<3;axis++) {
+      const origin=axis===0 ? ox : axis===1 ? oy : oz,delta=axis===0 ? dx : axis===1 ? dy : dz;
+      const lo=axis===1 ? minY+radius-heightSlack : (axis===0 ? minX : minZ)*cellSize;
+      const hi=axis===1 ? maxY-radius+heightSlack : lo+(axis===0 ? width : depth)*cellSize;
+      if(lo>hi)return false;
       if(Math.abs(delta)<1e-12) {if(origin<lo || origin>hi)return false;}
       else {const a=(lo-origin)/delta,b=(hi-origin)/delta;firstT=Math.max(firstT,Math.min(a,b));lastT=Math.min(lastT,Math.max(a,b));}
     }
@@ -42,8 +49,14 @@ export function makeHouseOcclusion(houses) {
     let tz=dz===0 ? Infinity : ((iz+(sz>0 ? 1 : 0))*cellSize-oz)/dz;
     const dtX=dx===0 ? Infinity : cellSize/Math.abs(dx),dtZ=dz===0 ? Infinity : cellSize/Math.abs(dz);
     const count=Math.abs(ex-ix)+Math.abs(ez-iz)+2;
+    let cellEntry=firstT;
     for(let cell=0;cell<count;cell++) {
-      const bucket=ix>=minX && ix<minX+width && iz>=minZ && iz<minZ+depth ? cells[(iz-minZ)*width+ix-minX] : empty;
+      const id=ix>=minX && ix<minX+width && iz>=minZ && iz<minZ+depth ? (iz-minZ)*width+ix-minX : -1;
+      const cellExit=Math.min(tx,tz,lastT),entryY=oy+dy*cellEntry,exitY=oy+dy*cellExit;
+      // A ray must enter the eroded height range of some house in this cell.
+      // This is only a broad rejection; the unchanged exact box test below
+      // still proves coverage of the complete detail sphere.
+      const bucket=id>=0 && Math.max(entryY,exitY)>=cellLow[id]+radius-heightSlack && Math.min(entryY,exitY)<=cellHigh[id]-radius+heightSlack ? cells[id] : empty;
       for(const id of bucket) {
         if(seen[id]===stamp)continue;
         seen[id]=stamp;
@@ -68,8 +81,8 @@ export function makeHouseOcclusion(houses) {
         if(leave>=enter && enter>0 && enter<maxT)return true;
       }
       if(ix===ex && iz===ez)break;
-      if(tx<tz){if(tx>lastT)break;ix+=sx;tx+=dtX;}
-      else {if(tz>lastT)break;iz+=sz;tz+=dtZ;}
+      if(tx<tz){if(tx>lastT)break;cellEntry=tx;ix+=sx;tx+=dtX;}
+      else {if(tz>lastT)break;cellEntry=tz;iz+=sz;tz+=dtZ;}
     }
     return false;
   }

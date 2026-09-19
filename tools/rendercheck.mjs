@@ -37,10 +37,11 @@ const errors = [], rows = [];
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
-  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source')) {
+  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source')) {
     const overrides=new Map();
     if(args.includes('--buildings-source'))overrides.set('/src/buildings.js',readFileSync(option('--buildings-source'),'utf8'));
     if(args.includes('--masonry-source'))overrides.set('/src/masonry.js',readFileSync(option('--masonry-source'),'utf8'));
+    if(args.includes('--leaf-source'))overrides.set('/src/woodland-leaf-lod.js',readFileSync(option('--leaf-source'),'utf8'));
     if(args.includes('--leaf-cpu'))overrides.set('/src/woodland-leaf-lod.js',readFileSync(new URL('./fixtures/woodland-cpu-lod.mjs',import.meta.url),'utf8').replace('../../src/woodland-wind.js','/src/woodland-wind.js'));
     await page.setRequestInterception(true);
     page.on('request',request=>{
