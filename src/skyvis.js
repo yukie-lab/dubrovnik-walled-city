@@ -10,6 +10,7 @@
 // ここで焼く値は間接光(半球光 + IBL)にだけ掛ける。直射に掛けると影が二重になる。
 // ============================================================================
 import * as THREE from 'three';
+import {chainMaterialShader} from './material-patch.js';
 import { clamp, smoothstep } from './util.js';
 
 // 天空可視率で「塞がれた分」は黒ではなく、日向の石灰岩の壁である。
@@ -105,9 +106,7 @@ export function makeSkyVis(plan) {
 // 焼いた値を「間接光にだけ」掛けるためのシェーダ差し込み。
 // aSky 属性(頂点あたり 1 float)を持つジオメトリに使う。
 export function patchSkyVis(mat) {
-  const prev = mat.onBeforeCompile;
-  mat.onBeforeCompile = (sh, renderer) => {
-    if (prev) prev(sh, renderer);
+  chainMaterialShader(mat,'skyvis',(sh) => {
     sh.uniforms.uBounce = bounceRad;
     sh.uniforms.uGroundY = groundRefY;
     sh.vertexShader = sh.vertexShader
@@ -140,9 +139,7 @@ export function patchSkyVis(mat) {
             directionalLightShadows[ 0 ].shadowRadius, vDirectionalShadowCoord[ 0 ] );
         #endif
         reflectedLight.indirectSpecular *= mix(0.55, 1.0, vSkyV) * mix(0.25, 1.0, sMask);`);
-  };
-  const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
-  mat.customProgramCacheKey = () => key + '|skyvis';
+  });
 }
 
 // ジオメトリの全頂点に aSky を焼く(法線は頂点法線を使う)
@@ -160,9 +157,7 @@ export function bakeSkyVis(geo, skyAt, { offsetY = 0 } = {}) {
 // 影のテストは掛けない軽量版 — 磨いた面でないものはこれで十分で、
 // getShadow() の 16 タップを全材質に配ると 5〜8fps 落ちる。
 export function patchSkyVisInstanced(mat) {
-  const prev = mat.onBeforeCompile;
-  mat.onBeforeCompile = (sh, renderer) => {
-    if (prev) prev(sh, renderer);
+  chainMaterialShader(mat,'skyvisI',(sh) => {
     sh.uniforms.uUrban = urbanTint;
     sh.uniforms.uBounce = bounceRad;
     sh.vertexShader = sh.vertexShader
@@ -174,9 +169,7 @@ export function patchSkyVisInstanced(mat) {
         reflectedLight.indirectDiffuse *= vSkyI * mix(uUrban, vec3(1.0), vSkyI);
         reflectedLight.indirectDiffuse += diffuseColor.rgb * uBounce * 0.40 * (0.30 + 0.70 * vSkyI);
         reflectedLight.indirectSpecular *= vSkyI;`);
-  };
-  const key = mat.customProgramCacheKey ? mat.customProgramCacheKey() : '';
-  mat.customProgramCacheKey = () => key + '|skyvisI';
+  });
   return mat;
 }
 

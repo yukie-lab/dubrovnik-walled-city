@@ -6,6 +6,7 @@
 // ・StepPool: 市中の石段を閉じた立体として 1 つの描画バッチへ束ねる
 // ============================================================================
 import * as THREE from 'three';
+import {chainMaterialShader} from './material-patch.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, samplePolyline, polylineLength, pointInPoly, vnoise, fbm2, tagMesh } from './util.js';
 import { streetY, farHeight } from './plan.js';
@@ -232,9 +233,7 @@ function macroVariation(mat, macroTex, periodM, amount) {
   // lights_fragment_end)は、この一行のせいで六つのパスのあいだ一度も GPU に
   // 届いていなかった(tools/_obc.mjs: ground.stradun のパッチが macro,skyVis
   // だけで specClamp が無い)。onBeforeCompile を書く者は全員 chain する。
-  const prev = mat.onBeforeCompile;
-  mat.onBeforeCompile = (sh, r) => {
-    if (prev) prev.call(mat, sh, r);
+  chainMaterialShader(mat,'terrainMacro-v1',(sh) => {
     sh.uniforms.uMacro = { value: macroTex };
     sh.uniforms.uMacroP = { value: periodM };
     sh.uniforms.uMacroA = { value: amount };
@@ -250,7 +249,7 @@ function macroVariation(mat, macroTex, periodM, amount) {
         float mv2 = texture2D(uMacro, vMacroPos.xz / (uMacroP * 4.3) + 0.37).a;
         // 片側だけの式は「変調」ではなく一律の減光。中心 0 の両側変調にする。
         diffuseColor.rgb *= 1.0 + uMacroA * 2.0 * (0.6 * (mv - 0.5) + 0.4 * (mv2 - 0.5));`);
-  };
+  });
 }
 
 // 海草(ポシドニア)の色。海底の白い岩盤に斑で乗る。
@@ -399,9 +398,7 @@ export function makeGround(plan, tex, stepPool) {
     // 順序への依存は消えたが、この並び自体は動かす理由が無いので残す。
     macroVariation(nearMat, tex.grime, 26.0, 0.20);   // 数mスケールの情報が無いと岩肌が砂に見える
     // 岩棚や壕の急斜面で平面投影が縦に伸びる。三平面で潰す。
-    const prevNear = nearMat.onBeforeCompile;
-    nearMat.onBeforeCompile = (sh, rr) => {
-      if (prevNear) prevNear(sh, rr);
+    chainMaterialShader(nearMat,`terrainNear-v1:${tex.rock.coverM}:${tex.scrub.coverM}`,(sh) => {
       sh.uniforms.mapScrub = { value: tex.scrub.map };
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;\nattribute float aScrub;\nvarying float vScrub;')
@@ -433,7 +430,7 @@ export function makeGround(plan, tex, stepPool) {
           .replace('${COVER}', tex.rock.coverM.toFixed(2))
           .replace('${SCOVER}', (tex.scrub.coverM * 0.45).toFixed(2))
           .replace('${SCOVER2}', (tex.scrub.coverM * 0.14).toFixed(2)));
-    };
+    });
     bakeSkyVis(g, skyAt, { offsetY: 0.9 });
     patchSkyVis(nearMat);
     patchWet(nearMat, { wet: 0.34, top: 0.55, foam: 0.22, dry: true });   // 汀の濡れ帯
@@ -545,7 +542,7 @@ export function makeGround(plan, tex, stepPool) {
     });
     // 平面投影のままだと急斜面でテクスチャが縦に伸び、山肌が「垂れた布」になる。
     // 三平面投影(法線で重み付け)に差し替える。
-    farMat.onBeforeCompile = (sh) => {
+    chainMaterialShader(farMat,'terrainFar-v1',(sh) => {
       sh.vertexShader = sh.vertexShader
         .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNrm;')
         .replace('#include <worldpos_vertex>', `#include <worldpos_vertex>
@@ -568,7 +565,7 @@ export function makeGround(plan, tex, stepPool) {
                   + texture2D(map, vWPos.xy / 213.0 + vec2(0.37, 0.11)) * tw.z;
           vec4 sampledDiffuseColor = s1 * 0.55 + s2 * 0.45;
           diffuseColor *= sampledDiffuseColor;`);
-    };
+    });
     patchWet(farMat, { foam: 0.35 });   // 遠景の岸も同じ汀を持つ
     const m = new THREE.Mesh(g, farMat);
     group.add(tagMesh(m, 'ground.far', { terrain: true, openSurface: true, backdrop: true }));
@@ -784,9 +781,7 @@ export function makeGround(plan, tex, stepPool) {
     });
     {
       // 太陽の芯だけ切る。路面を走る照りの「形」は残す。
-      const prevOBC = stradunMat.onBeforeCompile;
-      stradunMat.onBeforeCompile = (sh, r) => {
-        if (prevOBC) prevOBC.call(stradunMat, sh, r);
+      chainMaterialShader(stradunMat,'polishedLimestoneSpecular-v1',(sh) => {
         // チャンネルごとに min で切ると、暖色の太陽では R から順に頭打ちになり、
         // 三つとも 3.2 に揃った時点で **磨石を走る照りが色を失う**(実測 逆光の朝で
         // 「Y>0.75 かつ彩度<0.06」の無彩の白が 11.0%)。丈は同じだけ切るが、
@@ -797,7 +792,7 @@ export function makeGround(plan, tex, stepPool) {
             float pk = max(max(sp.r, sp.g), sp.b);
             if (pk > 3.2) sp *= 3.2 / pk;
             reflectedLight.directSpecular = sp; }`);
-      };
+      });
     }
     // 700年の靴に磨かれた石。鏡面に太陽が映らなければ「照り」は出ない。
     specularEnvTargets.push(stradunMat);

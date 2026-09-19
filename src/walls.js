@@ -4,6 +4,7 @@
 // 狭間胸壁(メルロン)とミンチェタの持ち送りだけインスタンス。
 // ============================================================================
 import * as THREE from 'three';
+import {chainMaterialShader} from './material-patch.js';
 import { stoneFinish } from './masonry.js';
 import { anchoredQuadUV, connectMasonryCharts, planarMasonryUV } from './masonry-uv.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -1864,13 +1865,11 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // 石目を個体ごとにずらす(全部同じ模様の行列は一目で複製とわかる)
   const merlonUv = new Float32Array(merlons.length * 2);
   // ずらしは頂点側で行う(vMapUv はフラグメントでは入力なので代入できない)
-  const merlonSky=merlonMat.onBeforeCompile;
-  merlonMat.onBeforeCompile = (sh,renderer) => {
-    merlonSky(sh,renderer);
+  chainMaterialShader(merlonMat,'merlonStoneOffset-v1',(sh) => {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nattribute vec2 aUvOff;')
       .replace('#include <uv_vertex>', '#include <uv_vertex>\n\tvMapUv += aUvOff;\n\tvNormalMapUv += aUvOff;\n#ifdef USE_ROUGHNESSMAP\n vRoughnessMapUv += aUvOff;\n#endif');
-  };
+  });
   const merlonMesh = new THREE.InstancedMesh(merlonGeo, merlonMat, merlons.length);
   {
     const dummy = new THREE.Object3D();

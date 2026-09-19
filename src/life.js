@@ -5,6 +5,7 @@
 // アマツバメ、港のカモメ。すべてインスタンスか小さなマージ。
 // ============================================================================
 import * as THREE from 'three';
+import {chainMaterialShader} from './material-patch.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
 import { makePottedPlants } from './plants.js';
@@ -219,7 +220,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     const mat = new THREE.MeshStandardMaterial({
       map: tex.cloth.map, side: THREE.DoubleSide, roughness: 0.9,
     });
-    mat.onBeforeCompile = (shader) => {
+    chainMaterialShader(mat,'laundrySway-v1',(shader) => {
       shader.uniforms.uT = clothTime;
       shader.vertexShader = shader.vertexShader
         // 振動数と位相は **別々の属性**。1 本の float の fract に振動数を
@@ -231,7 +232,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
           float hang = -transformed.y;   // 0(ロープ)→1(裾)
           transformed.z += sway * hang * 0.16;
           transformed.x += sway * hang * 0.05;`);
-    };
+    });
     const mesh = new THREE.InstancedMesh(g, mat, cloths.length);
     clock.cloths = { mesh, list: cloths, dummy: null, key: '' };
     const dummy = new THREE.Object3D();
@@ -1581,14 +1582,14 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
   })();
   const swiftTime = { value: 0 };
   const swiftMat = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: 0.9, side: THREE.DoubleSide });
-  swiftMat.onBeforeCompile = (shader) => {
+  chainMaterialShader(swiftMat,'swiftWings-v1',(shader) => {
     shader.uniforms.uT = swiftTime;
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', '#include <common>\nattribute float aPhase; uniform float uT;')
       .replace('#include <begin_vertex>', `#include <begin_vertex>
         float flap = sin(uT * 9.0 + aPhase * 20.0) * (0.6 + 0.4 * sin(aPhase * 3.0 + uT * 0.7));
         transformed.y += abs(transformed.x) * flap * 0.9;`);
-  };
+  });
   // ---- 鳩。広場に地上の鳥が一羽もいないことが、この街を模型に見せていた。
   // ルジャとオノフリオは、現実のドゥブロヴニクで「鳩がいることそのものが風景」。
   const PIGEONS = [];

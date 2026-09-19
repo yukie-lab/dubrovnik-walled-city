@@ -158,6 +158,9 @@ try {
     if(args.includes('--textures')) {
       const {textureAudit}=await import('./texture-audit.mjs');await textureAudit(page,{name,dir,repeat:args.includes('--texture-repeat')?2:1});
     }
+    if(args.includes('--program-audit')) {
+      const {materialProgramAudit}=await import('./material-program-audit.mjs');await materialProgramAudit(page,{name:stem,dir,strict:args.includes('--program-strict')});
+    }
     if(args.includes('--profile')) {
       const {profileGPU}=await import('./gpu-profile.mjs');
       row.gpu=await profileGPU(page,1000/row.actualFps);console.log(JSON.stringify(row.gpu));
