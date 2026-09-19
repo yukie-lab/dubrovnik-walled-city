@@ -5,7 +5,7 @@
 // ============================================================================
 import * as THREE from 'three';
 import { stoneFinish } from './masonry.js';
-import { anchoredQuadUV } from './masonry-uv.js';
+import { anchoredQuadUV, connectMasonryCharts, planarMasonryUV } from './masonry-uv.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hash2, clamp, lerp, smoothstep, nearestOnPolyline, tagMesh } from './util.js';
 import { sharedSkyVis } from './buildings.js';
@@ -15,6 +15,7 @@ import { patchWet } from './wet.js';
 export function makeWalls(plan, tex, stepPool, outsideHeight) {
   const group = new THREE.Group();
   const P = [], N = [], U = [], C = [], I = [];
+  const masonryCharts = [];
   const um = 1 / tex.fortStone.coverM;
 
   const baseTint = new THREE.Color();
@@ -73,13 +74,12 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     }
     const n = { x: nvx, y: nvy, z: nvz };
     let i0 = P.length / 3;
-    const w = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const h1 = Math.hypot(d[0] - a[0], d[1] - a[1], d[2] - a[2]);
     P.push(...a, ...b, ...c, ...d);
     for (let k = 0; k < 4; k++) N.push(n.x, n.y, n.z);
     U.push(...anchoredQuadUV(a,b,c,d,um*uvScale));
     // 潮の帯: 水面から 1.2m は藻と塩で濃く緑に沈む。海に立つ石でここが
     // 明るいままだと、壁が水面に「置いてある」ように見える。
+    masonryCharts.push({p:[a,b,c,d],normal:[n.x,n.y,n.z],scale:um*uvScale,offset:U.length-8});
     const ys = [a[1], b[1], c[1], d[1]];
     for (let k = 0; k < 4; k++) {
       const t = k < 2 ? tintA : tintB;
@@ -330,7 +330,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
         const i0 = P.length / 3;
         for (const v of vs) P.push(v[0], v[1], v[2]);
         for (let q = 0; q < 3; q++) { N.push(nx2, ny2, nz2); C.push(0.86, 0.86, 0.86); }
-        U.push(0, 0, 1, 0, 1, 1);
+        U.push(...planarMasonryUV(vs,[nx2,ny2,nz2],um));
         I.push(i0, i0 + 1, i0 + 2);
       }
     };
@@ -1729,6 +1729,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // ---- 本体メッシュ化
   { const last = PARTS[PARTS.length - 1]; if (last) last.to = I.length / 3; }
   const geo = new THREE.BufferGeometry();
+  geo.userData.masonryCharts = connectMasonryCharts(masonryCharts,U);
   geo.setAttribute('position', new THREE.Float32BufferAttribute(P, 3));
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));

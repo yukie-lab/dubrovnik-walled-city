@@ -3,18 +3,66 @@ import * as THREE from 'three';
 // Preserve a quad's metric chart directions and scale, but place its origin
 // in space. Coplanar pieces with the same axes then share one continuous chart
 // instead of restarting the first stone at each geometry subdivision.
-export function anchoredQuadUV(a,b,c,d,scale=1) {
-  const unit=(from,to,otherFrom,otherTo)=>{
-    let edge=to.map((v,k)=>v-from[k]),length=Math.hypot(...edge);
-    if(length<1e-8){edge=otherTo.map((v,k)=>v-otherFrom[k]);length=Math.hypot(...edge);}
-    return length>1e-8 ? edge.map(v=>v/length) : [0,0,0];
+const dot3=(a,b)=>a.reduce((sum,value,i)=>sum+value*b[i],0);
+const normalize3=v=>{const length=Math.hypot(...v);return length>1e-8?v.map(x=>x/length):[0,0,0];};
+const quadAxes=([a,b,c,d])=>{
+  const edge=(from,to,otherFrom,otherTo)=>{
+    const v=to.map((x,i)=>x-from[i]);
+    return normalize3(Math.hypot(...v)>1e-8?v:otherTo.map((x,i)=>x-otherFrom[i]));
   };
-  const uAxis=unit(a,b,d,c),vAxis=unit(a,d,b,c),dot=uAxis.reduce((s,v,k)=>s+v*vAxis[k],0);
-  for(let k=0;k<3;k++)vAxis[k]-=uAxis[k]*dot;
-  const length=Math.hypot(...vAxis);if(length>1e-8)for(let k=0;k<3;k++)vAxis[k]/=length;
+  return {u:edge(a,b,d,c),v:edge(a,d,b,c)};
+};
+const orthogonalV=(u,v)=>normalize3(v.map((x,i)=>x-u[i]*dot3(u,v)));
+const projectQuad=(points,u,v,scale)=>points.flatMap(p=>[dot3(p,u)*scale,dot3(p,v)*scale]);
+export function anchoredQuadUV(a,b,c,d,scale=1) {
+  const points=[a,b,c,d],{u,v}=quadAxes(points);
   // Sloped edges are not orthogonal to vertical edges, and C need not be the
   // fourth corner of a rectangle. Project every real corner into the chart.
-  return [a,b,c,d].flatMap(p=>[p.reduce((s,v,k)=>s+v*uAxis[k],0)*scale,p.reduce((s,v,k)=>s+v*vAxis[k],0)*scale]);
+  return projectQuad(points,u,orthogonalV(u,v),scale);
+}
+
+// A triangulated cap is one plane. Its triangle-fan spokes must not select a
+// different texture direction or map the entire stone atlas to each triangle.
+export function planarMasonryUV(points,normal,scale=1) {
+  const n=normalize3(normal);
+  const u=Math.abs(n[1])>.9999?normalize3([1-n[0]*n[0],-n[0]*n[1],-n[0]*n[2]]):normalize3([n[2],0,-n[0]]);
+  const v=[n[1]*u[2]-n[2]*u[1],n[2]*u[0]-n[0]*u[2],n[0]*u[1]-n[1]*u[0]];
+  return projectQuad(points,u,v,scale);
+}
+
+// Subdivisions of a surface need one chart, not independently rounded frames.
+// Join only touching faces with matching directions and metre scales. A broad
+// curved component is deliberately kept out of planar projection: transitive
+// adjacency must never flatten a finely tessellated cylinder into a line.
+export function connectMasonryCharts(charts,uv) {
+  const roots=charts.map((_,i)=>i),frames=charts.map(c=>quadAxes(c.p)),vertices=new Map();
+  const find=i=>{while(roots[i]!==i){roots[i]=roots[roots[i]];i=roots[i];}return i;};
+  const key=p=>p.map(v=>Math.round(v*1e5)).join(',');
+  const parallel=(a,b)=>dot3(a,b)>.999999;
+  for(let i=0;i<charts.length;i++)for(const p of charts[i].p) {
+    const k=key(p),neighbors=vertices.get(k)||[];
+    for(const j of neighbors)if(charts[i].scale===charts[j].scale
+      &&parallel(charts[i].normal,charts[j].normal)
+      &&parallel(frames[i].u,frames[j].u)&&parallel(frames[i].v,frames[j].v))roots[find(i)]=find(j);
+    if(!neighbors.includes(i))neighbors.push(i);vertices.set(k,neighbors);
+  }
+  const groups=new Map();
+  for(let i=0;i<charts.length;i++){const root=find(i);if(!groups.has(root))groups.set(root,[]);groups.get(root).push(i);}
+  let joinedCharts=0,joinedGroups=0,curvedGroups=0,minNormalAlignment=1,largestGroup=1;
+  for(const members of groups.values()) {
+    if(members.length<2)continue;
+    const sum=(get)=>normalize3(members.reduce((v,i)=>v.map((x,k)=>x+get(i)[k]),[0,0,0]));
+    const u=sum(i=>frames[i].u),v=orthogonalV(u,sum(i=>frames[i].v)),normal=sum(i=>charts[i].normal);
+    const alignment=Math.min(...members.map(i=>dot3(normal,charts[i].normal)));
+    if(alignment<.999 || dot3(u,u)<.99 || dot3(v,v)<.99){curvedGroups++;continue;}
+    joinedCharts+=members.length;joinedGroups++;largestGroup=Math.max(largestGroup,members.length);
+    minNormalAlignment=Math.min(minNormalAlignment,alignment);
+    for(const i of members) {
+      const c=charts[i],values=projectQuad(c.p,u,v,c.scale);
+      for(let k=0;k<8;k++)uv[c.offset+k]=values[k];
+    }
+  }
+  return {charts:charts.length,joinedCharts,joinedGroups,largestGroup,curvedGroups,minNormalAlignment};
 }
 
 // Normalised primitive UVs describe a whole face, not metres. Keep topology,
