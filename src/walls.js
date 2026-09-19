@@ -5,6 +5,7 @@
 // ============================================================================
 import * as THREE from 'three';
 import { stoneFinish } from './masonry.js';
+import { anchoredQuadUV } from './masonry-uv.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { hash2, clamp, lerp, smoothstep, nearestOnPolyline, tagMesh } from './util.js';
 import { sharedSkyVis } from './buildings.js';
@@ -76,7 +77,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     const h1 = Math.hypot(d[0] - a[0], d[1] - a[1], d[2] - a[2]);
     P.push(...a, ...b, ...c, ...d);
     for (let k = 0; k < 4; k++) N.push(n.x, n.y, n.z);
-    U.push(0, 0, w * um * uvScale, 0, w * um * uvScale, h1 * um * uvScale, 0, h1 * um * uvScale);
+    U.push(...anchoredQuadUV(a,b,c,d,um*uvScale));
     // 潮の帯: 水面から 1.2m は藻と塩で濃く緑に沈む。海に立つ石でここが
     // 明るいままだと、壁が水面に「置いてある」ように見える。
     const ys = [a[1], b[1], c[1], d[1]];

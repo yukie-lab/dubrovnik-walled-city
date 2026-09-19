@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createHash} from 'node:crypto';
-import {metricMasonryUV} from '../src/masonry-uv.js';
+import {metricMasonryUV,anchoredQuadUV} from '../src/masonry-uv.js';
 
 const hash=a=>createHash('sha256').update(Buffer.from(a.buffer,a.byteOffset,a.byteLength)).digest('hex');
 function ratios(g,coverM) {
@@ -30,3 +30,14 @@ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32Bu
 g.setIndex([0,2,1,0,3,2]);g.computeVertexNormals();g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));
 metricMasonryUV(g,4.2);assert(ratios(g,4.2).every(v=>Math.abs(v-1)<1e-5));
 console.log('Raking stone metric / topology preservation passed');
+
+const chartTransform=new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(.18,.47,.23));
+chartTransform.setPosition(127,18,-130);
+const point=(x,y)=>new THREE.Vector3(x,y,0).applyMatrix4(chartTransform).toArray();
+const left=anchoredQuadUV(point(0,0),point(2,0),point(2,3),point(0,3),1/4.2),
+  right=anchoredQuadUV(point(2,0),point(5,0),point(5,3),point(2,3),1/4.2);
+for(const [a,b] of [[2,0],[3,1],[4,6],[5,7]])assert(Math.abs(left[a]-right[b])<1e-10,'Adjacent pieces share exactly the same stone at both ends of their seam');
+assert(Math.abs(left[2]-left[0]-2/4.2)<1e-12,'Anchoring keeps the existing metric width');
+assert(Math.abs(right[7]-right[1]-3/4.2)<1e-12,'Anchoring keeps the existing metric height');
+assert(anchoredQuadUV(point(0,0),point(0,0),point(2,3),point(0,3),1/4.2).every(Number.isFinite),'Collapsed triangle edges do not make invalid UVs');
+console.log('Anchored charts: rotated adjacent seams, metric scale and collapsed edges passed');

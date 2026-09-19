@@ -1,5 +1,22 @@
 import * as THREE from 'three';
 
+// Preserve a quad's metric chart directions and scale, but place its origin
+// in space. Coplanar pieces with the same axes then share one continuous chart
+// instead of restarting the first stone at each geometry subdivision.
+export function anchoredQuadUV(a,b,c,d,scale=1) {
+  const unit=(from,to,otherFrom,otherTo)=>{
+    let edge=to.map((v,k)=>v-from[k]),length=Math.hypot(...edge);
+    if(length<1e-8){edge=otherTo.map((v,k)=>v-otherFrom[k]);length=Math.hypot(...edge);}
+    return length>1e-8 ? edge.map(v=>v/length) : [0,0,0];
+  };
+  const uAxis=unit(a,b,d,c),vAxis=unit(a,d,b,c),dot=uAxis.reduce((s,v,k)=>s+v*vAxis[k],0);
+  for(let k=0;k<3;k++)vAxis[k]-=uAxis[k]*dot;
+  const length=Math.hypot(...vAxis);if(length>1e-8)for(let k=0;k<3;k++)vAxis[k]/=length;
+  // Sloped edges are not orthogonal to vertical edges, and C need not be the
+  // fourth corner of a rectangle. Project every real corner into the chart.
+  return [a,b,c,d].flatMap(p=>[p.reduce((s,v,k)=>s+v*uAxis[k],0)*scale,p.reduce((s,v,k)=>s+v*vAxis[k],0)*scale]);
+}
+
 // Normalised primitive UVs describe a whole face, not metres. Keep topology,
 // normals and all other streams, and give each planar face an isometric chart.
 // Smooth surfaces retain their existing seam, with metric U/V derivatives.
