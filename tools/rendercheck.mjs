@@ -104,6 +104,10 @@ try {
     const {stainBlendChecks}=await import('./stain-blend-capture.mjs');
     await stainBlendChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--wall-stairs')) {
+    const {wallStairChecks}=await import('./wall-stair-capture.mjs');
+    await wallStairChecks(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');
     await folkChecks(page,{name,dir,rows,errors});views=[];
