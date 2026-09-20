@@ -8,6 +8,7 @@
 // ============================================================================
 import * as THREE from 'three';
 import {makeRainware} from './rainware.js';
+import {WINDOW_OPENING,windowStoneGeometry,windowSashGeometry,windowSeeds,patchWindowMaterial} from './window-joinery.js';
 import { metricMasonryUV } from './masonry-uv.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, pointInPoly, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
@@ -989,35 +990,27 @@ export function makeBuildings(plan, tex, floorSupport) {
   }
 
   // ===== 窓 = 壁に穿たれた穴。石の見込み(reveal)が影を作らないと「貼った絵」になる。
-  // 開口 0.92×1.66(実測 1:1.8)、枠は面から 0.16m 出し、ガラスはその奥。
-  const OPEN_W = 0.92, OPEN_H = 1.66, REV = 0.22;   // 見込み 0.22m = 石枠の実寸
-  const REVZ = -0.075;   // 枠の起点を壁の内側へ。外へ積むと「壁に貼った額縁」になる
-  const frameGeo = (() => {
-    const parts = [];
-    const mk = (w, hh, dd, x, y, z) => { const g = new THREE.BoxGeometry(w, hh, dd); g.translate(x, y, z); return g; };
-    parts.push(mk(0.17, OPEN_H + 0.30, REV, -(OPEN_W / 2 + 0.085), 0, REV / 2 + REVZ));    // 縦枠
-    parts.push(mk(0.17, OPEN_H + 0.30, REV, (OPEN_W / 2 + 0.085), 0, REV / 2 + REVZ));
-    parts.push(mk(OPEN_W + 0.34, 0.17, REV, 0, OPEN_H / 2 + 0.085, REV / 2 + REVZ));        // まぐさ
-    parts.push(mk(OPEN_W + 0.40, 0.12, 0.23, 0, -OPEN_H / 2 - 0.06, 0.10 + REVZ));          // 窓台(水切りで出る)
-    parts.push(mk(OPEN_W + 0.34, 0.045, 0.055, 0, -OPEN_H / 2 - 0.14, 0.185 + REVZ));       // 水切り
-    // 中桟と無目(ガラス面を1枚のべた塗りにしない)
-    // 桟はガラス(壁面 +0.02)より手前でなければ見えない
-    parts.push(mk(0.058, OPEN_H - 0.02, 0.055, 0, 0, 0.062));
-    parts.push(mk(OPEN_W - 0.02, 0.052, 0.055, 0, OPEN_H * 0.12, 0.062));
-    parts.push(mk(OPEN_W - 0.02, 0.046, 0.050, 0, -OPEN_H * 0.26, 0.060));
-    return mergeGeoSimple(parts);
-  })();
-  // 枠は塗装ではなく石。周囲と同じ色で、仕上げの滑らかさだけが違う。
-  // 框は一枚石。切石のテクスチャ(coverM 3.2)を UV 0..1 の面に貼ると、
-  // 幅 0.17m の縦枠に 3.2m 分の目地が入って 13.8mm の縞になる。
-  const frameMat = new THREE.MeshStandardMaterial({
-    map: tex.dressed.map, normalMap: tex.dressed.normalMap,
-    color: 0xb3aa98, roughness: 0.70, envMapIntensity: 0.55,
+  // 開口 0.92×1.66、石の正面は壁から0.145m、木部とガラスはその奥。
+  const {width:OPEN_W,height:OPEN_H}=WINDOW_OPENING;
+  const frameGeo=windowStoneGeometry(),sashGeo=windowSashGeometry();
+  windowSeeds(frameGeo,windows);windowSeeds(sashGeo,windows);
+  // The dressed-stone image already contains limestone's base albedo. Avoid
+  // multiplying it by two further dark stone colours before lighting.
+  const frameMat=new THREE.MeshStandardMaterial({
+    map:tex.dressed.map,normalMap:tex.dressed.normalMap,
+    color:0xffffff,roughness:.74,envMapIntensity:.55,
   });
+  const sashMat=new THREE.MeshStandardMaterial({
+    map:tex.wood.map,normalMap:tex.wood.normalMap,
+    color:0xe0dace,roughness:.79,envMapIntensity:.45,normalScale:new THREE.Vector2(.35,.35),
+  });
+  patchWindowMaterial(frameMat,'stone',tex.dressed.coverM);
+  patchWindowMaterial(sashMat,'wood');
   // 窓の寸法はこの 2 式だけで決める(枠・ガラス・鎧戸・夜の灯り・雨だれが同じ形になる)
   const scOf = (w) => (w.big ? 1.42 : w.small ? 0.84 + w.seed * 0.10 : (w.fl === 1 ? 1.12 : 0.92) + w.seed * 0.17);
   const aspOf = (w) => (w.big ? 1 : 0.94 + hash2((w.x * 41) | 0, (w.z * 37 + w.y * 3) | 0) * 0.13);
   const winFrames = new THREE.InstancedMesh(frameGeo, frameMat, windows.length);
+  const winSashes = new THREE.InstancedMesh(sashGeo, sashMat, windows.length);
   const glassGeo = new THREE.PlaneGeometry(OPEN_W - 0.03, OPEN_H - 0.03);
   // ガラスは空を映す。映らないガラスは「紺色の長方形」にしか見えない。
   const glassMat = new THREE.MeshStandardMaterial({
@@ -1056,8 +1049,11 @@ export function makeBuildings(plan, tex, floorSupport) {
       dummy.scale.set(sc * asp, sc / asp, 1);
       dummy.updateMatrix();
       winFrames.setMatrixAt(i, dummy.matrix);
-      col.setHSL(0.112, 0.08, 0.76 + (w.seed - 0.5) * 0.08, THREE.SRGBColorSpace);
+      col.setHSL(0.112, 0.05, 0.94 + (w.seed - 0.5) * 0.035, THREE.SRGBColorSpace);
       winFrames.setColorAt(i, col);
+      winSashes.setMatrixAt(i,dummy.matrix);
+      col.setHSL(.10,.07,.91+(w.seed-.5)*.10,THREE.SRGBColorSpace);
+      winSashes.setColorAt(i,col);
       // ガラスは壁面から 0.02 手前。桟はさらに手前(local z +0.062)に置く。
       // 以前は桟がガラスの裏に隠れて窓が「1枚の板」になっていた。
       dummy.position.set(w.x + Math.sin(w.rotY) * 0.02, w.y, w.z + Math.cos(w.rotY) * 0.02);
@@ -1073,7 +1069,9 @@ export function makeBuildings(plan, tex, floorSupport) {
   // 窓台は 0.14m、水切りは 0.1375m 出ているのに影を落としていなかった。
   // ダルマチアの立面で最も読みやすい影がまるごと無い状態。
   winFrames.castShadow = true; winFrames.receiveShadow = true;
+  winSashes.castShadow = true; winSashes.receiveShadow = true;
   group.add(tagMesh(winFrames, 'window.frame', { solid: true, masonry: true, staticDetail: true }),
+    tagMesh(winSashes,'window.sash',{solid:true,staticDetail:true}),
     tagMesh(winGlass, 'window.glass', { thin: true, reason: 'ガラス 1 枚', noCollide: true, staticDetail: true }));
 
   // ===== 夜に灯る窓(暮らしの窓の 1/3 ほど — 手前に薄板を重ねて夜だけ現す)

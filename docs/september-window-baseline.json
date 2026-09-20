@@ -1,0 +1,33 @@
+{
+  "sourceCommit": "29ced6c",
+  "windows": 1915,
+  "matrixSha": "f680337ef45256d26a059ce66f8c521c5d3e6b5f596fadbc6d5ee3bae34ae9ff",
+  "windowsSha": "808dee2cd65dd73a14af848f8996464a5bbaa4ef1f9850bb9b7e96a845b912a2",
+  "frontCoplanarOverlapsPerInstance": [
+    {
+      "parts": [
+        0,
+        2
+      ],
+      "area": 0.02550000411272002,
+      "depth": 0.14499999582767487
+    },
+    {
+      "parts": [
+        1,
+        2
+      ],
+      "area": 0.02550000411272002,
+      "depth": 0.14499999582767487
+    },
+    {
+      "parts": [
+        5,
+        6
+      ],
+      "area": 0.0030159999754428846,
+      "depth": 0.08950000256299973
+    }
+  ],
+  "totalFrontCoplanarOverlaps": 5745
+}

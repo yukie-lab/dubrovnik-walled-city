@@ -40,7 +40,7 @@ export async function materialProgramAudit(page,{name,dir,strict=false}) {
     return {rows,probes};
   });
   const hash=s=>createHash('sha256').update(s).digest('hex'),owners=new Map();
-  const markers=['vWPos','vScrub','vMacroPos','vSkyV','vSkyI','vWetP','uFogFar','aLeafGrowth','aUvOff','aPhase','aFreq'];
+  const markers=['vWPos','vScrub','vMacroPos','vSkyV','vSkyI','vWetP','uFogFar','aLeafGrowth','aUvOff','aPhase','aFreq','aWindowSeed','vWindowP'];
   const rows=result.rows.map(row=>{
     const expectedHash=hash(row.expected),programs=row.programs.map(p=>{
       if(!owners.has(p.id))owners.set(p.id,[]);owners.get(p.id).push({tags:row.tags,expectedHash});

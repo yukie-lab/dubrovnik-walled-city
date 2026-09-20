@@ -25,6 +25,14 @@ if (args.includes('--sweep')) {
   views = fixed.flatMap(([v, [x,z,yaw,pitch,extra]]) => times.map(([t,h]) =>
     [`${v}_${t}`, `x=${x}&z=${z}&yaw=${yaw}&pitch=${pitch}&time=${h}${extra || ''}`]));
 }
+if(args.includes('--window-study')) {
+  const poses=[
+    ['window_front','x=-149.1&z=-17.317453&yaw=-1.5707963267948966&pitch=0.26&gy=5.3&fov=50'],
+    ['window_oblique','x=-149.1&z=-14&yaw=-0.777&pitch=0.18&gy=5.3&fov=45'],
+  ];
+  views=poses.flatMap(([v,q])=>[['am',7.9],['noon',12.87],['gold',19.3],['dusk',21.2]]
+    .map(([t,h])=>[`${v}_${t}`,`${q}&time=${h}`]));
+}
 if(args.includes('--query'))views=[[option('--view','custom'),option('--query')]];
 if(args.includes('--view'))views=views.filter(([v])=>v.includes(option('--view')));
 const dir = new URL('../shots/rendercheck/', import.meta.url);
@@ -79,6 +87,10 @@ try {
   if(args.includes('--ui')) {
     const {uiChecks}=await import('./ui-check.mjs');
     await uiChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--window-uv')) {
+    const {windowUVChecks}=await import('./window-uv-capture.mjs');
+    await windowUVChecks(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');
