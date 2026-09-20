@@ -1,0 +1,14 @@
+function multiplyDecal(mat) {
+  mat.blending = THREE.CustomBlending;
+  mat.blendSrc = THREE.DstColorFactor;
+  mat.blendDst = THREE.ZeroFactor;
+  mat.toneMapped = false;   // 係数はトーンマップしてはいけない
+  mat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace(
+      '#include <opaque_fragment>',
+      'gl_FragColor = vec4(mix(vec3(1.0), diffuseColor.rgb, diffuseColor.a), 1.0);',
+    );
+  };
+  mat.customProgramCacheKey = () => 'multiplyDecal';
+  return mat;
+}

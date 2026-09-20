@@ -1,0 +1,26 @@
+{
+  "sourceCommit": "780578e",
+  "windows": 1915,
+  "streakInstances": 1183,
+  "litInstances": 1034,
+  "grimeBands": 1050,
+  "streakMatrixSha": "0a4a9921971f7607977a877a6820f610a60b80675ebfcdd8dd837d52c17dc3d7",
+  "litMatrixSha": "7f8b864dbd44e53bec017ff2acab9b896e6b236edbfc24e0e80e9895cf07e324",
+  "sourceMapSize": [
+    256,
+    256
+  ],
+  "repeatedStreakLines": 46,
+  "gapRangeM": [
+    0.02142435111893004,
+    0.05121971109402246
+  ],
+  "widthRangeM": [
+    1.0934638977050781,
+    1.9312000274658203
+  ],
+  "heightRangeM": [
+    0.9027963876724243,
+    3.2992422580718994
+  ]
+}

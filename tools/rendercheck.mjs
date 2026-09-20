@@ -33,6 +33,14 @@ if(args.includes('--window-study')) {
   views=poses.flatMap(([v,q])=>[['am',7.9],['noon',12.87],['gold',19.3],['dusk',21.2]]
     .map(([t,h])=>[`${v}_${t}`,`${q}&time=${h}`]));
 }
+if(args.includes('--weather-study')) {
+  const poses=[
+    ['runoff_front','x=-150.5&z=-17.317453&yaw=-1.5707963267948966&pitch=.02&gy=4.9&fov=50'],
+    ['runoff_oblique','x=-150.5&z=-13.3&yaw=-.88&pitch=.02&gy=4.9&fov=45'],
+  ];
+  views=poses.flatMap(([v,q])=>[['am',7.9],['noon',12.87],['gold',19.3],['dusk',21.2]]
+    .map(([t,h])=>[`${v}_${t}`,`${q}&time=${h}`]));
+}
 if(args.includes('--query'))views=[[option('--view','custom'),option('--query')]];
 if(args.includes('--view'))views=views.filter(([v])=>v.includes(option('--view')));
 const dir = new URL('../shots/rendercheck/', import.meta.url);
@@ -91,6 +99,10 @@ try {
   if(args.includes('--window-uv')) {
     const {windowUVChecks}=await import('./window-uv-capture.mjs');
     await windowUVChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--stain-blend')) {
+    const {stainBlendChecks}=await import('./stain-blend-capture.mjs');
+    await stainBlendChecks(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');

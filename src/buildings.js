@@ -7,6 +7,8 @@
 // ・窓枠・ガラス・鎧戸・扉・煙突・汚れ帯 = すべてインスタンス
 // ============================================================================
 import * as THREE from 'three';
+import {multiplyStain as multiplyDecal} from './surface-stain.js';
+import {runoffTraits,patchRunoffMaterial,windowDripBottoms} from './window-runoff.js';
 import {makeRainware} from './rainware.js';
 import {WINDOW_OPENING,windowStoneGeometry,windowSashGeometry,windowSeeds,patchWindowMaterial} from './window-joinery.js';
 import { metricMasonryUV } from './masonry-uv.js';
@@ -1320,24 +1322,26 @@ export function makeBuildings(plan, tex, floorSupport) {
     const stGeo = new THREE.PlaneGeometry(1, 1);
     stGeo.translate(0, -0.5, 0);   // 上端を原点に(窓台の下から垂らす)
     const stMat = multiplyDecal(new THREE.MeshBasicMaterial({
-      map: tex.streak, transparent: true, depthWrite: false, opacity: 0.62,
+      transparent: true, depthWrite: false, opacity: 0.62,
       polygonOffset: true, polygonOffsetFactor: -1.4,
     }));
     const list = windows.filter(w => hash2((w.x * 31) | 0, (w.y * 29) | 0) < 0.62);
+    runoffTraits(stGeo,list);patchRunoffMaterial(stMat);
+    const dripBottoms=windowDripBottoms(winFrames),windowIds=new Map(windows.map((w,i)=>[w,i]));
     const mesh = new THREE.InstancedMesh(stGeo, stMat, list.length);
     const dummy = new THREE.Object3D();
     list.forEach((w, i) => {
       const sc = scOf(w), asp = aspOf(w);
       const hh = 0.9 + hash2((w.x * 7) | 0, (w.z * 7) | 0) * 2.4;
       dummy.position.set(
-        w.x + Math.sin(w.rotY) * 0.045, w.y - (OPEN_H / 2 + 0.20) * sc / asp, w.z + Math.cos(w.rotY) * 0.045,
+        w.x + Math.sin(w.rotY) * 0.045, dripBottoms[windowIds.get(w)], w.z + Math.cos(w.rotY) * 0.045,
       );
       dummy.rotation.set(0, w.rotY, 0);
       dummy.scale.set((OPEN_W + 0.44) * sc * asp, hh, 1);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
     });
-    group.add(tagMesh(mesh, 'window.reveal', { thin: true, reason: '見込みの奥の暗がり', noCollide: true, opening: true, staticDetail: true }));
+    group.add(tagMesh(mesh, 'window.runoff', { thin: true, reason: '水切りから流れた雨染み', noCollide: true, decal: true, staticDetail: true }));
   }
 
   // ===== ストラドゥンの店舗アーチ(clear 1.85×2.95m、膝高 0.72m のカウンター)
@@ -1744,25 +1748,6 @@ export const shopOpen = { value: 1 };
 export const litWindowsMat = new THREE.MeshBasicMaterial({
   color: 0xffffff, transparent: true, opacity: 0, depthWrite: false,
 });
-
-// BufferGeometryUtils なしの簡易マージ(非インデックス化して結合)
-// 乗算デカール。HDR バッファ上のアルファ合成は AgX 通過後に差が消える(実測 ΔL* 0.2)。
-// 乗算にすれば必ず伝わるが、素の乗算だとアルファ 0 の所まで暗くなる。
-// アルファを「乗算の強さ」として使う: 結果 = 下地 × mix(1, 汚れ色, α)
-function multiplyDecal(mat) {
-  mat.blending = THREE.CustomBlending;
-  mat.blendSrc = THREE.DstColorFactor;
-  mat.blendDst = THREE.ZeroFactor;
-  mat.toneMapped = false;   // 係数はトーンマップしてはいけない
-  mat.onBeforeCompile = (sh) => {
-    sh.fragmentShader = sh.fragmentShader.replace(
-      '#include <opaque_fragment>',
-      'gl_FragColor = vec4(mix(vec3(1.0), diffuseColor.rgb, diffuseColor.a), 1.0);',
-    );
-  };
-  mat.customProgramCacheKey = () => 'multiplyDecal';
-  return mat;
-}
 
 function mergeGeoSimple(geos) {
   const nonIndexed = geos.map(g => g.toNonIndexed ? g.toNonIndexed() : g);
