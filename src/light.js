@@ -7,12 +7,14 @@ import { makeAtmosphere } from './atmosphere.js';
 import { bindSeaAtmosphere } from './atmosphere-sea.js';
 import { ATMOSPHERE_GLSL } from './atmosphere-glsl.js';
 import { ATM, exposureForIlluminance } from './atmosphere-model.js';
+import { localHorizontalIlluminance } from './illumination-meter.js';
 
 const ZONE_EXPOSURE={stradun:1,square:.98,street:1.02,alley:1.11,shaft:1.19,
   gate:1.14,stair:1.01,wall:.95,port:.95};
 export function makeLighting(renderer,scene,tex,sky,sea) {
   const atmosphere=makeAtmosphere(renderer);
-  sky.bindAtmosphere(atmosphere.uniforms);
+  sky.bindAtmosphere({...atmosphere.uniforms,
+    uAtOceanInscat:sea.uniforms.uInscat,uAtOceanF0:{value:.0204}});
   const waterLight=bindSeaAtmosphere(sea,atmosphere);
   // Only the dominant astronomical source needs a shadow map. The subordinate
   // source still contributes, so switching the shadow allocation loses no light.
@@ -25,6 +27,7 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   // Kept as an inspection handle, with zero energy: IBL already integrates sky
   // irradiance. Counting a hemisphere light as well would double that energy.
   const hemi=new THREE.HemisphereLight(0xffffff,0xffffff,0);scene.add(hemi);
+  const localLights=[];scene.traverse(o=>{if(o.isPointLight)localLights.push(o);});
   scene.fog=new THREE.FogExp2(0x000000,0);
   scene.traverse(o=>{const m=o.material;if(Array.isArray(m))m.forEach(atmosphere.patchMaterial);else atmosphere.patchMaterial(m);});
 
@@ -40,7 +43,10 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   const state={exposure:.6,targetExposure:.6,glare:0,snap:false};
   function place(light,dir,colour,intensity,camPos) {
     light.position.copy(camPos).addScaledVector(dir,500);light.target.position.copy(camPos);
-    light.color.copy(colour);light.intensity=intensity;light.visible=intensity>0;
+    // Keep both astronomical slots present, including at zero irradiance.
+    // Removing one at its first/last visible limb recompiles every lit material
+    // as the number of directional lights changes during the continuous cycle.
+    light.color.copy(colour);light.intensity=intensity;light.visible=true;
   }
   function update(sunState,camPos,zone,dt,elapsed) {
     atmosphere.update(sunState,camPos.y);atmosphere.applyState(sunState);
@@ -97,7 +103,9 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     bounceRad.value.set(bq*.60*sun.color.r,bq*.575*sun.color.g,bq*.552*sun.color.b);
     groundRefY.value=state.groundY??(camPos.y-1.62);
     scene.fog.color.copy(sunState.fogCol);
-    state.targetExposure=(ZONE_EXPOSURE[zone]??1)*exposureForIlluminance(sunState.ghi);
+    state.localIlluminance=localHorizontalIlluminance(localLights,camPos,groundRefY.value);
+    state.meterIlluminance=sunState.ghi+state.localIlluminance;
+    state.targetExposure=(ZONE_EXPOSURE[zone]??1)*exposureForIlluminance(state.meterIlluminance);
     const tau=state.snap?.0001:(state.targetExposure>state.exposure?5.0:.8);
     // Adapt in stops, so a transition spanning 10+ stops has a sensible rate.
     const previous=Math.log(Math.max(state.exposure,1e-6));
@@ -115,7 +123,7 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
       envUniforms.uGround.value.copy(sunState.hemiGround);
       const rt=pmrem.fromScene(envScene,0.04,.1,100,{size:128});
       const prev=envRT;envRT=rt;scene.environment=rt.texture;
-      for(const m of specularEnvTargets){m.envMap=rt.texture;m.needsUpdate=true;}
+      for(const m of specularEnvTargets){m.envMap=rt.texture;}
       prev?.dispose();
     }
     scene.environmentIntensity=sy/lastSkyY;

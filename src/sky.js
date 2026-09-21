@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { clamp, smoothstep, tagMesh } from './util.js';
 import { ATM, solarPosition, directIrradiance, luminance } from './atmosphere-model.js';
 import { ATMOSPHERE_GLSL } from './atmosphere-glsl.js';
+import { OCEAN_HORIZON_GLSL } from './atmosphere-horizon.js';
 
 export const SUNRISE=6, SUNSET=19.74, NOON=12.87, SKY_GAIN=1;
 export function sunState(time) {
@@ -33,9 +34,10 @@ const vertexShader=/* glsl */`
 const fragmentShader=/* glsl */`
   varying vec3 vDir;
   ${ATMOSPHERE_GLSL}
+  ${OCEAN_HORIZON_GLSL}
   void main(){
     vec3 d=normalize(vDir),p=vec3(0.0,AT_R+uAtHeight,0.0);
-    vec3 L=atSkyRadiance(d);
+    vec3 L=atOceanHorizon(d,atSkyRadiance(d));
     float aa=max(length(fwidth(d)),.000015);
     float sunAngle=acos(clamp(dot(d,uAtSun),-1.0,1.0));
     float moonAngle=acos(clamp(dot(d,uAtMoon),-1.0,1.0));

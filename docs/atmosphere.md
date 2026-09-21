@@ -61,3 +61,34 @@ Remaining work includes the finite ocean mesh's horizon junction, directional
 moon-shadow evidence, night city readability, close sunset sampling, moving-clock
 performance, and physically transported clouds. This is a checkpoint, not visual
 acceptance of the complete revision.
+
+## Night meter, distant ocean and shared shadows
+
+The visible dome continues the finite sea mesh to the spherical Earth's actual
+ocean intersection. That unresolved surface uses the existing water's incident
+in-scattering and F0, the same reflected sky, and the same camera-to-surface air
+transport. It is background geometry only; it does not relocate shores or alter
+the detailed water. The lower hemisphere of city IBL remains ground reflection.
+
+Exposure now meters the eight real local point lights as well as sun, moon and
+sky irradiance. It evaluates horizontal illuminance at the viewer's floor with
+the same inverse-square law and finite-range cutoff as the render lights. This
+is an approximate incident-light meter, not a full image-based camera or a new
+ambient source. Local point-light occlusion is not yet represented. Broad bloom
+energy was reduced because physical lamp/moon radiance made the previous
+artistic strength cover much of the image with glare.
+
+The astronomical light slots stay present at zero irradiance: adding/removing a
+visible directional light as its limb crossed the horizon had recompiled city
+materials and stalled the moving sunset. One complete city shadow map is now
+built per frame inside Three's valid render state and shared by underwater and
+main colour passes. `sept26shadow1` saves 8–11 draws: roof/street pixels are exact,
+and a few harbor water pixels change where the first pass now sees complete
+city shadows. `sept26motion2` measures the moving clock, including atmosphere and
+PMREM: roof 31.5fps / peak193 draws; sea49.4fps / peak166. No GPU errors.
+
+`sept26night2` compares moon shadows enabled/disabled at22:00 in three views.
+Direct sunlight is zero and lunar irradiance is0.177lux. Roof pixels measurably
+change with shadows; the moon also illuminates the water. Night street/roof
+captures have been visually inspected; weak pedestrian contact remains for the
+city inspection loop. Clear weather is deliberate, so no painted clouds return.

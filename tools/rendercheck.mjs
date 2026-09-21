@@ -84,6 +84,10 @@ try {
     const {moonChecks}=await import('./moon-capture.mjs');
     await moonChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--frame-shadows')) {
+    const {frameShadowChecks}=await import('./frame-shadow-capture.mjs');
+    await frameShadowChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],

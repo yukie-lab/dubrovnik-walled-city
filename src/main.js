@@ -19,6 +19,7 @@ import { setWetTime } from './wet.js';
 import { monumentTime } from './monuments.js';
 import { makeLighting } from './light.js';
 import { MesopicShader } from './mesopic.js';
+import { shareFrameShadows } from './frame-shadows.js';
 import { CityAudio } from './audio.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
@@ -78,6 +79,7 @@ window.__RENDER_STATS = diagnostics.stats;
 if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();
 
 const lighting = makeLighting(renderer, scene, tex, sky, sea);
+const frameShadows = shareFrameShadows(renderer, scene, camera);
 const audio = new CityAudio(monuments.bellPos);
 window.__audio = audio;   // ヘッドレス検証用
 
@@ -179,6 +181,7 @@ window.__world = {
   solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
   renderer,
   instanceLOD,
+  frameShadows,
   counts: world.counts,
   // 光の計器(tools/lightprobe.mjs)— 露出・放射照度・影の設定を数字で読む
   get lighting() { return lighting; },
@@ -482,6 +485,8 @@ function frame(now) {
     }
   }
 
+  instanceLOD.restoreActors();
+  life.update(state.elapsed, sun, camera.position, camera);
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
@@ -489,13 +494,11 @@ function frame(now) {
   sea.update(sun, state.elapsed, camera, scene.fog ? scene.fog.density : null);
   lighting.waterLight.update(sun);
   setWetTime(state.elapsed);
-  instanceLOD.restoreActors();
-  life.update(state.elapsed, sun, camera.position, camera);
   monumentTime.value = state.elapsed;
   walls.stairShadows.update(renderer, lighting.sun, camera);
   // Threshold in scene radiance tracks exposure; only sources and strong
   // reflections bloom. It cannot brighten an intrinsically dark night sky.
-  bloom.strength = 0.08 + lightState.glare * 0.12;
+  bloom.strength = 0.0004 + lightState.glare * 0.002;
   bloom.threshold = 4.0 / Math.max(lightState.exposure, .01);
   bloom.radius = .18;
   buildings.setClock(sun.time);
@@ -517,6 +520,7 @@ function frame(now) {
 
   if (!SHOT) adaptResolution(dt);
   instanceLOD.update(camera, lighting.sun, renderer);
+  frameShadows.beginFrame();
   renderUnder();
   composer.render();
   diagnostics.finishFrame(renderer);
