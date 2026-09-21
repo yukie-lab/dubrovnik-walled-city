@@ -77,23 +77,23 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
       // 深度レンジを広げると bias の実効ワールド値も比例して伸び、影が漏れる。
       const far = 500 + radius * 2.4;
       c.near = 500 - radius * 1.2; c.far = far;
+      c.updateProjectionMatrix();
+    }
       // アクネを避けるのに要る深度は「1 テクセルぶん横に動いたときの深度差」
       // = texel·cos(el)。以前は高度に **比例** する固定値 0.156·sin(el) を使い、
       // しかも sin に床 0.28 を置いていたので、el 16.3° 以下で補正が止まり、
       // 影の後退量が 1/sin(el) で発散していた(el 4.7° で bias 由来 0.537m)。
-      const texelW = (2 * radius) / 3072;
+      const texelW = (c.right - c.left) / sun.shadow.mapSize.x;
       const elRad = Math.max(elForShadow, 1.2) * Math.PI / 180;
-      sun.shadow.bias = -(texelW * 1.7 * Math.cos(elRad) + 0.006) / (far - c.near);
+      sun.shadow.bias = -(texelW * 1.7 * Math.cos(elRad) + 0.006) / (c.far - c.near);
       // radius に比例させると城壁上で 0.125m になり、瓦の起伏(4cm)や窓の見込みの
       // セルフシャドウが丸ごと消える。平方根で伸ばす。
       // normalBias は法線方向のずらしなので、水平面では 1/tan(el) で効く。低い
       // 太陽では絞らないと、これだけで 0.575m 影が後退する。
-      sun.shadow.normalBias = 0.025 * Math.sqrt(radius / 34)
+      sun.shadow.normalBias = 0.025 * Math.sqrt(c.right / 34)
         * clamp(Math.sin(elRad) / 0.35, 0.30, 1);
-      c.updateProjectionMatrix();
-    }
     // テクセルスナップ
-    const texel = (radius * 2) / 3072;
+    const texel = texelW;
     sun.target.position.x = Math.round(sun.target.position.x / texel) * texel;
     sun.target.position.z = Math.round(sun.target.position.z / texel) * texel;
 
