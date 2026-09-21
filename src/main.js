@@ -559,6 +559,7 @@ function frame(now) {
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
+  walls.stairShadows.update(renderer,lighting.sun,camera);
   // 昼は閾値を上げてブルームを抑える(低くすると画面全体が乳白色になる)
   // dusk は el < -1 で恒久的に 1.0。夜に「夕方」の演出を持ち込まない。
   const duskDay = sun.dusk * (1 - sun.night);

@@ -108,6 +108,10 @@ try {
     const {wallStairChecks}=await import('./wall-stair-capture.mjs');
     await wallStairChecks(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--stair-light-probe')) {
+    const {stairLightChecks}=await import('./stair-light-probe.mjs');
+    await stairLightChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');
     await folkChecks(page,{name,dir,rows,errors});views=[];

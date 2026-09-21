@@ -121,7 +121,7 @@ export function makeStepPool(tex) {
       }
     }
   }
-  function finalize(skyAt,stairLayouts) { return makeStepBatch(items,tex,skyAt,stairLayouts); }
+  function finalize(skyAt,stairLayouts,stairShadows) { return makeStepBatch(items,tex,skyAt,stairLayouts,stairShadows); }
 
   return { addRun, finalize, items, get count() { return items.length; } };
 }

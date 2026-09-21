@@ -56,7 +56,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const seaObj = sea ? makeSea(plan) : null;
   const skyObj = sky ? makeSky(tex) : null;
   const lifeObj = life ? makeLife(plan, tex, stepPool, support) : null;
-  const steps = stepPool.finalize(getSharedSkyVis(),walls.stairLayouts);
+  const steps = stepPool.finalize(getSharedSkyVis(),walls.stairLayouts,walls.stairShadows);
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
 
   const parts = { ground, walls, buildings, monuments, surround, sea: seaObj, sky: skyObj, life: lifeObj };

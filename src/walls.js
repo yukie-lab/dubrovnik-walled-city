@@ -16,6 +16,7 @@ import {wallStairLayout} from './wall-stair-layout.js';
 import {makeWallStairMasonry} from './wall-stair-masonry.js';
 import {makeStairSkyVisibility} from './wall-stair-light.js';
 import {patchWallStairFinish} from './wall-stair-finish.js';
+import {makeStairShadows} from './wall-stair-shadow.js';
 
 export function makeWalls(plan, tex, stepPool, outsideHeight) {
   const group = new THREE.Group();
@@ -1433,9 +1434,12 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
-  const stairTraits=new Float32Array(P.length);
+  const stairShadows=makeStairShadows(stairLayouts);
+  const stairTraits=new Float32Array(P.length),stairRooms=new Float32Array(P.length/3);
   for(const {offset,layout} of stairRanges)stairTraits.set(layout.masonry.attributes.aStairWall.array,offset*3);
+  for(const {offset,layout} of stairRanges)stairRooms.fill(layout.shadowRoom||0,offset,offset+layout.masonry.attributes.position.count);
   geo.setAttribute('aStairWall',new THREE.BufferAttribute(stairTraits,3));
+  geo.setAttribute('aStairRoom',new THREE.BufferAttribute(stairRooms,1));
   geo.userData.stairSolids=stairRanges.flatMap(({id,firstTriangle,layout})=>
     layout.masonry.userData.stairSolids.map(s=>({...s,id,from:s.from+firstTriangle,to:s.to+firstTriangle})));
   geo.setIndex(I);
@@ -1482,6 +1486,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   }
   patchWallStairFinish(mat);
   patchSkyVis(mat);
+  stairShadows.patch(mat);
   patchWet(mat, { wet: 0.52, top: 0.55, foam: 0.60 });   // 海に立つ稜堡の足元は常に濡れている
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true; mesh.receiveShadow = true;
@@ -1591,7 +1596,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // 「本当に載っているか」を毎回測る。
   group.add(tagMesh(merlonMesh, 'wall.merlon', { solid: true, masonry: true, seatOn: 'wall.curtain' }));
 
-  return { group, stairLayouts, counts: { merlons: merlons.length } };
+  return { group, stairLayouts, stairShadows, counts: { merlons: merlons.length } };
 }
 
 // 線分 a→b が円(cx,cz,r)の中にある区間 [t0,t1](0..1)。掛からなければ null。

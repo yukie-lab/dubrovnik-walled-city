@@ -40,12 +40,13 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
       ffmpegPath:'/opt/homebrew/bin/ffmpeg',fps:20,scale:.75,overwrite:true});
     await page.evaluate(station=>{
       const w=window.__world,p=w.player,original=p.update.bind(p),path=station.path;
-      const run={trace:[],index:1,progress:0,done:false,failed:null,elapsed:0,stuck:0,lastDistance:Infinity};
+      const run={trace:[],index:1,progress:0,done:false,failed:null,elapsed:0,stuck:0,lastDistance:Infinity,peakDrawCalls:0};
       window.__stairAscent=run;window.__stairRestore=()=>{p.update=original;p.frozen=true;};
       const empty=new Set();p.frozen=false;
       p.update=(dt,keys)=>{
         if(run.done)return original(dt,empty);
         run.elapsed+=dt;
+        run.peakDrawCalls=Math.max(run.peakDrawCalls,window.__RENDER_STATS.drawCalls);
         const target=path[run.index],dx=target[0]-p.x,dz=target[1]-p.z,distance=Math.hypot(dx,dz);
         const turn=Math.atan2(Math.sin(Math.atan2(-dx,-dz)-p.yaw),Math.cos(Math.atan2(-dx,-dz)-p.yaw));
         p.yaw+=Math.max(-dt*1.9,Math.min(dt*1.9,turn));
@@ -60,7 +61,8 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
         const segment=Math.min(run.index,path.length-1),a=path[segment-1],b=path[segment],len=Math.hypot(b[0]-a[0],b[1]-a[1]);
         const t=Math.max(0,Math.min(1,((p.x-a[0])*(b[0]-a[0])+(p.z-a[1])*(b[1]-a[1]))/(len*len)));
         run.progress=(station.distances[segment-1]+len*t)/station.distances.at(-1);
-        run.trace.push({t:run.elapsed,x:p.x,z:p.z,y:p.groundY,eyeBase:p.smoothY,zone:p.zone,progress:run.progress,waypoint:run.index});
+        run.trace.push({t:run.elapsed,x:p.x,z:p.z,y:p.groundY,eyeBase:p.smoothY,zone:p.zone,progress:run.progress,waypoint:run.index,
+          stairKey:p.stair?.key??null,drawCalls:window.__RENDER_STATS.drawCalls});
       };
     },station);
     await page.keyboard.down('KeyW');
@@ -76,7 +78,7 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
     const result=await page.evaluate(()=>({...window.__stairAscent,stats:{...window.__RENDER_STATS}}));
     writeFileSync(new URL(stem+'-trace.json',dir),JSON.stringify({station,...result},null,2)+'\n');
     const row={view:'wall-stair-ascent',id,hour,frames,video:recorder?stem+'.webm':null,completed:!result.failed&&result.done,
-      failure:result.failed,elapsed:result.elapsed,samples:result.trace.length,progress:result.progress,...result.stats};
+      failure:result.failed,elapsed:result.elapsed,samples:result.trace.length,progress:result.progress,peakDrawCalls:result.peakDrawCalls,...result.stats};
     rows.push(row);console.log(JSON.stringify(row));
     if(args.includes('--stair-strict')&&!row.completed)errors.push(stem+': '+row.failure);
   }

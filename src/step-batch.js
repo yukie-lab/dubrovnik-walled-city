@@ -5,7 +5,7 @@ import {patchSkyVisInstanced} from './skyvis.js';
 import {tagMesh} from './util.js';
 import {chainMaterialShader} from './material-patch.js';
 
-export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map()) {
+export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map(),stairShadows=null) {
   const pieces=[],solids=[],tint=new THREE.Color();let from=0;
   for(let i=0;i<items.length;i++) {
     const q=items[i],g=makeStepStone(q,{coverM:tex.paving.coverM}),c=g.attributes.color;
@@ -21,6 +21,8 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map()) {
       for(let j=0;j<c.count;j++)visibility[j]*=localSky(p.getX(j),p.getZ(j),p.getY(j)+.025,n.getX(j),n.getY(j),n.getZ(j));
     }
     g.setAttribute('aSkyI',new THREE.Float32BufferAttribute(visibility,1));
+    const room=q.wallStair?stairLayouts.get(q.wallStair.id)?.shadowRoom||0:0;
+    g.setAttribute('aStairRoom',new THREE.Float32BufferAttribute(new Float32Array(c.count).fill(room),1));
     const to=from+g.index.count/3;
     solids.push({id:i,kind:'step',x:q.x,z:q.z,from,to});from=to;pieces.push(g);
   }
@@ -64,6 +66,7 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map()) {
         roughnessFactor=mix(roughnessFactor,mix(.89,.40,vStair.y)*(1.0+.09*vStair.z),vStair.x);`)
       .replace('roughnessFactor*=mix(1.0,.60,vStepWear);','roughnessFactor*=mix(1.0,.60,vStepWear*(1.0-vStair.x));');
   });
+  stairShadows?.patch(material);
   const mesh=new THREE.Mesh(geometry,material);mesh.castShadow=true;mesh.receiveShadow=true;
   return tagMesh(mesh,'steps',{solid:true,masonry:true,groundContact:true,buriedBase:true,steps:items});
 }
