@@ -1939,10 +1939,10 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     // 灯は日没から。石に溜まる暖色の光が夜の主役。
     if (lampNight) {
       const on = smoothstep(2, -5, sun.el);
-      lampNight.glMat.emissiveIntensity = on * 2.6;
+      lampNight.glMat.emissiveIntensity = on * 0.26; // 1,300 cd/m² in the shared radiance scale
       // 加算デカールが街路全面を覆うと、灯りの届く所と届かない所で色が変わらなくなる。
       // 実光源が入った以上、デカールは灯の真下の芯だけを担う。
-      lampNight.poolMat.opacity = on * 0.10;
+      lampNight.poolMat.opacity = on * 0.0002; // local ground return, below the real lamp irradiance
       const pool = lampNight.lampPool;
       if (on < 0.02 || !camPos) {
         for (const pl of pool) pl.visible = false;
@@ -1957,7 +1957,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
           // 灯体そのものではなく、ガラス箱の位置(腕の先・下がり)に置く
           pl.position.set(l.x - Math.sin(l.rotY) * 0.50, l.y - 0.38, l.z - Math.cos(l.rotY) * 0.50);
           // 遠い灯は光量を落としてポップを消す
-          pl.intensity = on * 12.5 * smoothstep(900, 400, l._d);
+          pl.intensity = on * (100 / 5000) * smoothstep(900, 400, l._d); // 100 cd
         }
       }
     }

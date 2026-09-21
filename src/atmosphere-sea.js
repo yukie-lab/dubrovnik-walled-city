@@ -1,0 +1,45 @@
+// The water's intrinsic optics stay in sea.js. This adapter replaces only the
+// old illumination floors and camera-to-water fog with the shared atmospheric
+// radiometry. No changes to sigma, Fresnel, waves, GGX, twinkle or foam coverage.
+export function bindSeaAtmosphere(sea,atmosphere) {
+  const uniforms=sea.uniforms,mat=sea.mesh.material;
+  Object.assign(uniforms,atmosphere.uniforms);
+  const illumination={value:1};uniforms.uIncidentScale=illumination;
+  // sea.uniforms exposes shared values, but ShaderMaterial owns a separate
+  // dictionary that also includes Three's lights. Register new sampler keys in
+  // both dictionaries; otherwise GLSL leaves them on texture unit zero.
+  Object.assign(mat.uniforms,atmosphere.uniforms,{uIncidentScale:illumination});
+  function replaceOnce(source,from,to) {
+    if(source.split(from).length!==2)throw new Error('Sea illumination interface changed: '+from.slice(0,60));
+    return source.replace(from,to);
+  }
+  let shader=mat.fragmentShader;
+  shader=replaceOnce(shader,'uniform float uSunLum, uDusk, uNight, uSkyGain;',
+    'uniform float uSunLum, uDusk, uNight, uSkyGain;\nuniform float uIncidentScale;');
+  shader=replaceOnce(shader,'vec3(0.30, 0.30, 0.28) * (0.35 + 0.65 * max(uSunDir.y, 0.0))',
+    'vec3(0.30, 0.30, 0.28) * (0.35 + 0.65 * max(uSunDir.y, 0.0)) * uIncidentScale');
+  shader=replaceOnce(shader,'+ uZenith * uSkyGain * 0.42 + vec3(0.05)',
+    '+ uZenith * uSkyGain * 0.42 + vec3(0.05) * uIncidentScale');
+  const start=shader.indexOf('  vec3 hDir = normalize(vec3(rayW.x, 0.0, rayW.z));');
+  const end=shader.indexOf('\n\n  bool ok =',start);
+  if(start<0||end<0)throw new Error('Sea aerial-perspective interface changed');
+  shader=shader.slice(0,start)+'  col = atAerial(col, rayW * camD, cameraPosition);'+shader.slice(end);
+  mat.fragmentShader=shader;mat.needsUpdate=true;
+  const baseInscat=uniforms.uInscat.value.clone();
+  // Captured immediately after world construction: the coefficient is a water
+  // property (scattering / extinction), not an adjustable night colour.
+  return {
+    update(sun) {
+      const lunar=sun.moonIntensity>sun.sunIntensity;
+      const intensity=lunar?sun.moonIntensity:sun.sunIntensity;
+      uniforms.uSunDir.value.copy(lunar?sun.moonDir:sun.dir);
+      uniforms.uSunCol.value.copy(lunar?sun.moonCol:sun.sunCol);
+      uniforms.uSunLum.value=intensity*.10;
+      // Day/night is not a switch in the water BRDF. A weak moon is reflected
+      // by exactly the same surface response as the sun.
+      uniforms.uNight.value=0;uniforms.uDusk.value=0;
+      illumination.value=Math.max(0,sun.ghi)/20;
+      uniforms.uInscat.value.copy(baseInscat).multiplyScalar(illumination.value);
+    },
+  };
+}

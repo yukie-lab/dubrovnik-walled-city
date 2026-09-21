@@ -68,6 +68,14 @@ try {
   }
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
+  if(args.includes('--atmosphere-probe')) {
+    const {atmosphereProbe}=await import('./atmosphere-probe.mjs');
+    await atmosphereProbe(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--sky-cycle')) {
+    const {skyCycleChecks}=await import('./sky-cycle-capture.mjs');
+    await skyCycleChecks(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],

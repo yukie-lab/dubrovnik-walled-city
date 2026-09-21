@@ -654,7 +654,7 @@ export function makeMonuments(plan, tex) {
       {
         const rg = new THREE.RingGeometry(0.62, 1.0, 20);
         rg.rotateX(-Math.PI / 2);
-        const rmat = new THREE.MeshBasicMaterial({
+        const rmat = new THREE.MeshStandardMaterial({
           color: 0xdfeef0, transparent: true, opacity: 0.42,
           depthWrite: false, side: THREE.DoubleSide,
         });
@@ -1014,9 +1014,9 @@ export function makeMonuments(plan, tex) {
   // 暗い開口(鐘室など)
   // 完全な黒は「穴」に見える。開口の奥にも間接光は回る(実測 sRGB 30〜45)。
   // 完全な黒は「穴」に見える。開口の奥にも間接光は回る(実測 sRGB 30〜45)。
-  // 拡散だけでは日陰の記念建築で 8/255 に沈むので、自発光で床を作る。
+  // 開口の奥は天空と街の照り返しで照らす。夜間の自発光の下限は置かない。
   const dark = new THREE.Mesh(mergeSimple(darkGeos), new THREE.MeshStandardMaterial({
-    color: 0x2c241a, roughness: 0.95, emissive: 0x2a1d11, emissiveIntensity: 1.9,
+    color: 0x2c241a, roughness: 0.95,
   }));
   group.add(tagMesh(dark, 'monument.dark', { thin: true, reason: '開口の奥の暗がり', noCollide: true, opening: true }));
 
@@ -1077,7 +1077,7 @@ export function makeMonuments(plan, tex) {
   // 時計の文字盤(鐘楼の西面 — ストラドゥンの正面)
   const clockQuad = new THREE.Mesh(
     new THREE.PlaneGeometry(3.4, 3.4),
-    new THREE.MeshBasicMaterial({ map: tex.clock.tex, transparent: true }),
+    new THREE.MeshStandardMaterial({ map: tex.clock.tex, transparent: true, roughness: 0.7 }),
   );
   const bt = M.bellTower;
   const btY = plazaBase(bt.x, bt.z) - 0.5;

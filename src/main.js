@@ -18,6 +18,7 @@ import { SEA_LAYER } from './sea.js';
 import { setWetTime } from './wet.js';
 import { monumentTime } from './monuments.js';
 import { makeLighting } from './light.js';
+import { MesopicShader } from './mesopic.js';
 import { CityAudio } from './audio.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
@@ -76,7 +77,7 @@ const diagnostics = makeRenderDiagnostics(world.root, camera);
 window.__RENDER_STATS = diagnostics.stats;
 if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();
 
-const lighting = makeLighting(renderer, scene, tex);
+const lighting = makeLighting(renderer, scene, tex, sky, sea);
 const audio = new CityAudio(monuments.bellPos);
 window.__audio = audio;   // ヘッドレス検証用
 
@@ -181,7 +182,8 @@ window.__world = {
   counts: world.counts,
   // 光の計器(tools/lightprobe.mjs)— 露出・放射照度・影の設定を数字で読む
   get lighting() { return lighting; },
-  get sunState() { return sunState(state.time); },
+  get sunState() { const s = sunState(state.time); lighting.atmosphere.applyState(s); return s; },
+  atmosphere: lighting.atmosphere,
   get worldState() { return state; },
 };
 
@@ -247,81 +249,11 @@ composer.addPass(new RenderPass(scene, camera));
 // radius 0.55 は最下位ミップまで滲み、画面全体に乳白の膜を作る。
 const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.22, 0.35, 0.85);
 composer.addPass(bloom);
-// three はレンダーターゲットへ描くときマテリアル側のトーンマップを無効化する。
-// つまり OutputPass より前は「シーンリニアHDR」。0〜1 を前提にした黒締め・
-// 彩度・グレインをそこで掛けると、影の信号を半分削り、負値を作って
-// チャンネルを殺す。グレードは必ず OutputPass の後ろで掛ける。
+// Luminance-dependent observer response precedes exposure and display encoding.
+// No painted colour grade, grain, vignette or lifted night-black floor.
+const mesopic = new ShaderPass(MesopicShader);
+composer.addPass(mesopic);
 composer.addPass(new OutputPass());
-const GradeShader = {
-  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uDusk: { value: 0 }, uNight: { value: 0 } },
-  vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-  fragmentShader: /* glsl */`
-    varying vec2 vUv;
-    uniform sampler2D tDiffuse;
-    uniform float uTime, uDusk, uNight;
-    float hash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-    void main(){
-      vec4 c = texture2D(tDiffuse, vUv);
-      float lum = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      // 影は青緑へ・光は暖色へ(パレットの統一 — 絵具の混色)
-      // 最暗部まで青を足すと、門の中や夜が「青いインク」になる。中間の影にだけ効かせる。
-      float shTint = smoothstep(0.02, 0.16, lum) * (1.0 - smoothstep(0.16, 0.62, lum));
-      // 加算は暗部で相対効果が巨大になり、明部では必ず 255 を超える。乗算で。
-      // uDusk は夜(dusk=1.0)でも効くので、夜の中間影帯 = 灯の届かない舗石に
-      // R を +6% 上乗せしていた。実測、夜は空だけが青く地上は全部橙(H8〜22°)。
-      // 夜の絵の魅力は「暖色の灯だまり」と「冷たい青の非灯部」の対比で、
-      // 全部が橙なら灯は光っていないのと同じ。夜は逆に青へ振る。
-      c.rgb *= 1.0 + shTint * (vec3(-0.020, -0.005, 0.030)
-        + uDusk * (1.0 - uNight) * vec3(0.060, -0.015, 0.045)
-        + uNight * vec3(-0.045, -0.010, 0.055));
-      c.rgb *= 1.0 + smoothstep(0.55, 0.95, lum) * vec3(0.030, 0.012, -0.020) * (1.0 + uDusk * 1.6);
-      // 夕の全体ベールは削除。光源側(sunCol/hemiSky)で夕方の色が出るようになり、
-      // 全画面一律の暖色被せは「オレンジのフィルタ」を作るだけだった。
-      // 黒は「クランプ」ではなく「リフト付きの持ち上げ」— 日陰の石は 0 にならない
-      float lum2;
-      // 彩度は輝度で重み付ける。近黒で 1.16 倍すると、R がほぼ 0 の穴が青インクになる。
-      // 明部では彩度を戻す(戻さないと橙に飽和する)
-      // AgX の中間調は意図的に寝ている。ここで S 字を掛けないと石灰岩が
-      // 「白い紙」になる(実測 p99 0.615・彩度 0.157 = 完全な眠り)。
-      c.rgb = clamp(c.rgb, 0.0, 1.0);
-      // S 字が強すぎると暗部を削る(入力 0.02 で 0.67 倍 = 約 0.5 段の損失)。
-      c.rgb = c.rgb * c.rgb * (3.0 - 2.0 * c.rgb) * 0.18 + c.rgb * 0.82;
-      c.rgb = pow(c.rgb, vec3(0.955));
-      // AgX の出力天井は linear 0.975。ここを 1.0 に伸ばさないと画面に白が出ない。
-      c.rgb = clamp((c.rgb - 0.0043) * (1.0 / 0.9707), 0.0, 1.0);
-      // 明部だけを白へ寄せるニー。AgX の上端 3 段が丸ごと空いていた。
-      // 混合の幅が狭い(0.80→1.0)と、局所傾きが 1.50 になり「圧縮」ではなく
-      // 「伸長」になる。AgX が寝かせた上端 3 段を叩き起こして 255 に貼り付ける。
-      // 入口 0.82 では局所傾きが c=0.85 で 1.58 = 圧縮ではなく **伸長**。
-      // ブルームが 0.85 まで運んだものを 255 に貼り付ける増幅器になっていた。
-      { float kn = smoothstep(0.90, 1.12, dot(c.rgb, vec3(0.2126, 0.7152, 0.0722)));
-        c.rgb = mix(c.rgb, 1.0 - (1.0 - c.rgb) * (1.0 - c.rgb) * 1.05, kn); }
-      lum2 = dot(c.rgb, vec3(0.2126, 0.7152, 0.0722));
-      // 日陰は「青い」のではなく「彩度が低くて少し青い」。ここを一律に持ち上げると
-      // 石灰岩の日陰が濡れたスレートになる。明るいほど彩度を許す。
-      // 上限 1.44 は「すでに暖色に転んだ影の彩度」を 1.3 倍に増幅していた。
-      float satW = mix(0.88, 1.30, smoothstep(0.045, 0.40, lum2)) * (1.0 - 0.35 * smoothstep(0.80, 0.98, lum2));
-      // 中間視(プルキンエ)。錐体が働かなくなる夜は彩度が落ちる。ここに夜の項が
-      // 無かったので、月光の赤瓦が正午より赤い(彩度 0.650 対 0.507)という
-      // 逆転が起きていた。灯そのものの emissive は下げない — 反射光側だけ。
-      satW *= 1.0 - 0.30 * uNight;
-      c.rgb = max(mix(vec3(lum2), c.rgb, satW), vec3(0.0));
-      vec2 d = vUv - 0.5;
-      c.rgb *= 1.0 - 0.10 * smoothstep(0.24, 0.72, dot(d, d) * 2.0);
-      // 平坦な max() は全画面で最小チャンネルを 7/255 に切り揃えてしまう。
-      // 「戸口が真っ黒にならない」目的は、足を持ち上げるトゥで達成する。
-      // 0.10 で切れると持ち上げは最大 sRGB 7。実写の暗い戸口は 15 に浮く。
-      // 夜は灯の届かない路面に乳白の膜が出るので 0.4 倍に絞る。
-      c.rgb += vec3(0.016, 0.020, 0.030) * (1.0 - 0.30 * uNight)
-        * (1.0 - smoothstep(0.0, 0.22, dot(c.rgb, vec3(0.2126, 0.7152, 0.0722))));
-      // グレインは中間調で最大(フィルムと同じ)。暗部専用のノイズは砂嵐に見える。
-      float gw = 4.0 * lum2 * (1.0 - lum2);
-      c.rgb += (hash(vUv * 1097.3 + fract(uTime) * 13.1) - 0.5) * 0.020 * gw;
-      gl_FragColor = c;
-    }`,
-};
-const grade = new ShaderPass(GradeShader);
-composer.addPass(grade);
 
 // ------------------------------------------------------ 表題のカメラ ----
 // 背景は絵でも動画でもない。**動いている街そのもの**。
@@ -550,30 +482,22 @@ function frame(now) {
     }
   }
 
-  sky.update(sun, state.elapsed, camera.position);
-  sea.update(sun, state.elapsed, camera, scene.fog ? scene.fog.density : null);
-  setWetTime(state.elapsed);      // 岸の濡れ帯は海面と同じ時計で上下する
-  instanceLOD.restoreActors();
-  life.update(state.elapsed, sun, camera.position, camera);
-  monumentTime.value = state.elapsed;
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
-  walls.stairShadows.update(renderer,lighting.sun,camera);
-  // 昼は閾値を上げてブルームを抑える(低くすると画面全体が乳白色になる)
-  // dusk は el < -1 で恒久的に 1.0。夜に「夕方」の演出を持ち込まない。
-  const duskDay = sun.dusk * (1 - sun.night);
-  bloom.strength = 0.10 + lightState.glare * 0.32 + duskDay * 0.16 + sun.night * 0.22;
-  // 閾値は OutputPass 前 = リニア。日向の石灰岩が 1.5 前後なので、
-  // そこを少し超えた所(反射・水面のきらめき)だけが滲む。
-  bloom.threshold = lerp(5.60, 0.40, Math.max(sun.dusk * 0.6, sun.night));
-  // 半径 0.35 は最下位ミップまで届き、太陽から 250px の空まで乳白の膜を作る
-  // (実測 t1am で太陽から 260px の空が Y0.637・彩度 0.003)。昼は締める。
-  // 夜の街灯の滲みはこの半径で成立しているので、夜側は動かさない。
-  bloom.radius = lerp(0.18, 0.40, Math.max(sun.dusk * 0.6, sun.night));
-  grade.uniforms.uTime.value = state.elapsed;
-  grade.uniforms.uDusk.value = duskDay;
-  grade.uniforms.uNight.value = sun.night;
+  sky.update(sun, state.elapsed, camera.position, camera, renderer);
+  sea.update(sun, state.elapsed, camera, scene.fog ? scene.fog.density : null);
+  lighting.waterLight.update(sun);
+  setWetTime(state.elapsed);
+  instanceLOD.restoreActors();
+  life.update(state.elapsed, sun, camera.position, camera);
+  monumentTime.value = state.elapsed;
+  walls.stairShadows.update(renderer, lighting.sun, camera);
+  // Threshold in scene radiance tracks exposure; only sources and strong
+  // reflections bloom. It cannot brighten an intrinsically dark night sky.
+  bloom.strength = 0.08 + lightState.glare * 0.12;
+  bloom.threshold = 4.0 / Math.max(lightState.exposure, .01);
+  bloom.radius = .18;
   buildings.setClock(sun.time);
 
   if (!shaftHinted && started && player.zone === 'shaft') {

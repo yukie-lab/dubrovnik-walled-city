@@ -1468,7 +1468,7 @@ export function makeBuildings(plan, tex, floorSupport) {
           reflectedLight.directSpecular *= 0.05;
           // 営業中だけ灯が点く。空の間接光だけだと青い物置に見えるので、
           // 閉店時は棚も暗く落とす(閉まった店は「暗い」のであって「青い」のではない)。
-          reflectedLight.indirectDiffuse += icol * vec3(0.62, 0.42, 0.20) * uShopOpen
+          reflectedLight.indirectDiffuse += icol * vec3(0.0062, 0.0042, 0.0020) * uShopOpen
             * mix(1.0, 0.42, clamp(-hp.z / 1.45, 0.0, 1.0));
           reflectedLight.indirectDiffuse *= mix(0.45, 1.0, uShopOpen);`);
     };
