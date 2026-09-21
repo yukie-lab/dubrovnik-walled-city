@@ -33,6 +33,8 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
     const stem=`${name}-${id}-${String(hour).replace('.','_')}`,frames=[];
     const saveFrame=async label=>{
       const png=await page.evaluate(()=>window.__captureFrame()),file=stem+'-'+label+'.png';
+      const gpuError=await page.evaluate(()=>window.__world.renderer.getContext().getError());
+      if(gpuError)throw new Error('GPU rejected an ascent draw: '+gpuError+' at '+stem+'-'+label);
       writeFileSync(new URL(file,dir),Buffer.from(png.split(',')[1],'base64'));frames.push(file);
     };
     await saveFrame('bottom');

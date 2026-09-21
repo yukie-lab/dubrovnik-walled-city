@@ -21,8 +21,15 @@ export function makeStairShadows(layouts) {
   const camera=new THREE.OrthographicCamera(),direction=new THREE.Vector3(),lastDirection=new THREE.Vector3(99,99,99);
   const centre=new THREE.Vector3(),extent=new THREE.Vector3(),point=new THREE.Vector3(),viewBox=new THREE.Box3();
   const biasMatrix=new THREE.Matrix4().set(.5,0,0,.5,0,.5,0,.5,0,0,.5,.5,0,0,0,1);
-  let current=null;
+  let current=null,initialized=false;
   const update=(renderer,light,viewer)=>{
+    // A shadow sampler needs a real comparison depth image even when the room
+    // is inactive. Without this, starting far away rejects both material draws
+    // with INVALID_OPERATION until the first visit happens to allocate it.
+    if(!initialized) {
+      const previous=renderer.getRenderTarget();renderer.setRenderTarget(target);
+      renderer.clear(false,true,false);renderer.setRenderTarget(previous);initialized=true;
+    }
     let nearest=null,distance=Infinity;
     for(const entry of entries){const d=entry.box.distanceToPoint(viewer.position);if(d<distance){distance=d;nearest=entry;}}
     const strength=1-smoothstep(28,42,distance);

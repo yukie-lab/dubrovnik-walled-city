@@ -37,10 +37,11 @@ export async function materialProgramAudit(page,{name,dir,strict=false}) {
       const color=new T.Vector3();for(const [id,weight] of [[hit.face.a,bary.x],[hit.face.b,bary.y],[hit.face.c,bary.z]])color.addScaledVector(new T.Vector3().fromBufferAttribute(g.attributes.color,id),weight);
       probes.push({pixel:[x,y],tag:object.name,point:hit.point.toArray(),color:color.toArray(),distance:hit.distance});
     }
-    return {rows,probes};
+    const glErrors=[];for(let i=0;i<16;i++){const e=gl.getError();if(e===gl.NO_ERROR)break;glErrors.push(e);}
+    return {rows,probes,glErrors};
   });
   const hash=s=>createHash('sha256').update(s).digest('hex'),owners=new Map();
-  const markers=['vWPos','vScrub','vMacroPos','vSkyV','vSkyI','vWetP','uFogFar','aLeafGrowth','aUvOff','aPhase','aFreq','aWindowSeed','vWindowP','aRunoffTraits','uRunoffAtlas','stainVisibility','vStair','vStairWall','uStairMap','uStairNormal','vStairCoord','uStairDepth'];
+  const markers=['vWPos','vScrub','vMacroPos','vSkyV','vSkyI','vWetP','uFogFar','aLeafGrowth','aUvOff','aPhase','aFreq','aWindowSeed','vWindowP','aRunoffTraits','uRunoffAtlas','stainVisibility','vStair','vStairWall','uStairMap','uStairNormal','vStairCoord','uStairDepth','vStairStone','uStairCopingMap'];
   const rows=result.rows.map(row=>{
     const expectedHash=hash(row.expected),programs=row.programs.map(p=>{
       if(!owners.has(p.id))owners.set(p.id,[]);owners.get(p.id).push({tags:row.tags,expectedHash});
@@ -49,9 +50,9 @@ export async function materialProgramAudit(page,{name,dir,strict=false}) {
     return {tags:row.tags,type:row.type,keyHash:hash(row.key),expectedHash,programs};
   });
   const collisions=[...owners].filter(([,owners])=>new Set(owners.map(o=>o.expectedHash)).size>1).map(([program,owners])=>({program,owners}));
-  const report={rows,probes:result.probes,collisions};
+  const report={rows,probes:result.probes,collisions,glErrors:result.glErrors};
   writeFileSync(new URL(name+'-programs.json',dir),JSON.stringify(report,null,2)+'\n');
   const missing=rows.filter(r=>r.programs.some(p=>p.missingMarkers.length));
-  console.log(JSON.stringify({materialPrograms:rows.filter(r=>r.programs.length).length,collisions,missing,terrainProbes:result.probes.length}));
-  if(strict&&(collisions.length||missing.length))throw new Error('Compiled material programs do not match their intended shader patches');
+  console.log(JSON.stringify({materialPrograms:rows.filter(r=>r.programs.length).length,collisions,missing,glErrors:result.glErrors,terrainProbes:result.probes.length}));
+  if(strict&&(collisions.length||missing.length||result.glErrors.length))throw new Error('Material programs or their GPU bindings are invalid');
 }

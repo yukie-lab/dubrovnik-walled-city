@@ -112,6 +112,10 @@ try {
     const {stairLightChecks}=await import('./stair-light-probe.mjs');
     await stairLightChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--stair-shadow-init')) {
+    const {stairShadowInitCheck}=await import('./stair-shadow-init-check.mjs');
+    await stairShadowInitCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');
     await folkChecks(page,{name,dir,rows,errors});views=[];
