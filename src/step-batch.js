@@ -38,20 +38,24 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map(),stairShadow
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor*=mix(1.0,.60,vStepWear);');
   };
   material.customProgramCacheKey=()=>'wornStepStone';patchSkyVisInstanced(material);
-  chainMaterialShader(material,'wallTreadStone-v2',sh=>{
+  chainMaterialShader(material,'wallTreadStone-v3-metric',sh=>{
     sh.uniforms.uStairMap={value:tex.dressed.map};sh.uniforms.uStairNormal={value:tex.dressed.normalMap};
     sh.uniforms.uStairCover={value:tex.dressed.coverM};
+    // Merged street steps retain paving UVs. Convert those UVs back to metres
+    // before sampling the wall stair's dressed stone (not five-metre stone).
+    sh.uniforms.uStairSourceCover={value:tex.paving.coverM};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec4 aStair; varying vec4 vStair;')
       .replace('#include <begin_vertex>','#include <begin_vertex>\nvStair=aStair;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
-      varying vec4 vStair; uniform sampler2D uStairMap; uniform sampler2D uStairNormal; uniform float uStairCover;
+      varying vec4 vStair; uniform sampler2D uStairMap; uniform sampler2D uStairNormal; uniform float uStairCover, uStairSourceCover;
       float stepHash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
       float stepNoise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
         return mix(mix(stepHash(i),stepHash(i+vec2(1,0)),f.x),mix(stepHash(i+vec2(0,1)),stepHash(i+1.0),f.x),f.y);}`)
       .replace('#include <map_fragment>',`#ifdef USE_MAP
-        diffuseColor*=mix(texture2D(map,vMapUv),texture2D(uStairMap,vMapUv/uStairCover),vStair.x);
+        diffuseColor*=mix(texture2D(map,vMapUv),texture2D(uStairMap,vMapUv*uStairSourceCover/uStairCover),vStair.x);
         if(vStair.x>.5){
-          float grain=stepNoise(vMapUv*83.0),mineral=stepNoise(vMapUv*7.3),weather=stepNoise(vMapUv*2.4+11.9);
+          vec2 stoneMetres=vMapUv*uStairSourceCover;
+          float grain=stepNoise(stoneMetres*83.0),mineral=stepNoise(stoneMetres*7.3),weather=stepNoise(stoneMetres*2.4+11.9);
           float grit=vStair.z*smoothstep(.39,.68,grain);
           float moss=vStair.w*smoothstep(.34,.72,mineral);
           float pits=smoothstep(.73,.89,grain)*(1.0-.85*vStair.y);
@@ -62,7 +66,7 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map(),stairShadow
       #endif`)
       .replace('#include <normal_fragment_maps>',THREE.ShaderChunk.normal_fragment_maps.replaceAll(
         'texture2D( normalMap, vNormalMapUv ).xyz',
-        'mix(texture2D(normalMap,vNormalMapUv).xyz,mix(texture2D(uStairNormal,vNormalMapUv/uStairCover).xyz,vec3(.5,.5,1.0),.78*vStair.y),vStair.x)'))
+        'mix(texture2D(normalMap,vNormalMapUv).xyz,mix(texture2D(uStairNormal,vNormalMapUv*uStairSourceCover/uStairCover).xyz,vec3(.5,.5,1.0),.78*vStair.y),vStair.x)'))
       .replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
         roughnessFactor=mix(roughnessFactor,mix(.89,.40,vStair.y)*(1.0+.09*vStair.z),vStair.x);`)
       .replace('roughnessFactor*=mix(1.0,.60,vStepWear);','roughnessFactor*=mix(1.0,.60,vStepWear*(1.0-vStair.x));');
