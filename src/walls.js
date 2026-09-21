@@ -12,6 +12,10 @@ import { hash2, clamp, lerp, smoothstep, nearestOnPolyline, tagMesh } from './ut
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, patchSkyVis, bakeSkyVis, patchSkyVisInstanced, bakeSkyVisInstanced } from './skyvis.js';
 import { patchWet } from './wet.js';
+import {wallStairLayout} from './wall-stair-layout.js';
+import {makeWallStairMasonry} from './wall-stair-masonry.js';
+import {makeStairSkyVisibility} from './wall-stair-light.js';
+import {patchWallStairFinish} from './wall-stair-finish.js';
 
 export function makeWalls(plan, tex, stepPool, outsideHeight) {
   const group = new THREE.Group();
@@ -140,7 +144,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   };
   const pts = plan.wallPts, kinds = plan.wallKinds;
   const gateGeos = [];
-  const slitGeos = [];
+  const stairLayouts = new Map(), stairRanges = [];
 
   // 階段の到着点 → 内側手すりに開ける開口(区間ごと)。
   // 囲い階段も歩廊の内縁へ出てくる — 開けないと手すりが到着点を塞ぐ。
@@ -1313,327 +1317,21 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     part(_pp);
   }
 
-  // ---- 城壁への階段(石段は StepPool・囲いはここで)
+  // One derived construction layout owns every wall ascent: the tread ends,
+  // flanking masonry and navigation use identical mitred inner faces.
   for (const st of plan.WALL_STAIRS) {
     part('stairWall');
-    stepPool.addRun(st.pts, st.w);
-    const stLen = st.pts.reduce((acc, p2, i2) => i2 ? acc + Math.hypot(p2[0] - st.pts[i2 - 1][0], p2[1] - st.pts[i2 - 1][1]) : 0, 0);
-    let sCum = 0;
-    // 囲い階段の入口 = 街に開く石のポータル(見つけられない入口は存在しないのと同じ)
-    if (st.enclosed && !st.spiral) {
-      const [ex, ez, ey] = st.pts[0];
-      const [nx1, nz1] = [st.pts[1][0] - ex, st.pts[1][1] - ez];
-      const L1 = Math.hypot(nx1, nz1);
-      const dx1 = nx1 / L1, dz1 = nz1 / L1;      // 奥へ向かう向き
-      const px1 = -dz1, pz1 = dx1;                // 開口の横方向
-      const hw = st.w / 2 + 0.32;
-      // 門柱(左右)
-      pier(ex + px1 * hw, ez + pz1 * hw, 0.5, 0.5, ey - 0.4, ey + 2.75, 1.0);
-      pier(ex - px1 * hw, ez - pz1 * hw, 0.5, 0.5, ey - 0.4, ey + 2.75, 1.0);
-      // まぐさ(横架材)と上の壁
-      quad(
-        [ex - px1 * (hw + 0.25), ey + 2.55, ez - pz1 * (hw + 0.25)],
-        [ex + px1 * (hw + 0.25), ey + 2.55, ez + pz1 * (hw + 0.25)],
-        [ex + px1 * (hw + 0.25), ey + 3.3, ez + pz1 * (hw + 0.25)],
-        [ex - px1 * (hw + 0.25), ey + 3.3, ez - pz1 * (hw + 0.25)],
-        1.02, 1.02,
-      );
-      quad(
-        [ex + px1 * (hw + 0.25), ey + 2.55, ez + pz1 * (hw + 0.25)],
-        [ex - px1 * (hw + 0.25), ey + 2.55, ez - pz1 * (hw + 0.25)],
-        [ex - px1 * (hw + 0.25), ey + 3.3, ez - pz1 * (hw + 0.25)],
-        [ex + px1 * (hw + 0.25), ey + 3.3, ez + pz1 * (hw + 0.25)],
-        1.0, 1.0,
-      );
-    }
-    // ---- 囲い階段は「閉じた П 断面の掃引」で作る -------------------------
-    //
-    // 側壁 2 枚・天井 1 枚・屋根 4 枚を別々の面として張っていた。厚みが無く、
-    // 端も塞がっていないので、実測で三角 264 枚に対し境界稜線が 232 本
-    // (= 88% が穴の縁)。歩廊から見ると「刃のような茶色い斜面」が空中に
-    // 出るのはこれ。断面を閉じて掃けば、厚みも小口も作り方から出る。
-    if (st.enclosed && !st.spiral) {
-      const half = st.w / 2 + 0.18;         // 衝突シェルと同じ内法(見える壁に実体がある)
-      const hI = half, hO = half + 0.50, hR = hO + 0.18;
-      const CH = 2.5, RT = 0.16;            // 天井高 / 屋根の厚み
-      const cutS = stLen - 1.7;             // 上端は歩廊の手前で切る
-      // station 列(折れ点 + 切り口)
-      const stn = [];
-      let cum = 0;
-      for (let k = 0; k < st.pts.length; k++) {
-        if (k > 0) cum += Math.hypot(st.pts[k][0] - st.pts[k - 1][0], st.pts[k][1] - st.pts[k - 1][1]);
-        if (cum > cutS + 1e-6) {
-          const kp = k - 1;
-          const segL = Math.hypot(st.pts[k][0] - st.pts[kp][0], st.pts[k][1] - st.pts[kp][1]);
-          const tt = segL > 1e-6 ? (cutS - (cum - segL)) / segL : 0;
-          if (tt > 1e-3) stn.push({ k: kp, t: tt });
-          break;
-        }
-        stn.push({ k, t: 0 });
-      }
-      const latAt = (k) => {
-        const m = st.miter[k];
-        return [m.mx * m.scale, m.mz * m.scale];   // マイター量込み(角で外面が平行に保たれる)
-      };
-      const ringAt = (sn) => {
-        const k = sn.k, k2 = Math.min(k + 1, st.pts.length - 1);
-        const p0 = st.pts[k], p1 = st.pts[k2];
-        const cx = lerp(p0[0], p1[0], sn.t), cz = lerp(p0[1], p1[1], sn.t);
-        const y0 = lerp(p0[2], p1[2], sn.t);
-        const L0 = latAt(k), L1 = latAt(k2);
-        const lx = lerp(L0[0], L1[0], sn.t), lz = lerp(L0[1], L1[1], sn.t);
-        const f = Math.min(y0 - 0.4, plan.terrainHeight(cx, cz) - 0.3);
-        const c = y0 + CH, r = c + RT;
-        const P2 = (u, y) => [cx + lx * u, y, cz + lz * u];
-        return { lx, lz, f, c, r,
-          v: [[-hO, f], [-hI, f], [-hI, c], [hI, c], [hI, f], [hO, f],
-            [hO, c], [hR, c], [hR, r], [-hR, r], [-hR, c], [-hO, c]].map(([u, y]) => P2(u, y)),
-          uv: [[-hO, f], [-hI, f], [-hI, c], [hI, c], [hI, f], [hO, f],
-            [hO, c], [hR, c], [hR, r], [-hR, r], [-hR, c], [-hO, c]] };
-      };
-      // 断面の頂点ごとの明度。頂点 i の値は面 (i→j) と面 (h→i) の両方に効く。
-      // 外壁を裾で 0.38 まで落としていたので、8m の階段塔の大半が黒に沈み、
-      // 歩廊から見ると「石ではなく穴」に見えていた。外は明るく、通路の中だけ暗く。
-      //           0外裾 1内裾 2内上 3内上 4内裾 5外裾 6外上 7軒裏 8鼻隠 9鼻隠 10軒裏 11外上
-      const TN = [0.86, 0.42, 0.36, 0.36, 0.42, 0.86, 0.98, 0.70, 1.02, 1.02, 0.70, 0.98];
-      const rings = stn.map(ringAt);
-      const NVe = 12;
-      // 断面は (u,y) 平面で反時計回り。辺 (du,dy) の外向きは (dy,−du)。
-      const eOut = (R, i) => {
-        const j = (i + 1) % NVe;
-        const du = R.uv[j][0] - R.uv[i][0], dy = R.uv[j][1] - R.uv[i][1];
-        const L = Math.hypot(du, dy) || 1;
-        const hl = Math.hypot(R.lx, R.lz) || 1;
-        return [(R.lx / hl) * (dy / L), -du / L, (R.lz / hl) * (dy / L)];
-      };
-      for (let s = 0; s + 1 < rings.length; s++) {
-        const A = rings[s], B = rings[s + 1];
-        for (let i = 0; i < NVe; i++) {
-          const j = (i + 1) % NVe;
-          quad(A.v[i], B.v[i], B.v[j], A.v[j], TN[i], TN[j], 1, eOut(A, i));
-        }
-      }
-      // 小口(入口側と上端)。П 断面は星形ではない — 頂点 0 から扇にすると
-      // 三角形が通路の空洞を横切り、入口を石で塞ぐ(実際に塞がった)。
-      // 脚 2 本と屋根の 3 つの凸な四角に割る。
-      const CAP_Q = [[0, 1, 2, 11], [4, 5, 6, 3], [10, 7, 8, 9]];
-      const capE = (R, k0, sign) => {
-        const k2 = Math.min(k0 + 1, st.pts.length - 1);
-        const dxx = st.pts[k2][0] - st.pts[k0][0], dzz = st.pts[k2][1] - st.pts[k0][1];
-        const dl = Math.hypot(dxx, dzz) || 1;
-        const want = [(dxx / dl) * sign, 0, (dzz / dl) * sign];
-        for (const q of CAP_Q) quad(R.v[q[0]], R.v[q[1]], R.v[q[2]], R.v[q[3]], 0.86, 0.86, 1, want);
-      };
-      if (rings.length >= 2) {
-        capE(rings[0], stn[0].k, -1);
-        capE(rings[rings.length - 1], stn[stn.length - 1].k, 1);
-      }
-      // 段の下腹 = 内法いっぱいの独立した閉じた台。段を支える石が無いと、
-      // 入口から覗いたとき段が宙に浮いて見える(П は下が開いている)。
-      {
-        const plinth = rings.map((R) => {
-          const sf = R.c - CH - 0.42;                    // 段の裏 = 踏面 −0.42
-          const hl = Math.hypot(R.lx, R.lz) || 1;
-          const cx = (R.v[1][0] + R.v[4][0]) / 2, cz = (R.v[1][2] + R.v[4][2]) / 2;
-          const q = (u, y) => [cx + (R.lx / hl) * u, y, cz + (R.lz / hl) * u];
-          return { lx: R.lx / hl, lz: R.lz / hl,
-            v: [q(-hI, R.f), q(hI, R.f), q(hI, sf), q(-hI, sf)],
-            uv: [[-hI, R.f], [hI, R.f], [hI, sf], [-hI, sf]] };
-        });
-        const eO4 = (R, i) => {
-          const j = (i + 1) % 4;
-          const du = R.uv[j][0] - R.uv[i][0], dy = R.uv[j][1] - R.uv[i][1];
-          const L = Math.hypot(du, dy) || 1;
-          return [R.lx * (dy / L), -du / L, R.lz * (dy / L)];
-        };
-        for (let s = 0; s + 1 < plinth.length; s++) {
-          const A = plinth[s], B = plinth[s + 1];
-          for (let i = 0; i < 4; i++) {
-            const j = (i + 1) % 4;
-            quad(A.v[i], B.v[i], B.v[j], A.v[j], i === 3 ? 0.58 : 0.46, i === 3 ? 0.58 : 0.46, 1, eO4(A, i));
-          }
-        }
-        for (const [R, k0, sg] of [[plinth[0], stn[0].k, -1],
-          [plinth[plinth.length - 1], stn[stn.length - 1].k, 1]]) {
-          if (!R) continue;
-          const k2 = Math.min(k0 + 1, st.pts.length - 1);
-          const dxx = st.pts[k2][0] - st.pts[k0][0], dzz = st.pts[k2][1] - st.pts[k0][1];
-          const dl = Math.hypot(dxx, dzz) || 1;
-          quad(R.v[0], R.v[1], R.v[2], R.v[3], 0.5, 0.5, 1, [(dxx / dl) * sg, 0, (dzz / dl) * sg]);
-        }
-      }
-    }
-
-    // 露天階段: 外縁の手すり壁 / 階段室: 壁と天井
-    for (let i = 1; i < st.pts.length; i++) {
-      let [ax, az, ay] = st.pts[i - 1];
-      let [bx, bz, by] = st.pts[i];
-      let len = Math.hypot(bx - ax, bz - az);
-      if (len < 0.01) continue;
-      const dx = (bx - ax) / len, dz = (bz - az) / len;
-      const nx = -dz, nz = dx;
-      const half = st.w / 2 + 0.18;
-      const segStart = sCum;
-      sCum += len;
-      if (st.enclosed) {
-        // 囲いの本体は上の掃引で作った。ここは北面の銃眼(細い光のスリット)だけ。
-        const cut = (stLen - 1.7) - segStart;
-        if (cut <= 0.05) continue;
-        if (i % 2 === 1) {
-          const mx2 = (ax + bx) / 2 + nx * (half - 0.02);
-          const mz2 = (az + bz) / 2 + nz * (half - 0.02);
-          const my2 = (ay + by) / 2 + 1.5;
-          slitGeos.push([mx2, my2, mz2, Math.atan2(nx, nz)]);
-        }
-      } else if (st.spiral) {
-        // 螺旋にも下腹を張る(手すりは塔の王冠が兼ねるので立てない)。
-        // これが無いと段が「壁に貼った板の階段」になる。
-        const sv2 = st.segs.find(s3 => s3.i === i)?.railSign ?? 1;
-        // 桁は踏面より 0.18m 外に立っていた。踏面(StepPool の箱)は半幅
-        // st.w/2 なので、両側に 0.18m の隙間が開き、そこから梁の中が見える
-        // (実測 1 視点 6,908px)。踏面のすぐ脇に立てる。
-        const hs2 = st.w / 2 + 0.03;
-        const [Ua, Ub] = [st.offAt(i - 1, sv2, hs2), st.offAt(i, sv2, hs2)];
-        const [Va, Vb] = [st.offAt(i - 1, -sv2, hs2), st.offAt(i, -sv2, hs2)];
-        // 下腹と両側の桁。外向きを渡さずに三枚を同じ巻きで張っていたので、
-        // 谷側の桁は法線が石の中を向いて消え、螺旋が「片側だけの板」になっていた
-        // (塔の中から実測 1 視点 23,697px)。
-        // さらに厚みが 0.50m しか無く、塔の中を斜めに横切る「板」に見えていた。
-        // 石の階段は梁として成立する背を持つ。1.00m の斜梁にして、踏面の下に
-        // 出の帯(ストリング)を回す — 縁が刃でなくなると、板ではなく石になる。
-        const DP = 1.00, SP2 = 0.10;
-        quad([Ua[0], ay - DP, Ua[1]], [Ub[0], by - DP, Ub[1]],
-          [Vb[0], by - DP, Vb[1]], [Va[0], ay - DP, Va[1]], 0.52, 0.60, 1, DOWN1);
-        // 斜めの天端。踏面は段ごとに離れた箱なので、天端が無いと段と段の
-        // 隙間から梁の中(向こう側の桁の裏)が見える。
-        quadUV([Ua[0], ay - 0.30, Ua[1]], [Ub[0], by - 0.30, Ub[1]],
-          [Vb[0], by - 0.30, Vb[1]], [Va[0], ay - 0.30, Va[1]], 0.94, 0.98);
-        // 斜めの天端。踏面(StepPool の箱)は段ごとに離れているので、天端が
-        // 無いと段と段の隙間から梁の中が見え、外側の面を裏から見ることになる。
-        // 石の階段は中身が詰まっている。踏面のすぐ下に斜めの天端を張る。
-        for (const [A, B, so] of [[Ua, Ub, 1], [Vb, Va, -1]]) {
-          // 外向きは区間の法線ではなく「実際に振った先」から取る。offAt は
-          // 折れ点でマイターするので、区間の法線とはずれる。ずれた向きを
-          // 基準にすると、折れの強い所で quad が巻きを直せず、両面が同じ側を
-          // 向いて片方が消える(螺旋の桁で実測)。
-          let ovx = (A[0] - ax + B[0] - bx) / 2, ovz = (A[1] - az + B[1] - bz) / 2;
-          const ovl = Math.hypot(ovx, ovz) || 1; ovx /= ovl; ovz /= ovl;
-          const ov2 = [ovx, 0, ovz];
-          quad([A[0], ay - DP, A[1]], [B[0], by - DP, B[1]],
-            [B[0], by - 0.46, B[1]], [A[0], ay - 0.46, A[1]], 0.70, 0.80, 1, ov2);
-          quad([A[0], ay - 0.16, A[1]], [B[0], by - 0.16, B[1]],
-            [B[0], by + 0.02, B[1]], [A[0], ay + 0.02, A[1]], 0.86, 0.94, 1, ov2);
-          // 出の帯。桁の面から 0.10m せり出す。
-          const [Ap, Bp] = [[A[0] + ov2[0] * SP2, A[1] + ov2[2] * SP2],
-            [B[0] + ov2[0] * SP2, B[1] + ov2[2] * SP2]];
-          quad([Ap[0], ay - 0.46, Ap[1]], [Bp[0], by - 0.46, Bp[1]],
-            [Bp[0], by - 0.16, Bp[1]], [Ap[0], ay - 0.16, Ap[1]], 1.0, 1.06, 1, ov2);
-          quad([A[0], ay - 0.46, A[1]], [B[0], by - 0.46, B[1]],
-            [Bp[0], by - 0.46, Bp[1]], [Ap[0], ay - 0.46, Ap[1]], 0.62, 0.68, 1, DOWN1);
-          quad([Ap[0], ay - 0.16, Ap[1]], [Bp[0], by - 0.16, Bp[1]],
-            [B[0], by - 0.16, B[1]], [A[0], ay - 0.16, A[1]], 1.02, 1.05, 1, UP1);
-        }
-        // 端の小口。螺旋は塔の中で始まり中で終わるので、切り口が必ず見える。
-        for (const [A, V, sg2] of [[Ua, Va, -1], [Ub, Vb, 1]]) {
-          if ((sg2 < 0 && i !== 1) || (sg2 > 0 && i !== st.pts.length - 1)) continue;
-          const yy = sg2 < 0 ? ay : by;
-          const eN = [dx * sg2, 0, dz * sg2];
-          quad([A[0], yy - DP, A[1]], [V[0], yy - DP, V[1]],
-            [V[0], yy + 0.02, V[1]], [A[0], yy + 0.02, A[1]], 0.8, 0.9, 1, eN);
-          // 出の帯の小口。ここを塞がないと帯だけが切り口のまま宙に出る。
-          const [cx9, cz9] = sg2 < 0 ? [ax, az] : [bx, bz];
-          for (const Q of [A, V]) {
-            let ox9 = Q[0] - cx9, oz9 = Q[1] - cz9;
-            const ol9 = Math.hypot(ox9, oz9) || 1; ox9 /= ol9; oz9 /= ol9;
-            const qx = Q[0] + ox9 * SP2, qz = Q[1] + oz9 * SP2;
-            quad([Q[0], yy - 0.46, Q[1]], [qx, yy - 0.46, qz],
-              [qx, yy - 0.16, qz], [Q[0], yy - 0.16, Q[1]], 0.8, 0.9, 1, eN);
-          }
-        }
-      } else if (!st.spiral) {
-        // 露天: 谷側(城壁中心線から遠い側)に「厚みのある」手すり壁。
-        // 螺旋(塔頂への回り階段)は塔の王冠の内側を回るので手すりは要らない。
-        // 立てると塔の内部に板が宙吊りになる(plan.js の衝突側は既に除外済み)。
-        // 一枚板は真横から消え、上端が刃物になる — 必ず2面+笠石+端部キャップ。
-        // 谷側の判定は plan.js が持つ(衝突と同じ定義を使う — ここで再計算しない)。
-        const sv = st.segs.find(s2 => s2.i === i).railSign;
-        const rx = nx * sv, rz = nz * sv;
-        const railT = 0.26;
-        const isLast = i === st.pts.length - 1;
-        const isFirst = i === 1;
-        // 手すり天端: 最上段は歩廊へすぼめる(空に板を立てない)
-        const topA = ay + (isLast ? 0.9 : 1.0);
-        const topB = by + (isLast ? 0.2 : 1.0);
-        // 面は plan のマイター定義から(折れ点で板が隣の通路を横切らない)
-        const rail = (dist) => [st.offAt(i - 1, sv, dist), st.offAt(i, sv, dist)];
-        // 平行な二枚を「同じ巻き」で張っていた。quad は巻きから法線を出すので、
-        // 内側の一枚は法線が石の中を向き、FrontSide で消える。
-        // = 手すりが空洞になり、外から中の壁の裏側が見える(実測で報告あり)。
-        // 面ごとに外向きを渡す。二枚組を張るときは必ず外向きを明示する。
-        for (const [off, so] of [[half, 1], [half - railT, -1]]) {
-          const [A, B] = rail(off);
-          quad(
-            [A[0], ay - 2.0, A[1]],
-            [B[0], by - 2.0, B[1]],
-            [B[0], topB, B[1]],
-            [A[0], topA, A[1]],
-            0.8, 1.0, 1, [rx * so, 0, rz * so],
-          );
-        }
-        // 笠石(上面)
-        const [Ri, Rj] = rail(half - railT), [Ro, Rk] = rail(half);
-        quad(
-          [Ri[0], topA, Ri[1]], [Rj[0], topB, Rj[1]],
-          [Rk[0], topB, Rk[1]], [Ro[0], topA, Ro[1]],
-          1.02, 1.02, 1, UP1,
-        );
-        // 端部キャップ(始端と終端の小口)
-        if (isFirst) {
-          quad(
-            [Ri[0], ay - 2.0, Ri[1]], [Ro[0], ay - 2.0, Ro[1]],
-            [Ro[0], topA, Ro[1]], [Ri[0], topA, Ri[1]],
-            0.9, 0.95, 1, [-dx, 0, -dz],
-          );
-        }
-        if (isLast) {
-          quad(
-            [Rk[0], by - 2.0, Rk[1]], [Rj[0], by - 2.0, Rj[1]],
-            [Rj[0], topB, Rj[1]], [Rk[0], topB, Rk[1]],
-            0.9, 0.95, 1, [dx, 0, dz],
-          );
-        }
-        // 段の下のスラブ(浮いた箱にしない)
-        const [Sa, Sb] = [st.offAt(i - 1, -sv, half), st.offAt(i, -sv, half)];
-        // 下腹(通りから見上げる面)。下向きに張り替えたら、段が「支えの上に
-        // 載っていない」と 79 段で鳴った。段はこの下腹の上面に載っていたのが、
-        // 正しく下を向いた途端に受けが消えたため。石の階段は中身が詰まって
-        // いるのだから、踏面のすぐ下に斜めの天端を張る。
-        quad(
-          [Sa[0], ay - 0.52, Sa[1]], [Sb[0], by - 0.52, Sb[1]],
-          [Rk[0], by - 0.52, Rk[1]], [Ro[0], ay - 0.52, Ro[1]],
-          0.82, 0.9, 1, DOWN1,
-        );
-        quadUV(
-          [Sa[0], ay - 0.14, Sa[1]], [Sb[0], by - 0.14, Sb[1]],
-          [Rk[0], by - 0.14, Rk[1]], [Ro[0], ay - 0.14, Ro[1]],
-          0.94, 0.98,
-        );
-        // 山側スカート(厚み付き: 2面 + 笠)
-        const [Si, Sj] = [st.offAt(i - 1, -sv, half - railT), st.offAt(i, -sv, half - railT)];
-        for (const [A, B, so] of [[Sa, Sb, -1], [Si, Sj, 1]]) {
-          quad(
-            [A[0], ay - 1.6, A[1]], [B[0], by - 1.6, B[1]],
-            [B[0], by - 0.3, B[1]], [A[0], ay - 0.3, A[1]],
-            0.78, 0.92, 1, [rx * so, 0, rz * so],
-          );
-        }
-        quad(
-          [Sa[0], ay - 0.3, Sa[1]], [Sb[0], by - 0.3, Sb[1]],
-          [Sj[0], by - 0.3, Sj[1]], [Si[0], ay - 0.3, Si[1]],
-          0.95, 0.95, 1, UP1,
-        );
-      }
-    }
+    const layout=wallStairLayout(st,{gates:plan.GATES});
+    for(const segment of st.segs)segment.half=layout.innerHalf;
+    const masonry=makeWallStairMasonry(st,layout,plan,tex.fortStone.coverM);
+    layout.masonry=masonry;layout.skyAt=makeStairSkyVisibility(layout,masonry);
+    stairLayouts.set(st.id,layout);
+    stepPool.addRun(st.pts,st.w,{layout});
+    const offset=P.length/3,firstTriangle=I.length/3;
+    P.push(...masonry.attributes.position.array);N.push(...masonry.attributes.normal.array);
+    U.push(...masonry.attributes.uv.array);C.push(...masonry.attributes.color.array);
+    for(const index of masonry.index.array)I.push(offset+index);
+    stairRanges.push({id:st.id,offset,firstTriangle,layout});
   }
 
   // ---- ピレ橋(西門の外の石橋)+ プロチェ橋
@@ -1735,6 +1433,11 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   geo.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3));
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
+  const stairTraits=new Float32Array(P.length);
+  for(const {offset,layout} of stairRanges)stairTraits.set(layout.masonry.attributes.aStairWall.array,offset*3);
+  geo.setAttribute('aStairWall',new THREE.BufferAttribute(stairTraits,3));
+  geo.userData.stairSolids=stairRanges.flatMap(({id,firstTriangle,layout})=>
+    layout.masonry.userData.stairSolids.map(s=>({...s,id,from:s.from+firstTriangle,to:s.to+firstTriangle})));
   geo.setIndex(I);
   const mat = new THREE.MeshStandardMaterial({
     map: tex.fortStone.map, normalMap: tex.fortStone.normalMap,
@@ -1771,26 +1474,19 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   mat.customProgramCacheKey = () => 'fortMacro';
   const skyAt = sharedSkyVis || makeSkyVis(plan);
   bakeSkyVis(geo, skyAt, { offsetY: 0.4 });
+  for(const {offset,layout} of stairRanges) {
+    if(!layout.enclosed)continue;
+    const p=layout.masonry.attributes.position,n=layout.masonry.attributes.normal,sky=geo.attributes.aSky;
+    for(let i=0;i<p.count;i++)sky.setX(offset+i,sky.getX(offset+i)*
+      layout.skyAt(p.getX(i),p.getZ(i),p.getY(i),n.getX(i),n.getY(i),n.getZ(i)));
+  }
+  patchWallStairFinish(mat);
   patchSkyVis(mat);
   patchWet(mat, { wet: 0.52, top: 0.55, foam: 0.60 });   // 海に立つ稜堡の足元は常に濡れている
   const mesh = new THREE.Mesh(geo, mat);
   mesh.castShadow = true; mesh.receiveShadow = true;
   geo.userData.parts = PARTS.filter(q => q.to > q.from);
   group.add(tagMesh(mesh, 'wall.curtain', { solid: true, masonry: true, groundContact: true }));
-
-  // ---- 銃眼スリット(空の光を細く落とす)
-  if (slitGeos.length) {
-    const sg = [];
-    for (const [x, y, z, ry] of slitGeos) {
-      const q = new THREE.PlaneGeometry(0.24, 1.1);
-      q.rotateY(ry);
-      q.translate(x, y, z);
-      sg.push(q);
-    }
-    const slitMesh = new THREE.Mesh(mergeExtrudes(sg.map(g => g.toNonIndexed())), new THREE.MeshStandardMaterial({ color: 0x141a20, roughness: 0.95, envMapIntensity: 0.15 }));   // 矢狭間の奥は暗がり。発光する穴は無い
-    slitMesh.renderOrder = 1;
-    group.add(tagMesh(slitMesh, 'wall.arrowSlit', { thin: true, reason: '矢狭間の奥の暗がり(面 1 枚)' }));
-  }
 
   // ---- メルロン(インスタンス)
   // 素の直方体は、掠める角度で「立てた板」にしか見えない。実物の狭間石は
@@ -1895,7 +1591,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   // 「本当に載っているか」を毎回測る。
   group.add(tagMesh(merlonMesh, 'wall.merlon', { solid: true, masonry: true, seatOn: 'wall.curtain' }));
 
-  return { group, counts: { merlons: merlons.length } };
+  return { group, stairLayouts, counts: { merlons: merlons.length } };
 }
 
 // 線分 a→b が円(cx,cz,r)の中にある区間 [t0,t1](0..1)。掛からなければ null。

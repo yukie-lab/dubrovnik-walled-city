@@ -21,13 +21,15 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
           .sort((a,b)=>Math.hypot(a.x-end[0],a.z-end[1])-Math.hypot(b.x-end[0],b.z-end[1]))[0];
         if(tower)path.push([end[0]+(tower.x-end[0])*.22,end[1]+(tower.z-end[1])*.22,tower.topY]);
       }
-      const [x,z,y]=path[0],g=w.plan.groundAt(x,z,y);
-      Object.assign(p,{x,z,groundY:g.y,smoothY:g.y,zone:g.zone,yaw:Math.atan2(x-path[1][0],z-path[1][1]),pitch:.045,vx:0,vz:0,bobAmp:0,frozen:true});
+      const [x,z,y]=path[0],g=(w.plan.walkingGroundAt||w.plan.groundAt)(x,z,y);
+      Object.assign(p,{x,z,groundY:g.y,smoothY:g.y,zone:g.zone,stair:g.stair??null,stairLift:null,stairBlend:g.stair?1:0,
+        yaw:Math.atan2(x-path[1][0],z-path[1][1]),pitch:.045,vx:0,vz:0,bobAmp:0,frozen:true});
       w.camera.fov=60;w.camera.updateProjectionMatrix();
       const distances=[0];for(let i=1;i<path.length;i++)distances.push(distances.at(-1)+Math.hypot(path[i][0]-path[i-1][0],path[i][1]-path[i-1][1]));
       return {id,hour,enclosed:st.enclosed,spiral:!!st.spiral,path,distances};
     },{id,hour});
     for(let i=0;i<4;i++)await page.evaluate(()=>window.__captureFrame());
+    if(errors.length)throw new Error('Cannot inspect an ascent with a renderer error: '+errors.at(-1));
     const stem=`${name}-${id}-${String(hour).replace('.','_')}`,frames=[];
     const saveFrame=async label=>{
       const png=await page.evaluate(()=>window.__captureFrame()),file=stem+'-'+label+'.png';

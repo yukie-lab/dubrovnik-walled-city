@@ -70,11 +70,12 @@ export { farHeight };
 // 市中の全石段を 1 ドローコールへ。addRun(折れ線, 幅) で階段化。
 export function makeStepPool(tex) {
   const items = []; // {x,y,z,rotY,w,d, tint, run, step}
-  // 一続きの階段には通し番号を振る。「同じ run の中で蹴上が一段だけ違う」は
-  // 置き間違いの決定的な兆候で、run を知らないと検出できない。
+  // City runs retain their original records. Wall ascents supply a shared,
+  // terrain-fitted layout used by their masonry, visible treads and walking.
   let runId = 0;
-  function addRun(pts3, w, { rise = 0.16 } = {}) {
+  function addRun(pts3, w, { rise = 0.16, layout = null } = {}) {
     const run = runId++;
+    if(layout){for(const q of layout.steps)items.push({...q,run});return;}
     // pts3: [[x,z,y],...] のランプ。全長と高低差から段を割る。
     for (let i = 1; i < pts3.length; i++) {
       const [x0, z0, y0] = pts3[i - 1], [x1, z1, y1] = pts3[i];
@@ -120,7 +121,7 @@ export function makeStepPool(tex) {
       }
     }
   }
-  function finalize(skyAt) { return makeStepBatch(items,tex,skyAt); }
+  function finalize(skyAt,stairLayouts) { return makeStepBatch(items,tex,skyAt,stairLayouts); }
 
   return { addRun, finalize, items, get count() { return items.length; } };
 }

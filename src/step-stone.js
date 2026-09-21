@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {hash2} from './util.js';
+import {makeWallTread} from './wall-tread.js';
 
 // The same cross section supplies the mesh and placement support. Heights and
 // positions in the geographic step records are never edited. Wear removes at
@@ -8,6 +9,7 @@ const ACROSS=[-.5,-.30,0,.30,.5],DEPTH=.55;
 const profiles=new WeakMap();
 function profile(step) {
   if(profiles.has(step))return profiles.get(step);
+  if(step.wallStair){const value={};profiles.set(step,value);return value;}
   const r=Math.min(.012,step.d*.1),section=[[-DEPTH,step.d*.5],[-r,step.d*.5]];
   for(let i=1;i<=3;i++) {
     const a=i*Math.PI/6;section.push([-r+r*Math.sin(a),step.d*.5-r+r*Math.cos(a)]);
@@ -23,10 +25,15 @@ function profile(step) {
 }
 
 export function stepSurfaceAt(step,x,z) {
+  const data=profile(step);if(!data.surfaces)makeStepStone(step);
+  if(step.wallStair) {
+    const box=data.geometry.boundingBox;
+    if(x<box.min.x-.00004||x>box.max.x+.00004||z<box.min.z-.00004||z>box.max.z+.00004)return null;
+  }else {
   const co=Math.cos(step.rotY),si=Math.sin(step.rotY),dx=x-step.x,dz=z-step.z;
   const u=(dx*co-dz*si)/step.w,v=dx*si+dz*co;
   if(Math.abs(u)>.5+.00004/step.w || Math.abs(v)>step.d*.5+.00004)return null;
-  const data=profile(step);if(!data.surfaces)makeStepStone(step);
+  }
   let height=-Infinity;
   // Use Float32 WORLD vertices, as the renderer does. An analytic local
   // section misses the last rounding on a steep nose far from the origin.
@@ -39,6 +46,7 @@ export function stepSurfaceAt(step,x,z) {
 
 export function makeStepStone(step,{coverM=5}={}) {
   const data=profile(step);if(data.geometry)return data.geometry;
+  if(step.wallStair)return cacheSurface(data,makeWallTread(step,{coverM:1}));
   const {section,wear,seed}=profile(step),n=section.length,p=[],uv=[],color=[],ix=[],wearAttr=[];
   const length=[0];for(let i=1;i<n;i++)length.push(length.at(-1)+Math.hypot(section[i][0]-section[i-1][0],section[i][1]-section[i-1][1]));
   const shiftX=hash2(step.run*17+step.step,Math.round(step.x*5))*4.7;
@@ -74,14 +82,19 @@ export function makeStepStone(step,{coverM=5}={}) {
   g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   g.setAttribute('color',new THREE.Float32BufferAttribute(color,3));
   g.setAttribute('aWear',new THREE.Float32BufferAttribute(wearAttr,1));
+  g.setAttribute('aStair',new THREE.Float32BufferAttribute(new Float32Array(p.length/3*4),4));
   g.computeVertexNormals();
   // Physical dimensions are already baked. Colour/depth/raycasting see the
   // same mesh, with no displacement that disappears in another render pass.
   g.rotateY(step.rotY);g.translate(step.x,step.y,step.z);
+  return cacheSurface(data,g);
+}
+
+function cacheSurface(data,g) {
   data.geometry=g;data.surfaces=[];
-  const pos=g.attributes.position;
+  const pos=g.attributes.position,ix=g.index.array;
   for(let i=0;i<ix.length;i+=3) {
-    const [a,b,c]=ix.slice(i,i+3).map(j=>new THREE.Vector3().fromBufferAttribute(pos,j));
+    const [a,b,c]=Array.from(ix.subarray(i,i+3),j=>new THREE.Vector3().fromBufferAttribute(pos,j));
     const determinant=(b.z-c.z)*(a.x-c.x)+(c.x-b.x)*(a.z-c.z);
     if(determinant>=-1e-10)continue;
     const inv=1/determinant;

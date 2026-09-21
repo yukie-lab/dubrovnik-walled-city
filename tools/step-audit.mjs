@@ -11,13 +11,24 @@ if(process.argv.includes('--record')) {
   writeFileSync(path,JSON.stringify({count:steps.length,sha256:hash},null,2)+'\n');
 }
 const baseline=JSON.parse(readFileSync(path,'utf8'));
-assert.equal(steps.length,baseline.count);assert.equal(hash,baseline.sha256,'All source step records must be unchanged');
+const wallBaseline=JSON.parse(readFileSync(new URL('../docs/september-wall-step-records.json',import.meta.url),'utf8'));
+const originalRuns=new Map(wallBaseline.stairs.map(s=>[s.run,s.steps])),seenRuns=new Set(),reconstructed=[];
+for(const q of steps) {
+  if(!originalRuns.has(q.run)){reconstructed.push(q);continue;}
+  assert(q.wallStair,'Only the explicitly requested wall-ascent class may change');
+  if(!seenRuns.has(q.run)){reconstructed.push(...originalRuns.get(q.run));seenRuns.add(q.run);}
+}
+assert.equal(seenRuns.size,6);
+assert.equal(reconstructed.length,baseline.count);
+assert.equal(createHash('sha256').update(JSON.stringify(reconstructed)).digest('hex'),baseline.sha256,
+  'Every source record outside the six authorized wall ascents must remain byte-identical');
 const unique=new Set(steps.map(q=>`${q.x},${q.z}`)),mesh=w.steps;
 const groups=new Map();steps.forEach((q,i)=>{const key=`${q.x},${q.z}`;if(!groups.has(key))groups.set(key,[]);groups.get(key).push(i);});
 const report={count:steps.length,uniqueCenters:unique.size,overlappingCenterRecords:steps.length-unique.size,
   noncontiguousCenterGroups:[...groups.values()].filter(v=>v.some((j,i)=>i && j!==v[i-1]+1)).length,
   instanced:!!mesh.isInstancedMesh,vertices:mesh.geometry.attributes.position.count,
-  triangles:mesh.geometry.index.count/3,geographyUnchanged:true};
+  triangles:mesh.geometry.index.count/3,ordinaryStepsUnchanged:steps.filter(q=>!q.wallStair).length,
+  wallStepsBefore:wallBaseline.stairs.reduce((n,s)=>n+s.steps.length,0),wallStepsAfter:steps.filter(q=>q.wallStair).length};
 if(mesh.geometry.userData.solids) {
   const g=mesh.geometry,p=g.attributes.position,ix=g.index;
   const point=i=>[p.getX(i),p.getY(i),p.getZ(i)];

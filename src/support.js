@@ -37,6 +37,11 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
     }
   });
   for(const step of stepItems) {
+    if(step.wallStair) {
+      const corners=step.wallStair.corners;
+      add({type:'step',source:'steps',step},Math.min(...corners.map(p=>p[0])),Math.min(...corners.map(p=>p[1])),
+        Math.max(...corners.map(p=>p[0])),Math.max(...corners.map(p=>p[1])));continue;
+    }
     const co=Math.cos(step.rotY),si=Math.sin(step.rotY);
     const dx=(Math.abs(co)*step.w+Math.abs(si)*step.d)*.5;
     const dz=(Math.abs(si)*step.w+Math.abs(co)*step.d)*.5;
@@ -50,7 +55,7 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
       let h;
       if(e.type==='step') {
         const q=e.step,dx=x-q.x,dz=z-q.z;
-        if(Math.abs(dx*e.co-dz*e.si)>q.w*.5+1e-7 || Math.abs(dx*e.si+dz*e.co)>q.d*.5+1e-7)continue;
+        if(!q.wallStair&&(Math.abs(dx*e.co-dz*e.si)>q.w*.5+1e-7 || Math.abs(dx*e.si+dz*e.co)>q.d*.5+1e-7))continue;
         h=stepSurfaceAt(q,x,z);if(h===null)continue;
       }else {
         const dx=x-e.cx,dz=z-e.cz,u=dx*e.ax+dz*e.az,v=dx*e.bx+dz*e.bz;
