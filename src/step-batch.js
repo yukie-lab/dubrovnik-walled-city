@@ -38,7 +38,7 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map(),stairShadow
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor*=mix(1.0,.60,vStepWear);');
   };
   material.customProgramCacheKey=()=>'wornStepStone';patchSkyVisInstanced(material);
-  chainMaterialShader(material,'wallTreadStone-v1',sh=>{
+  chainMaterialShader(material,'wallTreadStone-v2',sh=>{
     sh.uniforms.uStairMap={value:tex.dressed.map};sh.uniforms.uStairNormal={value:tex.dressed.normalMap};
     sh.uniforms.uStairCover={value:tex.dressed.coverM};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec4 aStair; varying vec4 vStair;')
@@ -51,17 +51,18 @@ export function makeStepBatch(items,tex,skyAt,stairLayouts=new Map(),stairShadow
       .replace('#include <map_fragment>',`#ifdef USE_MAP
         diffuseColor*=mix(texture2D(map,vMapUv),texture2D(uStairMap,vMapUv/uStairCover),vStair.x);
         if(vStair.x>.5){
-          float grain=stepNoise(vMapUv*83.0),mineral=stepNoise(vMapUv*7.3);
-          float grit=vStair.z*smoothstep(.47,.72,grain);
+          float grain=stepNoise(vMapUv*83.0),mineral=stepNoise(vMapUv*7.3),weather=stepNoise(vMapUv*2.4+11.9);
+          float grit=vStair.z*smoothstep(.39,.68,grain);
           float moss=vStair.w*smoothstep(.34,.72,mineral);
-          diffuseColor.rgb*=1.0+.12*(mineral-.5)-.08*vStair.y;
-          diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.20,.178,.135),grit*.28);
-          diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.065,.081,.035),moss*.60);
+          float pits=smoothstep(.73,.89,grain)*(1.0-.85*vStair.y);
+          diffuseColor.rgb*=1.0+.22*(mineral-.5)+.16*(weather-.5)-.065*vStair.y-.18*pits;
+          diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.20,.178,.135),grit*.46);
+          diffuseColor.rgb=mix(diffuseColor.rgb,vec3(.065,.081,.035),moss*.72);
         }
       #endif`)
       .replace('#include <normal_fragment_maps>',THREE.ShaderChunk.normal_fragment_maps.replaceAll(
         'texture2D( normalMap, vNormalMapUv ).xyz',
-        'mix(texture2D(normalMap,vNormalMapUv).xyz,texture2D(uStairNormal,vNormalMapUv/uStairCover).xyz,vStair.x)'))
+        'mix(texture2D(normalMap,vNormalMapUv).xyz,mix(texture2D(uStairNormal,vNormalMapUv/uStairCover).xyz,vec3(.5,.5,1.0),.78*vStair.y),vStair.x)'))
       .replace('#include <roughnessmap_fragment>',`#include <roughnessmap_fragment>
         roughnessFactor=mix(roughnessFactor,mix(.89,.40,vStair.y)*(1.0+.09*vStair.z),vStair.x);`)
       .replace('roughnessFactor*=mix(1.0,.60,vStepWear);','roughnessFactor*=mix(1.0,.60,vStepWear*(1.0-vStair.x));');

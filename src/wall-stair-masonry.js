@@ -1,12 +1,13 @@
 import * as THREE from 'three';
 import {lerp} from './util.js';
 import {planarMasonryUV} from './masonry-uv.js';
+import {makeStairCoping,parapetTop} from './wall-stair-coping.js';
 
 // Closed masonry pieces use the same mitred inner lines as the tread layout.
 // Openings are the empty space between solid piers/spandrels, including their
 // full-depth reveals; there are no dark planes pretending to be windows.
 export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
-  const P=[],N=[],U=[],C=[],A=[],I=[],solids=[],slits=[];
+  const P=[],N=[],U=[],C=[],A=[],K=[],I=[],solids=[],slits=[];
   const vector=p=>new THREE.Vector3(...p);
   const addSolid=(name,vertices,segment,type)=>{
     const from=I.length/3,center=vertices.reduce((s,p)=>s.add(vector(p)),new THREE.Vector3()).multiplyScalar(1/8);
@@ -47,6 +48,7 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
         P.push(...p);N.push(...localNormal.toArray());U.push(uv[k*2],uv[k*2+1]);C.push(1,1,1);
         const s=((p[0]-segment.a[0])*dx+(p[2]-segment.a[1])*dz)/(segment.length**2);
         A.push(1,p[1]-lerp(segment.a[2],segment.b[2],s),inside);
+        K.push(0,0);
       }
       for(let ib=0;ib<nb;ib++)for(let ia=0;ia<na;ia++) {
         const a=base+ib*(na+1)+ia,b=a+1,c=a+na+1,d=c+1;I.push(a,b,d,a,d,c);
@@ -91,8 +93,17 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
       }
     }else if(!layout.spiral) {
       const side=segment.railSign,u0=side*half,u1=side*(half+thickness);
-      const last=i===st.pts.length-1,top=t=>nominal(t)+lerp(last?.90:1,last?.22:1,t);
+      const top=t=>parapetTop(layout,segment,t)-.10;
       prism('parapet',u0,u1,0,1,bottom,top,'wall');
+      for(const cap of makeStairCoping(st,layout,segment)) {
+        const g=cap.geometry,offset=P.length/3,from=I.length/3;
+        P.push(...g.attributes.position.array);N.push(...g.attributes.normal.array);
+        U.push(...g.attributes.uv.array);C.push(...g.attributes.color.array);
+        A.push(...g.attributes.aStairWall.array);K.push(...g.attributes.aStairStone.array);
+        for(const index of g.index.array)I.push(offset+index);
+        solids.push({name:cap.kind,type:cap.kind,from,to:I.length/3,segment:i,t0:cap.t0,t1:cap.t1});
+        g.dispose();
+      }
       // The uphill edge is part of the foundation. It meets the tread ends
       // along exactly the same inner line instead of leaving a second gap.
       prism('string-course',-u0,-u1,0,1,bottom,t=>nominal(t)-.14,'base');
@@ -107,6 +118,7 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
   geometry.setAttribute('uv',new THREE.Float32BufferAttribute(U,2));
   geometry.setAttribute('color',new THREE.Float32BufferAttribute(C,3));
   geometry.setAttribute('aStairWall',new THREE.Float32BufferAttribute(A,3));
+  geometry.setAttribute('aStairStone',new THREE.Float32BufferAttribute(K,2));
   geometry.userData.stairSolids=solids;geometry.userData.slits=slits;
   return geometry;
 }

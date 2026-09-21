@@ -11,7 +11,9 @@ export function makeWallTread(step,{coverM=5}={}) {
   const chips=Array.from({length:3},(_,i)=>({u:.08+.84*hash2((t.seed*1e6)|0,i*97+19),
     half:(.014+.024*hash2(i+13,(t.seed*1e5)|0))/width,
     depth:.003+.007*hash2((t.seed*1e7)|0,i+79)}));
-  const us=unique([...Array.from({length:13},(_,i)=>i/12),...chips.flatMap(c=>[c.u-c.half,c.u,c.u+c.half])]);
+  const lane=.5+t.walkingLineM/width,half=t.walkingHalfWidthM/width;
+  const wearSamples=[-1,-.78,-.52,-.25,0,.25,.52,.78,1].map(x=>lane+x*half).filter(x=>x>0&&x<1);
+  const us=unique([...Array.from({length:13},(_,i)=>i/12),...wearSamples,...chips.flatMap(c=>[c.u-c.half,c.u,c.u+c.half])]);
   const radius=Math.min(t.nose,step.d*.24),noseFraction=radius/step.d;
   const vs=unique([0,noseFraction*.12,noseFraction*.38,noseFraction*.72,noseFraction,.25,.5,.75,1]);
   const p=[],uv=[],col=[],wear=[],traits=[],ix=[],nu=us.length,nv=vs.length;
@@ -21,8 +23,8 @@ export function makeWallTread(step,{coverM=5}={}) {
   };
   const point=(u,v)=>[lerp(lerp(a[0],b[0],u),lerp(d[0],c[0],u),v),lerp(lerp(a[1],b[1],u),lerp(d[1],c[1],u),v)];
   for(const v of vs)for(const u of us) {
-    const x=(u-.5-t.walkingLine)/.46;
-    const across=(u===0||u===1)?0:Math.pow(Math.max(0,1-x*x),2)*Math.pow(Math.sin(Math.PI*u),.4);
+    const x=(u-lane)/half;
+    const across=(u===0||u===1)?0:Math.pow(Math.max(0,1-x*x),2);
     const dish=t.wear*across*(.62+.38*Math.sin(Math.PI*v));
     const along=v*step.d,round=along<radius?radius-Math.sqrt(Math.max(0,radius*radius-(radius-along)**2)):0;
     let loss=0;for(const chip of chips)loss+=chip.depth*Math.pow(Math.max(0,1-Math.abs(u-chip.u)/chip.half),2)*Math.exp(-along/.025);

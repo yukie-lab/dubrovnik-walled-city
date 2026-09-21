@@ -35,11 +35,12 @@ export function wallStairLayout(st,{gates=[]}={}) {
       const centerPoint=[lerp(a[0],b[0],(front+back)/2),lerp(a[1],b[1],(front+back)/2)];
       const depth=(back-front)*length;
       layout.steps.push({x:centerPoint[0],z:centerPoint[1],y,rotY:Math.atan2(b[0]-a[0],b[1]-a[1]),
-        w:innerHalf*2,d:depth,tint:.96+(stoneSeed-.5)*.10,seg:i,step:j,of:n,
+        w:innerHalf*2,d:depth,tint:.96+(stoneSeed-.5)*.18,seg:i,step:j,of:n,
         wallStair:{id:st.id,enclosed:!!st.enclosed,traffic,seed:stoneSeed,corners,front,back,
           s:layout.length+center*length,rise:Math.abs(dh)*(vertical[j]-vertical[Math.max(0,j-1)]),
-          wear:(.012+.022*traffic)*(.65+.60*stoneSeed),nose:.022+.014*stoneSeed,
-          walkingLine:(hash2(i*313,Math.round(seed*1e6))-.5)*.14,depth:.58}});
+          wear:(.012+.022*traffic)*(.65+.60*stoneSeed),nose:.026+.018*stoneSeed,
+          walkingLineM:(hash2(i*313,Math.round(seed*1e6))-.5)*.20,
+          walkingHalfWidthM:.40+.07*traffic,depth:.58}});
     }
     layout.length+=length;
   }

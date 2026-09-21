@@ -1435,11 +1435,13 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
   geo.setAttribute('uv', new THREE.Float32BufferAttribute(U, 2));
   geo.setAttribute('color', new THREE.Float32BufferAttribute(C, 3));
   const stairShadows=makeStairShadows(stairLayouts);
-  const stairTraits=new Float32Array(P.length),stairRooms=new Float32Array(P.length/3);
+  const stairTraits=new Float32Array(P.length),stairRooms=new Float32Array(P.length/3),stairStone=new Float32Array(P.length/3*2);
   for(const {offset,layout} of stairRanges)stairTraits.set(layout.masonry.attributes.aStairWall.array,offset*3);
+  for(const {offset,layout} of stairRanges)stairStone.set(layout.masonry.attributes.aStairStone.array,offset*2);
   for(const {offset,layout} of stairRanges)stairRooms.fill(layout.shadowRoom||0,offset,offset+layout.masonry.attributes.position.count);
   geo.setAttribute('aStairWall',new THREE.BufferAttribute(stairTraits,3));
   geo.setAttribute('aStairRoom',new THREE.BufferAttribute(stairRooms,1));
+  geo.setAttribute('aStairStone',new THREE.BufferAttribute(stairStone,2));
   geo.userData.stairSolids=stairRanges.flatMap(({id,firstTriangle,layout})=>
     layout.masonry.userData.stairSolids.map(s=>({...s,id,from:s.from+firstTriangle,to:s.to+firstTriangle})));
   geo.setIndex(I);
@@ -1484,7 +1486,7 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     for(let i=0;i<p.count;i++)sky.setX(offset+i,sky.getX(offset+i)*
       layout.skyAt(p.getX(i),p.getZ(i),p.getY(i),n.getX(i),n.getY(i),n.getZ(i)));
   }
-  patchWallStairFinish(mat);
+  patchWallStairFinish(mat,tex.dressed);
   patchSkyVis(mat);
   stairShadows.patch(mat);
   patchWet(mat, { wet: 0.52, top: 0.55, foam: 0.60 });   // 海に立つ稜堡の足元は常に濡れている
