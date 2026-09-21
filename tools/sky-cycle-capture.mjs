@@ -1,6 +1,7 @@
 import {writeFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {materialProgramAudit} from './material-program-audit.mjs';
+import {atmosphereGPUCheck} from './atmosphere-gpu-check.mjs';
 export async function skyCycleChecks(page,{name,dir,rows,errors,args}) {
   const quick=args.includes('--quick');
   const times=quick?[12.87,19.3,19.75,20,20.5,21,21.7,23.5]:
@@ -22,7 +23,11 @@ export async function skyCycleChecks(page,{name,dir,rows,errors,args}) {
     },pose);
     for(const time of times) {
       await page.evaluate(t=>{window.__world.worldState.time=t;},time);
-      for(let i=0;i<4;i++)await page.evaluate(()=>window.__captureFrame());
+      let updateCalls=0;
+      for(let i=0;i<4;i++) {
+        await page.evaluate(()=>window.__captureFrame());
+        updateCalls=Math.max(updateCalls,await page.evaluate(()=>window.__RENDER_STATS.drawCalls));
+      }
       const png=Buffer.from((await page.evaluate(()=>window.__captureFrame())).split(',')[1],'base64');
       const compare=Buffer.from((await page.evaluate(()=>window.__captureFrame())).split(',')[1],'base64');
       const hash=b=>createHash('sha256').update(b).digest('hex');
@@ -37,10 +42,11 @@ export async function skyCycleChecks(page,{name,dir,rows,errors,args}) {
       });
       const stem=`${name}-${view}-${time.toFixed(3).replace('.','_')}`;
       writeFileSync(new URL(stem+'.png',dir),png);
-      result.view=view;result.stable=hash(png)===hash(compare);rows.push(result);
+      result.view=view;result.updateCalls=updateCalls;result.stable=hash(png)===hash(compare);rows.push(result);
       console.log(`${view} ${time.toFixed(3)} el=${result.elevation.toFixed(2)} ${result.phase} sky=${result.zenithCd.toExponential(3)}cd/m2 E=${result.ghiLux.toExponential(3)}lux exp=${result.exposure.toFixed(2)} calls=${result.stats.drawCalls} GL=${result.gpuError}`);
       if(result.gpuError||!result.stable||errors.length)throw new Error('Sky cycle GPU / stability failure: '+JSON.stringify(result));
     }
   }
   await materialProgramAudit(page,{name,dir,strict:true});
+  await atmosphereGPUCheck(page,{name,dir});
 }

@@ -76,6 +76,14 @@ try {
     const {skyCycleChecks}=await import('./sky-cycle-capture.mjs');
     await skyCycleChecks(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--sky-motion')) {
+    const {atmosphereMotionChecks}=await import('./atmosphere-motion-capture.mjs');
+    await atmosphereMotionChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--moon-study')) {
+    const {moonChecks}=await import('./moon-capture.mjs');
+    await moonChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],
