@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import {lerp} from './util.js';
 import {planarMasonryUV} from './masonry-uv.js';
 import {makeStairCoping,parapetTop} from './wall-stair-coping.js';
+import {wallStairPoint} from './wall-stair-joints.js';
 
 // Closed masonry pieces use the same mitred inner lines as the tread layout.
 // Openings are the empty space between solid piers/spandrels, including their
@@ -72,6 +73,18 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
     const terrain0=plan.terrainHeight(a[0],a[1])-.30,terrain1=plan.terrainHeight(b[0],b[1])-.30;
     const bottom=t=>Math.min(nominal(t)-.72,lerp(terrain0,terrain1,t));
     prism('foundation',-half,half,0,1,bottom,t=>nominal(t)-.16,'base');
+    // A fitted end remains on real masonry all the way to the existing wall.
+    // The bearing shares its actual footprint and overlaps the original bed.
+    for(const q of layout.steps.filter(q=>q.seg===i&&q.wallStair.joint?.extensions.some(d=>d>0))) {
+      const bounds=[0,...q.wallStair.joint.breaks,1];
+      for(let k=1;k<bounds.length;k++) {
+        const footprint=[[0,bounds[k-1]],[1,bounds[k-1]],[1,bounds[k]],[0,bounds[k]]].map(([u,v])=>wallStairPoint(q.wallStair,u,v,q.y-.28));
+        const low=footprint.map(([x,z])=>Math.min(q.y-.68,plan.terrainHeight(x,z)-.30));
+        const vertices=[...footprint.map(([x,z],k)=>[x,low[k],z]),...footprint.map(([x,z])=>[x,q.y-.28,z])];
+        addSolid('joint-bearing',vertices,segment,'base');
+        Object.assign(solids.at(-1),{segment:i,step:q.step});
+      }
+    }
     if(layout.enclosed) {
       const end=Math.max(0,Math.min(1,(layout.length-1.2-s0)/length));
       if(end<=0)continue;

@@ -74,6 +74,23 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
         await saveFrame('p'+Math.round(threshold*100));
         const done=await page.evaluate(()=>window.__stairAscent.done);if(done)break;
       }
+      const completed=await page.evaluate(()=>window.__stairAscent.done&&!window.__stairAscent.failed);
+      if(completed&&!args.includes('--no-emergence')) {
+        await page.keyboard.up('KeyW');
+        await page.evaluate(async()=>{
+          const w=window.__world,p=w.player,run=window.__stairAscent;
+          const from=p.yaw,to=Math.atan2(p.x,p.z),turn=Math.atan2(Math.sin(to-from),Math.cos(to-from)),pitch=p.pitch;
+          const start=performance.now();p.frozen=false;
+          for(;;) {
+            const now=await new Promise(requestAnimationFrame),elapsed=(now-start)/1000,t=Math.max(0,Math.min(1,(elapsed-1.2)/5.5));
+            const ease=t*t*(3-2*t);p.yaw=from+turn*ease;p.pitch=pitch+(-.11-pitch)*ease;
+            run.peakDrawCalls=Math.max(run.peakDrawCalls,window.__RENDER_STATS.drawCalls);
+            if(elapsed>=7.2)break;
+          }
+          p.frozen=true;
+        });
+        await saveFrame('emerged-city');
+      }
     } finally {
       await page.keyboard.up('KeyW');await page.evaluate(()=>window.__stairRestore());if(recorder)await recorder.stop();
     }

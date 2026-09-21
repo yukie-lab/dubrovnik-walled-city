@@ -17,6 +17,7 @@ import {makeWallStairMasonry} from './wall-stair-masonry.js';
 import {makeStairSkyVisibility} from './wall-stair-light.js';
 import {patchWallStairFinish} from './wall-stair-finish.js';
 import {makeStairShadows} from './wall-stair-shadow.js';
+import {makeStairJointSampler,fitWallStairJoints} from './wall-stair-joints.js';
 
 export function makeWalls(plan, tex, stepPool, outsideHeight) {
   const group = new THREE.Group();
@@ -1318,23 +1319,6 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     part(_pp);
   }
 
-  // One derived construction layout owns every wall ascent: the tread ends,
-  // flanking masonry and navigation use identical mitred inner faces.
-  for (const st of plan.WALL_STAIRS) {
-    part('stairWall');
-    const layout=wallStairLayout(st,{gates:plan.GATES});
-    for(const segment of st.segs)segment.half=layout.innerHalf;
-    const masonry=makeWallStairMasonry(st,layout,plan,tex.fortStone.coverM);
-    layout.masonry=masonry;layout.skyAt=makeStairSkyVisibility(layout,masonry);
-    stairLayouts.set(st.id,layout);
-    stepPool.addRun(st.pts,st.w,{layout});
-    const offset=P.length/3,firstTriangle=I.length/3;
-    P.push(...masonry.attributes.position.array);N.push(...masonry.attributes.normal.array);
-    U.push(...masonry.attributes.uv.array);C.push(...masonry.attributes.color.array);
-    for(const index of masonry.index.array)I.push(offset+index);
-    stairRanges.push({id:st.id,offset,firstTriangle,layout});
-  }
-
   // ---- ピレ橋(西門の外の石橋)+ プロチェ橋
   function bridge(x0, z0, x1, z1, y, y1 = null) {
     const _pp = part('bridge');
@@ -1425,6 +1409,26 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     for (let i = 0; i < gu.length; i += 2) U.push(gu[i], gu[i + 1]);
     for (let i = 0, c = gp.length / 3; i < c; i++) I.push(n0 + i);
   }
+
+  // One derived construction layout owns every wall ascent: the tread ends,
+  // flanking masonry and navigation use identical mitred inner faces.
+  const stairJointSampler=makeStairJointSampler(P,I);
+  for (const st of plan.WALL_STAIRS) {
+    part('stairWall');
+    const layout=wallStairLayout(st,{gates:plan.GATES});
+    fitWallStairJoints(layout,stairJointSampler);
+    for(const segment of st.segs)segment.half=layout.innerHalf;
+    const masonry=makeWallStairMasonry(st,layout,plan,tex.fortStone.coverM);
+    layout.masonry=masonry;layout.skyAt=makeStairSkyVisibility(layout,masonry);
+    stairLayouts.set(st.id,layout);
+    stepPool.addRun(st.pts,st.w,{layout});
+    const offset=P.length/3,firstTriangle=I.length/3;
+    P.push(...masonry.attributes.position.array);N.push(...masonry.attributes.normal.array);
+    U.push(...masonry.attributes.uv.array);C.push(...masonry.attributes.color.array);
+    for(const index of masonry.index.array)I.push(offset+index);
+    stairRanges.push({id:st.id,offset,firstTriangle,layout});
+  }
+  stairJointSampler.dispose();
 
   // ---- 本体メッシュ化
   { const last = PARTS[PARTS.length - 1]; if (last) last.to = I.length / 3; }

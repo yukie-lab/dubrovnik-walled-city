@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import {hash2,lerp} from './util.js';
+import {wallStairPoint} from './wall-stair-joints.js';
 
 const unique=values=>values.sort((a,b)=>a-b).filter((x,i,a)=>!i||x-a[i-1]>1e-5);
 
@@ -11,17 +12,21 @@ export function makeWallTread(step,{coverM=5}={}) {
   const chips=Array.from({length:3},(_,i)=>({u:.08+.84*hash2((t.seed*1e6)|0,i*97+19),
     half:(.014+.024*hash2(i+13,(t.seed*1e5)|0))/width,
     depth:.003+.007*hash2((t.seed*1e7)|0,i+79)}));
-  const lane=.5+t.walkingLineM/width,half=t.walkingHalfWidthM/width;
+  const midA=[(a[0]+d[0])/2,(a[1]+d[1])/2],midB=[(b[0]+c[0])/2,(b[1]+c[1])/2];
+  const dx=midB[0]-midA[0],dz=midB[1]-midA[1],midWidth=Math.hypot(dx,dz);
+  const lane=((step.x-midA[0])*dx+(step.z-midA[1])*dz)/(midWidth*midWidth)+t.walkingLineM/midWidth;
+  const half=t.walkingHalfWidthM/midWidth;
   const wearSamples=[-1,-.78,-.52,-.25,0,.25,.52,.78,1].map(x=>lane+x*half).filter(x=>x>0&&x<1);
   const us=unique([...Array.from({length:13},(_,i)=>i/12),...wearSamples,...chips.flatMap(c=>[c.u-c.half,c.u,c.u+c.half])]);
   const radius=Math.min(t.nose,step.d*.24),noseFraction=radius/step.d;
-  const vs=unique([0,noseFraction*.12,noseFraction*.38,noseFraction*.72,noseFraction,.25,.5,.75,1]);
+  const vs=unique([0,noseFraction*.12,noseFraction*.38,noseFraction*.72,noseFraction,.25,.5,.75,1,
+    ...(t.joint?.breaks||[])]);
   const p=[],uv=[],col=[],wear=[],traits=[],ix=[],nu=us.length,nv=vs.length;
   const append=(x,y,z,u,v,w,dust,moss)=>{
     p.push(x,y,z);uv.push(u*width/coverM,v*step.d/coverM);col.push(1,1,1);wear.push(w);
     traits.push(1,w,dust,moss);return p.length/3-1;
   };
-  const point=(u,v)=>[lerp(lerp(a[0],b[0],u),lerp(d[0],c[0],u),v),lerp(lerp(a[1],b[1],u),lerp(d[1],c[1],u),v)];
+  const point=(u,v,y=step.y)=>wallStairPoint(t,u,v,y);
   for(const v of vs)for(const u of us) {
     const x=(u-lane)/half;
     const across=(u===0||u===1)?0:Math.pow(Math.max(0,1-x*x),2);
@@ -31,7 +36,7 @@ export function makeWallTread(step,{coverM=5}={}) {
     const corner=Math.pow(Math.abs(2*u-1),5),back=Math.pow(v,7);
     const dust=Math.min(1,corner*(.55+.45*back)+back*.35)*(1-across*.8);
     const moss=corner*back*(t.enclosed?.7:.22)*(1-t.traffic*.35);
-    const [px,pz]=point(u,v);append(px,step.y-dish-round-loss,pz,u,v,across,dust,moss);
+    const y=step.y-dish-round-loss,[px,pz]=point(u,v,y);append(px,y,pz,u,v,across,dust,moss);
   }
   for(let j=0;j<nv-1;j++)for(let i=0;i<nu-1;i++) {
     const a=j*nu+i,b=a+1,c=a+nu,d=c+1;ix.push(a,c,b,b,c,d);
@@ -47,12 +52,14 @@ export function makeWallTread(step,{coverM=5}={}) {
   for(let i=0;i<border.length;i++) {
     const a=border[i],b=border[(i+1)%border.length],base=p.length/3;
     for(const [j,y] of [[a,p[a*3+1]],[b,p[b*3+1]],[b,bottom],[a,bottom]]) {
-      append(p[j*3],y,p[j*3+2],uv[j*2]*coverM/width,(y-step.y)/step.d,0,.10,0);
+      const [x,z]=y===bottom?point(us[j%nu],vs[Math.floor(j/nu)],bottom):[p[j*3],p[j*3+2]];
+      append(x,y,z,uv[j*2]*coverM/width,(y-step.y)/step.d,0,.10,0);
     }
     ix.push(base,base+1,base+2,base,base+2,base+3);
-    bottomRing.push(append(p[a*3],bottom,p[a*3+2],uv[a*2]*coverM/width,uv[a*2+1]*coverM/step.d,0,0,0));
+    const [x,z]=point(us[a%nu],vs[Math.floor(a/nu)],bottom);
+    bottomRing.push(append(x,bottom,z,uv[a*2]*coverM/width,uv[a*2+1]*coverM/step.d,0,0,0));
   }
-  const middle=point(.5,.5),center=append(middle[0],bottom,middle[1],.5,.5,0,0,0);
+  const middle=point(.5,.5,bottom),center=append(middle[0],bottom,middle[1],.5,.5,0,0,0);
   for(let i=0;i<bottomRing.length;i++)ix.push(center,bottomRing[i],bottomRing[(i+1)%bottomRing.length]);
   const g=new THREE.BufferGeometry();g.setIndex(ix);
   const shiftU=hash2((t.seed*1e6)|0,373)*3.7,shiftV=hash2(971,(t.seed*1e6)|0)*3.7;

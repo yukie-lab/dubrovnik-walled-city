@@ -29,6 +29,7 @@ import { makeSurround } from './surround.js';
 import { makeLife } from './life.js';
 import { makeGroundSupport } from './support.js';
 import {makeWallStairGround} from './wall-stair-ground.js';
+import {makeWallStairCollision} from './wall-stair-collision.js';
 
 /**
  * 街を一つ作る。同じ seed からは必ず同じ街が出る。
@@ -58,6 +59,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const lifeObj = life ? makeLife(plan, tex, stepPool, support) : null;
   const steps = stepPool.finalize(getSharedSkyVis(),walls.stairLayouts,walls.stairShadows);
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
+  plan.walkingCollide=makeWallStairCollision(plan,walls.group.getObjectByName('wall.curtain').geometry);
 
   const parts = { ground, walls, buildings, monuments, surround, sea: seaObj, sky: skyObj, life: lifeObj };
   const root = new THREE.Group();

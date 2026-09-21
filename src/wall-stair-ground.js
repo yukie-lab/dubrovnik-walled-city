@@ -18,7 +18,12 @@ export function makeWallStairGround(plan,steps) {
     let y=-Infinity,stone=null;
     for(const q of cells.get(Math.floor(x/cellSize)+','+Math.floor(z/cellSize))||[]) {
       const height=stepSurfaceAt(q,x,z);if(height===null)continue;
-      if(Math.abs(height-nominal.y)>(onNominalStair?.65:.16))continue;
+      // At a sharp turn the old rectangular corridor can select the next
+      // flight before its real mitred stones begin. A reachable actual tread
+      // owns that layer; rejecting it against the nominal height creates a
+      // brief, invisible half-metre step.
+      const reachableTread=(onNominalStair||q.wallStair.joint)&&Math.abs(height-currentY)<.5;
+      if(Math.abs(height-nominal.y)>(onNominalStair?.65:.16)&&!reachableTread)continue;
       if(height>y){y=height;stone=q;}
     }
     if(!stone)return nominal;

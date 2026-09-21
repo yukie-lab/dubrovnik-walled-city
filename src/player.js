@@ -87,7 +87,7 @@ export class Player {
       this.zone = g.zone;
     }
     // 衝突(家・壁・縁)
-    const c = this.plan.collide(nx, nz, 0.35, this.groundY + 1.0);
+    const c = (this.plan.walkingCollide||this.plan.collide)(nx, nz, 0.35, this.groundY + 1.0);
     this.x = c.x; this.z = c.z;
     // 押し出された分だけ地面を再解決
     const g2 = this.floorAt(this.x, this.z, this.groundY);

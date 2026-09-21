@@ -5,16 +5,22 @@ import {buildPlan} from '../src/plan.js';
 import {wallStairLayout} from '../src/wall-stair-layout.js';
 import {makeWallStairMasonry} from '../src/wall-stair-masonry.js';
 import {parapetTop} from '../src/wall-stair-coping.js';
+import {wallStairPoint} from '../src/wall-stair-joints.js';
 import {stepSurfaceAt} from '../src/step-stone.js';
 
-const plan=buildPlan(),rows=[],bad=[],ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
+let plan,layouts;
+if(process.argv.includes('--world')) {
+  const {installDomShim}=await import('./structure/domshim.mjs');installDomShim();
+  const {buildWorld}=await import('../src/world.js'),world=buildWorld();plan=world.plan;layouts=world.walls.stairLayouts;
+}else plan=buildPlan();
+const rows=[],bad=[],ray=new THREE.Raycaster(),down=new THREE.Vector3(0,-1,0);
 const point=(c,u,v)=>new THREE.Vector3(
   (c[0][0]*(1-u)+c[1][0]*u)*(1-v)+(c[3][0]*(1-u)+c[2][0]*u)*v,0,
   (c[0][1]*(1-u)+c[1][1]*u)*(1-v)+(c[3][1]*(1-u)+c[2][1]*u)*v);
 for(const st of plan.WALL_STAIRS) {
-  const layout=wallStairLayout(st,{gates:plan.GATES}),g=makeWallStairMasonry(st,layout,plan),p=g.attributes.position,ix=g.index;
+  const layout=layouts?.get(st.id)||wallStairLayout(st,{gates:plan.GATES}),g=layout.masonry||makeWallStairMasonry(st,layout,plan),p=g.attributes.position,ix=g.index;
   const row={id:st.id,solids:0,copings:0,supportQueries:0,unsupported:0,protruding:0,coveredAtBack:0,minSeatingMm:Infinity,
-    copingSeatingQueries:0,minCopingSeatingMm:null};
+    copingSeatingQueries:0,minCopingSeatingMm:null,fittedStones:layout.steps.filter(q=>q.wallStair.joint).length};
   for(const s of g.userData.stairSolids) {
     const edges=new Map(),a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3(),origin=new THREE.Vector3().fromBufferAttribute(p,ix.getX(s.from*3));
     let volume=0,collapsed=0;
@@ -49,10 +55,11 @@ for(const st of plan.WALL_STAIRS) {
     }
   }
   const foundation=g.clone(),indices=[];
-  for(const s of g.userData.stairSolids.filter(s=>s.name==='foundation'))for(let i=s.from*3;i<s.to*3;i++)indices.push(ix.getX(i));
+  for(const s of g.userData.stairSolids.filter(s=>s.name==='foundation'||s.name==='joint-bearing'))for(let i=s.from*3;i<s.to*3;i++)indices.push(ix.getX(i));
   foundation.setIndex(indices);const bed=new THREE.Mesh(foundation,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
   for(const q of layout.steps)for(const u of [.002,.10,.5,.90,.998])for(const v of [.002,.25,.5,.75,.998]) {
-    const at=point(q.wallStair.corners,u,v),surface=stepSurfaceAt(q,at.x,at.z);at.y=q.y+1;
+    const xz=wallStairPoint(q.wallStair,u,v,q.y),at=new THREE.Vector3(xz[0],q.y+1,xz[1]),surface=stepSurfaceAt(q,at.x,at.z);
+    if(surface===null){bad.push({id:st.id,step:q.step,segment:q.seg,u,v,kind:'missing-tread'});continue;}
     ray.set(at,down);const hit=ray.intersectObject(bed,false)[0];row.supportQueries++;
     const bottom=q.y-q.wallStair.depth;
     if(!hit||hit.point.y<bottom+.005) {row.unsupported++;bad.push({id:st.id,step:q.step,segment:q.seg,u,v,kind:'unsupported'});}
