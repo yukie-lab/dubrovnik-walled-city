@@ -88,6 +88,14 @@ try {
     const {frameShadowChecks}=await import('./frame-shadow-capture.mjs');
     await frameShadowChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--sky-continuous')) {
+    const {continuousSkyChecks}=await import('./sky-continuous-capture.mjs');
+    await continuousSkyChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--light-history')) {
+    const {lightHistoryCheck}=await import('./light-history-check.mjs');
+    await lightHistoryCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],
@@ -139,6 +147,10 @@ try {
   if(args.includes('--folk')) {
     const {folkChecks}=await import('./folk-capture.mjs');
     await folkChecks(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--folk-soles')) {
+    const {folkSoleChecks}=await import('./folk-sole-capture.mjs');
+    await folkSoleChecks(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--trees')) {
     const {woodlandChecks}=await import('./woodland-capture.mjs');
