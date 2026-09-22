@@ -28,7 +28,8 @@ export async function seaTransportProbe(page,{name,dir,rows,errors,args}) {
         else if(uSeaProbe<7.5) col=air;
         else if(uSeaProbe<8.5) col=T;
         else if(uSeaProbe<9.5) col=vec3(F);
-        else col=bottomCol;
+        else if(uSeaProbe<10.5) col=bottomCol;
+        else col=atAerial((refl*F+glit)*uncovered+foamCol*foam*.82,rayW*camD,cameraPosition);
         gl_FragColor=vec4(col,1.0);return;
       }
       bool ok =`);
@@ -62,7 +63,7 @@ export async function seaTransportProbe(page,{name,dir,rows,errors,args}) {
     };
     w.__restoreSeaProbe=()=>{R.render=render;m.fragmentShader=original;m.needsUpdate=true;};
   },config.renderRegions);
-  const labels=['total','bottom','volumeScattering','crest','skyReflection','glitter','foam','aerialPerspective','transmission','fresnel','bottomIncident'];
+  const labels=['total','bottom','volumeScattering','crest','skyReflection','glitter','foam','aerialPerspective','transmission','fresnel','bottomIncident','protectedFloor'];
   const result={};
   for(let mode=0;mode<labels.length;mode++) {
     const row=await page.evaluate(async mode=>{

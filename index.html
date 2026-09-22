@@ -127,6 +127,31 @@
   #timeCtl canvas { display: block; width: 100%; height: 46px; }
   #timeLabel { text-align: center; font-size: 11.5px; letter-spacing: .22em; opacity: .8; margin-top: 2px; }
 
+  #waterOptics {
+    position: absolute; top: 103px; right: 16px; width: 188px; pointer-events: auto;
+    color: #342e24; background: rgba(241,234,218,.96); border: 1px solid #988970;
+    border-radius: 3px; font-size: 12px; line-height: 1.55;
+  }
+  #waterOptics[open] { width: min(320px, calc(100vw - 32px)); }
+  #waterOptics summary { cursor: pointer; padding: 7px 10px; letter-spacing: .1em; }
+  #waterOptics .waterBody { padding: 0 12px 12px; max-height: calc(100dvh - 162px); overflow-y: auto; }
+  #waterOptics p { margin: 2px 0 10px; font-size: 11px; }
+  #waterOptics fieldset { border: 0; border-top: 1px solid #b6a891; margin: 12px 0 0; padding: 6px 0 0; }
+  #waterOptics legend { padding-right: 6px; font-size: 11px; }
+  #waterOptics fieldset label { display: grid; grid-template-columns: 1fr 112px; gap: 3px 8px; margin: 7px 0; }
+  #waterOptics input[type=range] { grid-column: 1 / -1; width: 100%; margin: 0; accent-color: #64563e; }
+  #waterOptics input[type=number], #waterOptics textarea {
+    box-sizing: border-box; width: 100%; color: #342e24; background: #faf6ed;
+    border: 1px solid #b6a891; border-radius: 2px; font: 11px ui-monospace, Menlo, monospace; padding: 3px 5px;
+  }
+  #waterOptics input[type=checkbox] { accent-color: #64563e; }
+  #waterOptics .waterActions { display: flex; gap: 8px; margin: 12px 0; }
+  #waterOptics button { font: inherit; font-size: 11px; padding: 4px 7px; cursor: pointer;
+    color: #342e24; border: 1px solid #988970; border-radius: 2px; background: #faf6ed; }
+  #waterOptics .waterExport { display: block; font-size: 11px; }
+  #waterOptics textarea { display: block; margin-top: 4px; resize: vertical; }
+  #waterOptics :focus-visible { outline: 2px solid #64563e; outline-offset: 2px; }
+
   /* デバッグ読み出し(ドローコール等) */
   /* 計器の読み出しは既定で伏せる。街を歩くのに数字は要らない。F3 で出る。 */
   #debug {

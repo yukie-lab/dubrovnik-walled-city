@@ -23,6 +23,7 @@ import { shareFrameShadows } from './frame-shadows.js';
 import { CityAudio } from './audio.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
+import { makeWaterControls } from './water-controls.js';
 import { clamp, lerp } from './util.js';
 
 const Q = new URLSearchParams(location.search);
@@ -113,6 +114,9 @@ const counts = {
 };
 const ui = makeUI(plan, counts, presets);
 ui.onTimeDrag = (t) => { state.time = t; };
+makeWaterControls(lighting.waterLight.optics,{
+  getPaused:()=>state.paused,setPaused:value=>{state.paused=value;},
+});
 
 // ---------------------------------------------------- おまかせで歩く ----
 // ルート定義は plan と共有(tools/walktest.mjs が同じ道を衝突込みで検証する)。

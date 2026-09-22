@@ -22,6 +22,30 @@ export function bindSeaAtmosphere(sea,atmosphere) {
     'vec3(0.30, 0.30, 0.28) * (0.35 + 0.65 * max(uSunDir.y, 0.0)) * uIncidentScale');
   shader=replaceOnce(shader,'+ uZenith * uSkyGain * 0.42 + vec3(0.05)',
     '+ uZenith * uSkyGain * 0.42 + vec3(0.05) * uIncidentScale');
+  // The former far-field lookup mixed two sky directions with fixed colour
+  // weights. Integrate the actual sky over the unresolved reflection lobe.
+  // Fresnel, the resolved normal, wave amplitudes and the solar glitter lobe
+  // remain owned by sea.js. This replaces incident radiance only.
+  shader=replaceOnce(shader,'void main() {',/* glsl */`
+vec3 waterSkyAverage(vec3 direction,float alpha) {
+  vec3 r=normalize(direction);
+  vec3 tangent=normalize(cross(abs(r.y)<.99?vec3(0,1,0):vec3(1,0,0),r));
+  vec3 bitangent=cross(r,tangent),sum=vec3(0.0);float weight=0.0;
+  for(int i=0;i<12;i++) {
+    float u=(float(i)+.5)/12.0,phi=float(i)*2.39996323;
+    float c=sqrt((1.0-u)/(1.0+(alpha*alpha-1.0)*u));
+    float s=sqrt(max(0.0,1.0-c*c));
+    vec3 h=tangent*(cos(phi)*s)+bitangent*(sin(phi)*s)+r*c;
+    vec3 l=reflect(-r,h);float w=max(0.0,dot(r,l));
+    if(l.y>0.0) {sum+=atSkyRadiance(l)*w;weight+=w;}
+  }
+  return weight>0.0?sum/weight:atSkyRadiance(r);
+}
+void main() {`);
+  shader=replaceOnce(shader,
+    'vec3 skyAvg = mix(uHorizonFar, uZenith, 0.30) * uSkyGain * 0.88;',
+    `float skyRoughness=clamp(mix(.115,.42,smoothstep(30.0,2500.0,camD))/max(wind,.55),.09,.62);
+    vec3 skyAvg=waterSkyAverage(R,skyRoughness);`);
   const start=shader.indexOf('  vec3 hDir = normalize(vec3(rayW.x, 0.0, rayW.z));');
   const end=shader.indexOf('\n\n  bool ok =',start);
   if(start<0||end<0)throw new Error('Sea aerial-perspective interface changed');

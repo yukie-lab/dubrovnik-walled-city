@@ -123,6 +123,10 @@ try {
     const {seaTransportProbe}=await import('./sea-transport-probe.mjs');
     await seaTransportProbe(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--water-controls')) {
+    const {waterControlsCheck}=await import('./water-controls-check.mjs');
+    await waterControlsCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],

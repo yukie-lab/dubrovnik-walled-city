@@ -7,8 +7,8 @@ export const WATER_BASELINE=Object.freeze({
   backscatter:Object.freeze([.001155,.00075,.00063]),
 });
 export const WATER_DEFAULTS=Object.freeze({
-  extinction:Object.freeze([1,.16,.03]),
-  backscatter:Object.freeze([.001155,.00075,.00063]),
+  extinction:Object.freeze([1,.22,.09]),
+  backscatter:Object.freeze([.00002,.00004,.00008]),
 });
 
 export function makeWaterOptics(sea) {
