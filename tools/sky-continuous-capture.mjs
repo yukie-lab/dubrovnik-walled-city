@@ -15,14 +15,14 @@ export async function continuousSkyChecks(page,{name,dir,rows,errors}) {
     result=await page.evaluate(async()=>{
       const w=window.__world,L=w.lighting,update=L.update;
       L.update=function(...args){L.state.snap=false;return update(...args);};
-      const samples=[];let last=performance.now(),lastSample=last,peak=0;
+      const samples=[];let last=performance.now(),lastSample=last,peak=0,start=last;
       try {
         while(w.worldState.time<21.8) {
           const now=await new Promise(requestAnimationFrame),dt=Math.min(.05,Math.max(.001,(now-last)/1000));
           w.worldState.time+=dt*36/3600;last=now;peak=Math.max(peak,window.__RENDER_STATS.drawCalls);
           if(now-lastSample>=200) {
             const s=w.sunState;
-            samples.push({time:w.worldState.time,elevation:s.el,exposure:L.state.exposure,target:L.state.targetExposure,
+            samples.push({seconds:(now-start)/1000,time:w.worldState.time,elevation:s.el,exposure:L.state.exposure,target:L.state.targetExposure,
               skyCd:(s.zenith.r*.2126+s.zenith.g*.7152+s.zenith.b*.0722)*5000,
               calls:window.__RENDER_STATS.drawCalls,programs:w.renderer.info.programs.length});
             lastSample=now;
@@ -34,6 +34,8 @@ export async function continuousSkyChecks(page,{name,dir,rows,errors}) {
   } finally {await recording.stop();}
   writeFileSync(new URL(name+'-sunset-trace.json',dir),JSON.stringify(result,null,2)+'\n');
   const row={view:'continuous-sunset',samples:result.samples.length,peakDrawCalls:result.peakDrawCalls,
-    gpuError:result.gpuError,video:name+'-sunset.webm'};rows.push(row);console.log(JSON.stringify(row));
+    gpuError:result.gpuError,video:name+'-sunset.webm',animationPhase:40,
+    programCounts:[...new Set(result.samples.map(s=>s.programs))]};rows.push(row);console.log(JSON.stringify(row));
   if(result.gpuError||result.peakDrawCalls>200)errors.push('Continuous sunset GPU/budget failure');
+  if(row.programCounts.length!==1)errors.push('Continuous sunset compiled a new shader program');
 }

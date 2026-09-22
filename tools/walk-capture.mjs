@@ -120,6 +120,9 @@ export async function walkChecks(page,{name,dir,rows,errors,args}) {
       w.camera.fov=s.fov||54;w.camera.updateProjectionMatrix();
       w.worldState.time=hour;w.instanceLOD.enabled=true;
     },{s,hour});
+    await page.evaluate(async()=>{
+      do{await window.__captureFrame();}while(window.__world.lighting.environment.pending);
+    });
     const stem=`${name}-${s.id}-${time}`,hashes=[];
     let png;
     for(let i=0;i<10;i++) {

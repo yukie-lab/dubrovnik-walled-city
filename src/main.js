@@ -449,6 +449,12 @@ audio && (player.onStep = (zone, pace) => audio.step(zone, pace));
 // later environment update is scheduled across displayed frames.
 player.pose(camera);
 lighting.initialize(sunState(state.time),started?camera.position.y:titleCam.pose(0).y);
+// Compile the complete material set, including seasonal/culled instances,
+// against the actual HDR output and the stable light layout before display.
+// Compiling against the canvas would warm a different tone-mapping variant.
+renderer.setRenderTarget(composerRT);
+await renderer.compileAsync(scene,camera);
+renderer.setRenderTarget(null);
 let shaftHinted = false;
 let last = performance.now();
 let fps = 60, uiTimer = 0;

@@ -110,6 +110,10 @@ try {
     const {lightHistoryCheck}=await import('./light-history-check.mjs');
     await lightHistoryCheck(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--light-slots')) {
+    const {lightSlotsCheck}=await import('./light-slots-check.mjs');
+    await lightSlotsCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--sky-budget')) {
     const {skyBudgetCheck}=await import('./sky-budget-check.mjs');
     await skyBudgetCheck(page,{name,dir,rows,errors});views=[];
@@ -117,6 +121,10 @@ try {
   if(args.includes('--environment-check')) {
     const {environmentConvolverChecks}=await import('./environment-convolver-check.mjs');
     await environmentConvolverChecks(page,{rows,errors});views=[];
+  }
+  if(args.includes('--environment-height')) {
+    const {environmentHeightCheck}=await import('./environment-height-check.mjs');
+    await environmentHeightCheck(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--sea-calibration')) {
     const {seaCalibrationCapture}=await import('./sea-calibration-capture.mjs');

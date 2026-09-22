@@ -480,7 +480,9 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     const lampPool = [];
     for (let i = 0; i < 8; i++) {
       const pl = new THREE.PointLight(0xffc79a, 0, 15, 2.0);   // 0xffb877 は B/R 0.195 ≒ 1900K。実在の街灯は 2700〜3000K
-      pl.visible = false;
+      // Keep the eight shader slots present through sunset and movement.
+      // A dark/unassigned slot carries zero radiance, not a different program.
+      pl.visible = true;
     group.add(tagMesh(pl, 'life.lampLight', { thin: true, reason: '点光源の担体', noCollide: true }));
       lampPool.push(pl);
     }
@@ -1948,14 +1950,14 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
       lampNight.poolMat.opacity = on * 0.0002; // local ground return, below the real lamp irradiance
       const pool = lampNight.lampPool;
       if (on < 0.02 || !camPos) {
-        for (const pl of pool) pl.visible = false;
+        for (const pl of pool) {pl.visible=true;pl.intensity=0;}
       } else {
         // 近い順に 8 灯。距離で並べ替えるのは 100 個程度なので毎フレームでよい。
         for (const l of lamps) l._d = (l.x - camPos.x) ** 2 + (l.z - camPos.z) ** 2;
         const near = lamps.filter(l => l._d < 900).sort((a, b) => a._d - b._d).slice(0, 8);
         for (let i = 0; i < 8; i++) {
           const pl = pool[i], l = near[i];
-          if (!l) { pl.visible = false; continue; }
+          if (!l) { pl.visible=true;pl.intensity=0;continue; }
           pl.visible = true;
           // 灯体そのものではなく、ガラス箱の位置(腕の先・下がり)に置く
           pl.position.set(l.x - Math.sin(l.rotY) * 0.50, l.y - 0.38, l.z - Math.cos(l.rotY) * 0.50);

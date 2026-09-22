@@ -9,6 +9,7 @@ import { ATMOSPHERE_GLSL } from './atmosphere-glsl.js';
 import { ATM, exposureForIlluminance } from './atmosphere-model.js';
 import { localHorizontalIlluminance } from './illumination-meter.js';
 import { makeEnvironmentConvolver } from './environment-convolver.js';
+import { skipInactiveLocalLights } from './local-light-shader.js';
 
 const ZONE_EXPOSURE={stradun:1,square:.98,street:1.02,alley:1.11,shaft:1.19,
   gate:1.14,stair:1.01,wall:.95,port:.95};
@@ -30,7 +31,11 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   const hemi=new THREE.HemisphereLight(0xffffff,0xffffff,0);scene.add(hemi);
   const localLights=[];scene.traverse(o=>{if(o.isPointLight)localLights.push(o);});
   scene.fog=new THREE.FogExp2(0x000000,0);
-  scene.traverse(o=>{const m=o.material;if(Array.isArray(m))m.forEach(atmosphere.patchMaterial);else atmosphere.patchMaterial(m);});
+  scene.traverse(o=>{
+    for(const m of Array.isArray(o.material)?o.material:[o.material]) {
+      atmosphere.patchMaterial(m);skipInactiveLocalLights(m);
+    }
+  });
   waterLight.optics.bindBottomMaterials(scene);
 
   const convolver=makeEnvironmentConvolver(renderer),envScene=new THREE.Scene();
