@@ -46,6 +46,7 @@ if(args.includes('--view'))views=views.filter(([v])=>v.includes(option('--view')
 const dir = new URL('../shots/rendercheck/', import.meta.url);
 mkdirSync(dir, { recursive: true });
 const browser = await puppeteer.launch({
+  protocolTimeout:600000,
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   headless: 'new', args: ['--headless=new', '--use-angle=metal', '--window-size=1640,1060'],
 });
@@ -53,8 +54,10 @@ const errors = [], rows = [];
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
-  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source')) {
+  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source') || args.includes('--folk-contact-source') || args.includes('--folk-pose-source')) {
     const overrides=new Map();
+    for(const module of ['folk-contact','folk-pose'])if(args.includes('--'+module+'-source'))
+      overrides.set('/src/'+module+'.js',readFileSync(option('--'+module+'-source'),'utf8'));
     if(args.includes('--buildings-source'))overrides.set('/src/buildings.js',readFileSync(option('--buildings-source'),'utf8'));
     if(args.includes('--masonry-source'))overrides.set('/src/masonry.js',readFileSync(option('--masonry-source'),'utf8'));
     if(args.includes('--leaf-source'))overrides.set('/src/woodland-leaf-lod.js',readFileSync(option('--leaf-source'),'utf8'));

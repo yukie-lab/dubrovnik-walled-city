@@ -7,6 +7,10 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
     const w=window.__world,T=w.THREE;
     const {folkPoseGLSL}=await import('/src/folk-pose.js');
     const {makeGroundSupport}=await import('/src/support.js');
+    // LOD compacts the real merged index buffers. A city-wide floor survey
+    // must restore those solids before reading them, including offscreen steps.
+    w.instanceLOD.enabled=false;w.instanceLOD.restoreActors();
+    for(const batch of w.instanceLOD.batches)batch.restore();
     const surfaces=new T.Group();
     for(const name of ['ground.near','ground.stradun','ground.paving','wall.curtain','steps']) {
       const source=w.scene.getObjectByName(name),m=new T.Mesh(source.geometry);
@@ -41,8 +45,7 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
     const feedback=gl.createTransformFeedback(),out=gl.createBuffer(),data=new Float32Array(P.length);
     gl.bindTransformFeedback(gl.TRANSFORM_FEEDBACK,feedback);gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER,0,out);
     gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER,data.byteLength,gl.STREAM_READ);gl.enable(gl.RASTERIZER_DISCARD);
-    const mat=new T.Matrix4(),cases=new Map();let samples=0,missing=0;
-    w.instanceLOD.enabled=false;w.instanceLOD.restoreActors();
+    const mat=new T.Matrix4(),cases=new Map();let samples=0,missing=0,maxGap=0,maxSink=0;
     const legs=w.scene.getObjectByName('life.folkLegs'),sun=w.sunState;
     for(let time=0;time<=120;time+=5) {
       w.life.update(time,sun,null,null);gl.uniform1f(gl.getUniformLocation(program,'uT'),time);
@@ -60,6 +63,7 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
           if(gap<minGap){minGap=gap;hit={vertex:k/3,sole:[data[k],data[k+1],data[k+2]],ground:ground.y};}
         }
         samples++;
+        maxGap=Math.max(maxGap,minGap);maxSink=Math.min(maxSink,minGap);
         if(Math.abs(minGap)<=.02)continue;
         let row=cases.get(id);
         if(!row){row={id,walking:!!f.walk,maxFloat:0,maxSink:0,samples:0,example:null};cases.set(id,row);}
@@ -69,11 +73,13 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
       }
     }
     const residents=[...cases.values()].sort((a,b)=>Math.max(b.maxFloat,-b.maxSink)-Math.max(a.maxFloat,-a.maxSink));
-    return {population:w.life.folk.length,samples,soleVertices:limbs.length,missing,gpuError:gl.getError(),
+    return {population:w.life.folk.length,samples,soleVertices:limbs.length,missing,maxGap,maxSink,gpuError:gl.getError(),
       affected:residents.length,walkingAffected:residents.filter(f=>f.walking).length,residents};
   });
   writeFileSync(new URL(name+'-sole.json',dir),JSON.stringify(result,null,2)+'\n');
   rows.push({view:'folk-soles',...result,residents:result.residents.slice(0,12).map(r=>({...r,example:{...r.example,soles:undefined,matrix:undefined}}))});
   console.log(JSON.stringify(rows.at(-1)));
   if(result.gpuError)errors.push('Sole transform feedback failed: '+result.gpuError);
+  if(result.missing||result.maxGap>.002||result.maxSink<-.002)
+    errors.push(`Posed soles need support: missing=${result.missing}, float=${result.maxGap}, sink=${result.maxSink}`);
 }
