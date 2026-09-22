@@ -94,6 +94,18 @@ try {
     const {atmosphereMotionChecks}=await import('./atmosphere-motion-capture.mjs');
     await atmosphereMotionChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--geometry-profile')) {
+    const {frameGeometryProfile}=await import('./frame-geometry-profile.mjs');
+    await frameGeometryProfile(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--shader-transition')) {
+    const {shaderTransitionCheck}=await import('./shader-transition-check.mjs');
+    await shaderTransitionCheck(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--bird-support')) {
+    const {birdSupportSurvey}=await import('./bird-support-survey.mjs');
+    await birdSupportSurvey(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--moon-study')) {
     const {moonChecks}=await import('./moon-capture.mjs');
     await moonChecks(page,{name,dir,rows,errors});views=[];
