@@ -96,6 +96,10 @@ try {
     const {lightHistoryCheck}=await import('./light-history-check.mjs');
     await lightHistoryCheck(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--sky-budget')) {
+    const {skyBudgetCheck}=await import('./sky-budget-check.mjs');
+    await skyBudgetCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],

@@ -52,11 +52,16 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const ground = makeGround(plan, tex, stepPool);
   const walls = makeWalls(plan, tex, stepPool, plan.outsideHeight);
   const support=makeGroundSupport(ground.group,stepPool.items);
+  const wallSupport=makeGroundSupport(walls.group,[],['wall.curtain']);
+  const actorSupport={height(x,z,ceiling){
+    const a=support.height(x,z,ceiling),b=wallSupport.height(x,z,ceiling);
+    return a===null?b:b===null?a:Math.max(a,b);
+  }};
   const buildings = makeBuildings(plan, tex, support);
   const surround = makeSurround(plan, tex);
   const seaObj = sea ? makeSea(plan) : null;
   const skyObj = sky ? makeSky(tex) : null;
-  const lifeObj = life ? makeLife(plan, tex, stepPool, support) : null;
+  const lifeObj = life ? makeLife(plan, tex, stepPool, support, actorSupport) : null;
   const steps = stepPool.finalize(getSharedSkyVis(),walls.stairLayouts,walls.stairShadows);
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
   plan.walkingCollide=makeWallStairCollision(plan,walls.group.getObjectByName('wall.curtain').geometry);

@@ -1,6 +1,7 @@
 // Position and its Jacobian travel through one pose function. The colour pass
 // uses the inverse-transpose normal; the shadow pass uses the identical point.
 // No joint is drawn by a separate mesh and no inverse smoothstep is undefined.
+import {FOLK_KINEMATICS as K} from './folk-kinematics.js';
 export const folkPoseGLSL=/* glsl */`
   uniform float uT;
   attribute float aLimb, aWalk;
@@ -25,16 +26,16 @@ export const folkPoseGLSL=/* glsl */`
     f.p+=offset*blend.x;f.j+=outerProduct(offset,dy*blend.y);
   }
   vec2 folkLegAngles(float side,float ph,float pose) {
-    float hip=sin(ph)*aWalk*side*.40;
-    if(pose==3.)hip+=side*.10*(1.-aWalk);
-    return vec2(hip,max(0.,-sin(ph)*side)*.62*aWalk);
+    float hip=sin(ph)*aWalk*side*${K.walkHip};
+    if(pose==3.)hip+=side*${K.restHip}*(1.-aWalk);
+    return vec2(hip,max(0.,-sin(ph)*side)*${K.walkKnee}*aWalk);
   }
   float folkSole(float side,float ph,float pose) {
     vec2 a=folkLegAngles(side,ph,pose);
-    vec3 p=vec3(0.,-.45,.039);p=folkRX(a.y)*p;p.y-=.45;
-    p=folkRX(a.x)*p;p.y+=.90;
+    vec3 p=vec3(0.,-${K.kneeY},${K.shoeZ});p=folkRX(a.y)*p;p.y+=${K.kneeY-K.hipY};
+    p=folkRX(a.x)*p;p.y+=${K.hipY};
     // Exact support of the shoe's elliptical sole under the two rotations.
-    return p.y-abs(sin(a.x+a.y))*.122;
+    return p.y-abs(sin(a.x+a.y))*${K.soleRadius};
   }
   FolkPose folkBlend(FolkPose a,FolkPose b,vec2 blend) {
     return FolkPose(mix(a.p,b.p,blend.x),a.j*(1.-blend.x)+b.j*blend.x
@@ -71,9 +72,9 @@ export const folkPoseGLSL=/* glsl */`
           vec2 a=folkLegAngles(side,ph,pose);
           // Blend the lower leg rotation through the joint, preserving the
           // continuous skin rather than pulling separate boxes apart.
-          FolkPose lower=f;folkRotate(lower,.45,a.y);
+          FolkPose lower=f;folkRotate(lower,${K.kneeY},a.y);
           vec2 t=folkSmooth(.36,.54,point.y);t=vec2(1.-t.x,-t.y);
-          f=folkBlend(f,lower,t);folkRotate(f,.90,a.x);
+          f=folkBlend(f,lower,t);folkRotate(f,${K.hipY},a.x);
         } else {
           float a=sin(ph)*aWalk*side*.30+sin(uT*.42+aPh+side)*.04*stand;
           folkRotate(f,1.62,a);
@@ -89,7 +90,8 @@ export const folkPoseGLSL=/* glsl */`
     }
     float breathe=sin(uT*.55+aPh)*.006*stand;
     folkField(f,vec3(0.,-breathe,0.),folkSmooth(.9,1.7,f.p.y));
-    f.p.x+=sin(uT*.8+aPh)*.004*stand;
+    // Breathing/sway moves the upper body while planted soles stay planted.
+    folkField(f,vec3(sin(uT*.8+aPh)*.004*stand,0.,0.),folkSmooth(.55,1.25,f.p.y));
     return f;
   }
   vec3 folkNormal(mat3 j,vec3 n) {

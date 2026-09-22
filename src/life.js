@@ -11,6 +11,7 @@ import { rngFor } from './seed.js';
 import { makePottedPlants } from './plants.js';
 import { makeFolkGeometry } from './folk-shape.js';
 import { patchFolkPose } from './folk-pose.js';
+import { makeFolkContact } from './folk-contact.js';
 import { seatPottedPlants } from './prop-support.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
@@ -28,7 +29,7 @@ function depthFor(mat) {
 }
 
 
-export function makeLife(plan, tex, stepPool, floorSupport) {
+export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSupport) {
   // 時刻で変わるもの。update() が行列を書き換えるだけの設計だったので、
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
@@ -211,7 +212,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
   }
   // 布(ロープ支点で個別スイング — シェーダで裾ほど大きく)
   const clothTime = { value: 0 };
-  let folkMeshes = null;
+  let folkMeshes = null, groundFolk=null;
   {
     const g = new THREE.PlaneGeometry(1, 1, 1, 3);
     g.translate(0, -0.5, 0);   // 上端がロープ
@@ -903,6 +904,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
     };
     const folkGeometry = makeFolkGeometry();
     const {torso:torsoGeo, arms:armGeo, legs:legGeo, head:headGeo}=folkGeometry;
+    groundFolk=makeFolkContact(legGeo,actorSupport);
     const walkShader = mat => patchFolkPose(mat, clothTime);
     const skinMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.82, envMapIntensity: 0.32 });
     const shirtMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, envMapIntensity: 0.32 });
@@ -1887,6 +1889,7 @@ export function makeLife(plan, tex, stepPool, floorSupport) {
           if (dc < 1.35) { const px3 = -(camPos.z - z), pz3 = (camPos.x - x); const pl = Math.hypot(px3, pz3) || 1; const push = (1.35 - dc) * 0.9; x += (px3 / pl) * push; z += (pz3 / pl) * push; }
           if (dc < 0.30) sc = 0;
         }
+        if(sc>0&&!f.sit)y=groundFolk(f,x,y,z,rot,sc,elapsed,wAmt);
         fkDummy.position.set(x, y, z);
         fkDummy.rotation.set(0, rot, 0);
         fkDummy.scale.set(sc * f.wx, sc, sc * f.wz);

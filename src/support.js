@@ -4,7 +4,7 @@ import {stepSurfaceAt} from './step-stone.js';
 // Static street-level support surfaces, taken from the generated triangles and
 // the same step records used by the rendered step batch. This is for placing
 // rigid props; player navigation and the geographic plan remain independent.
-export function makeGroundSupport(groundGroup, stepItems = []) {
+export function makeGroundSupport(groundGroup, stepItems = [], surfaceNames = ['ground.near','ground.paving','ground.stradun']) {
   const size = 4, cells = new Map(), entries = [];
   const add = (entry,x0,z0,x1,z1) => {
     entries.push(entry);
@@ -18,7 +18,7 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
   const a=new THREE.Vector3(),b=new THREE.Vector3(),c=new THREE.Vector3();
   groundGroup.updateWorldMatrix(true,true);
   groundGroup.traverse(mesh=>{
-    if(!['ground.near','ground.paving','ground.stradun'].includes(mesh.name))return;
+    if(!surfaceNames.includes(mesh.name))return;
     const geometry=mesh.geometry,p=geometry.attributes.position,ix=geometry.index;
     const length=ix ? ix.count : p.count;
     const vertex=(target,i)=>target.fromBufferAttribute(p,ix ? ix.getX(i) : i).applyMatrix4(mesh.matrixWorld);
@@ -48,7 +48,7 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
     add({type:'step',source:'steps',step,co,si},step.x-dx,step.z-dz,step.x+dx,step.z+dz);
   }
   const at=(x,z)=>cells.get(`${Math.floor(x/size)},${Math.floor(z/size)}`)||[];
-  function sample(x,z,ceiling=Infinity,source=null) {
+  function sample(x,z,ceiling=Infinity,source=null,heightOnly=false) {
     let y=-Infinity,found=null;
     for(const e of at(x,z)) {
       if(source && e.source!==source)continue;
@@ -64,7 +64,7 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
       }
       if(h<=ceiling && h>y){y=h;found=e;}
     }
-    return found ? {y,source:found.source,entry:found} : null;
+    return found ? (heightOnly ? y : {y,source:found.source,entry:found}) : null;
   }
   function disk(x,z,r,ceiling=Infinity,tolerance=.009,maxSlope=0) {
     const center=sample(x,z,ceiling);
@@ -91,5 +91,6 @@ export function makeGroundSupport(groundGroup, stepItems = []) {
         for(const e of cells.get(`${ix},${iz}`)||[])if(e.type==='step')candidates.add(e);
     return [...candidates].sort((a,b)=>Math.hypot(a.step.x-x,a.step.z-z)-Math.hypot(b.step.x-x,b.step.z-z));
   }
-  return {sample,disk,nearbySteps,triangles:entries.filter(e=>e.type==='triangle').length};
+  const height=(x,z,ceiling=Infinity)=>sample(x,z,ceiling,null,true);
+  return {sample,height,disk,nearbySteps,triangles:entries.filter(e=>e.type==='triangle').length};
 }

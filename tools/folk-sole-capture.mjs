@@ -57,14 +57,15 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
           const ground=support.sample(data[k],data[k+2],f.curY+.55);
           if(!ground){missing++;continue;}
           const gap=data[k+1]-ground.y;
-          if(gap<minGap){minGap=gap;hit={sole:[data[k],data[k+1],data[k+2]],ground:ground.y};}
+          if(gap<minGap){minGap=gap;hit={vertex:k/3,sole:[data[k],data[k+1],data[k+2]],ground:ground.y};}
         }
         samples++;
         if(Math.abs(minGap)<=.02)continue;
         let row=cases.get(id);
         if(!row){row={id,walking:!!f.walk,maxFloat:0,maxSink:0,samples:0,example:null};cases.set(id,row);}
         row.samples++;row.maxFloat=Math.max(row.maxFloat,minGap);row.maxSink=Math.min(row.maxSink,minGap);
-        if(!row.example||Math.abs(minGap)>Math.abs(row.example.gap))row.example={time,x:f.curX,y:f.curY,z:f.curZ,gap:minGap,...hit};
+        if(!row.example||Math.abs(minGap)>Math.abs(row.example.gap))row.example={time,x:f.curX,y:f.curY,z:f.curZ,gap:minGap,...hit,
+          matrix:mat.elements.slice(),pose:f._pose,phase:f._ph,cadence:f._cad,walk:f.curW,soles:Array.from(data)};
       }
     }
     const residents=[...cases.values()].sort((a,b)=>Math.max(b.maxFloat,-b.maxSink)-Math.max(a.maxFloat,-a.maxSink));
@@ -72,7 +73,7 @@ export async function folkSoleChecks(page,{name,dir,rows,errors}) {
       affected:residents.length,walkingAffected:residents.filter(f=>f.walking).length,residents};
   });
   writeFileSync(new URL(name+'-sole.json',dir),JSON.stringify(result,null,2)+'\n');
-  rows.push({view:'folk-soles',...result,residents:result.residents.slice(0,12)});
+  rows.push({view:'folk-soles',...result,residents:result.residents.slice(0,12).map(r=>({...r,example:{...r.example,soles:undefined,matrix:undefined}}))});
   console.log(JSON.stringify(rows.at(-1)));
   if(result.gpuError)errors.push('Sole transform feedback failed: '+result.gpuError);
 }
