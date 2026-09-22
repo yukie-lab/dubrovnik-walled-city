@@ -20,6 +20,7 @@ import { monumentTime } from './monuments.js';
 import { makeLighting } from './light.js';
 import { MesopicShader } from './mesopic.js';
 import { shareFrameShadows } from './frame-shadows.js';
+import { warmShadowPrograms } from './shader-warmup.js';
 import { CityAudio } from './audio.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
@@ -455,6 +456,8 @@ lighting.initialize(sunState(state.time),started?camera.position.y:titleCam.pose
 renderer.setRenderTarget(composerRT);
 await renderer.compileAsync(scene,camera);
 renderer.setRenderTarget(null);
+frameShadows.beginFrame();
+window.__SHADOW_WARMUP=warmShadowPrograms(renderer,scene,camera);
 let shaftHinted = false;
 let last = performance.now();
 let fps = 60, uiTimer = 0;
