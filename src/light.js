@@ -46,11 +46,12 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     fragmentShader:`varying vec3 vDir;uniform vec3 uGround;${ATMOSPHERE_GLSL}
       void main(){vec3 d=normalize(vDir);gl_FragColor=vec4(d.y>=0.0?atSkyRadiance(d):uGround,1.0);}`,
   })));
-  let envRT=null,lastEnvTime=-99,lastSkyY=1,pendingSample=null;
+  let envRT=null,lastEnvTime=-99,lastEnvHeight=NaN,lastSkyY=1,pendingSample=null;
   const environment={scene:envScene,state:convolver.state,
-    get pending(){return !!pendingSample;},get time(){return lastEnvTime;},get target(){return envRT;}};
-  function publishEnvironment(rt,time,skyY) {
-    const previous=envRT;envRT=rt;lastEnvTime=time;lastSkyY=Math.max(skyY,1e-12);
+    get pending(){return !!pendingSample;},get time(){return lastEnvTime;},
+    get height(){return lastEnvHeight;},get target(){return envRT;}};
+  function publishEnvironment(rt,time,skyY,height) {
+    const previous=envRT;envRT=rt;lastEnvTime=time;lastEnvHeight=height;lastSkyY=Math.max(skyY,1e-12);
     scene.environment=rt.texture;
     for(const m of specularEnvTargets)m.envMap=rt.texture;
     previous?.dispose();
@@ -59,7 +60,7 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     atmosphere.update(sunState,height);atmosphere.applyState(sunState);
     envUniforms.uGround.value.copy(sunState.hemiGround);
     const sy=sunState.hemiSky.r*.2126+sunState.hemiSky.g*.7152+sunState.hemiSky.b*.0722;
-    publishEnvironment(convolver.initial(envScene),sunState.time,sy);
+    publishEnvironment(convolver.initial(envScene),sunState.time,sy,atmosphere.uniforms.uAtHeight.value*1000);
   }
   const state={exposure:.6,targetExposure:.6,glare:0,snap:false};
   function place(light,dir,colour,intensity,camPos) {
@@ -139,17 +140,21 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     litWindowsMat.color.setRGB(.012,.012,.012);
     litWindowsMat.opacity=glassNightUniform.value*.95;
     const sy=sunState.hemiSky.r*.2126+sunState.hemiSky.g*.7152+sunState.hemiSky.b*.0722;
+    // The sky integrator already applies its two-metre altitude threshold.
+    // Use that exact sample height, so its radiance and the filtered IBL never
+    // retain unrelated camera histories while time is paused.
+    const skyHeight=atmosphere.uniforms.uAtHeight.value*1000;
     // A manual time jump cancels the obsolete work. Normal clock motion keeps
     // one frozen sky sample throughout all filters, then publishes atomically.
-    if(pendingSample&&Math.abs(sunState.time-pendingSample.time)>.05) {
+    if(pendingSample&&(Math.abs(sunState.time-pendingSample.time)>.05||Math.abs(skyHeight-pendingSample.height)>8)) {
       convolver.cancel();pendingSample=null;
     }
     if(pendingSample) {
       const rt=convolver.step();
-      if(rt){publishEnvironment(rt,pendingSample.time,pendingSample.skyY);pendingSample=null;}
-    }else if(Math.abs(sunState.time-lastEnvTime)>.012) {
+      if(rt){publishEnvironment(rt,pendingSample.time,pendingSample.skyY,pendingSample.height);pendingSample=null;}
+    }else if(Math.abs(sunState.time-lastEnvTime)>.012||Math.abs(skyHeight-lastEnvHeight)>.001) {
       envUniforms.uGround.value.copy(sunState.hemiGround);
-      convolver.begin(envScene);pendingSample={time:sunState.time,skyY:sy};
+      convolver.begin(envScene);pendingSample={time:sunState.time,skyY:sy,height:skyHeight};
     }
     scene.environmentIntensity=sy/lastSkyY;
     tex.clock.draw(sunState.time);
