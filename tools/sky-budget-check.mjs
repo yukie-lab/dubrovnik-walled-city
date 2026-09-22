@@ -19,8 +19,12 @@ export async function skyBudgetCheck(page,{name,dir,rows,errors}) {
       w.worldState.time=time;
       // Return telemetry in the microtask immediately after this exact frame.
       // A second page.evaluate may observe a later, cheaper static frame.
-      await window.__captureFrame();
-      return {time,calls:window.__RENDER_STATS.drawCalls,triangles:window.__RENDER_STATS.triangles,
+      const updates=[];
+      do {
+        await window.__captureFrame();updates.push(window.__RENDER_STATS.drawCalls);
+      }while(w.lighting.environment?.pending&&updates.length<30);
+      if(w.lighting.environment?.pending)throw new Error('Environment queue did not finish');
+      return {time,calls:Math.max(...updates),updates,triangles:window.__RENDER_STATS.triangles,
         gpuError:w.renderer.getContext().getError()};
     },{params,time});
     rows.push({view,...result});console.log(JSON.stringify(rows.at(-1)));

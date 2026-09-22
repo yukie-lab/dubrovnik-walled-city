@@ -22,12 +22,14 @@ export async function skyCycleChecks(page,{name,dir,rows,errors,args}) {
       w.camera.fov=p.fov;w.camera.updateProjectionMatrix();
     },pose);
     for(const time of times) {
-      await page.evaluate(t=>{window.__world.worldState.time=t;},time);
-      let updateCalls=0;
-      for(let i=0;i<4;i++) {
-        await page.evaluate(()=>window.__captureFrame());
-        updateCalls=Math.max(updateCalls,await page.evaluate(()=>window.__RENDER_STATS.drawCalls));
-      }
+      const updateCalls=await page.evaluate(async t=>{
+        const w=window.__world;w.worldState.time=t;let peak=0,frames=0;
+        do {
+          await window.__captureFrame();peak=Math.max(peak,window.__RENDER_STATS.drawCalls);frames++;
+        }while((frames<4||w.lighting.environment?.pending)&&frames<30);
+        if(w.lighting.environment?.pending)throw new Error('Environment queue did not finish');
+        return peak;
+      },time);
       const png=Buffer.from((await page.evaluate(()=>window.__captureFrame())).split(',')[1],'base64');
       const compare=Buffer.from((await page.evaluate(()=>window.__captureFrame())).split(',')[1],'base64');
       const hash=b=>createHash('sha256').update(b).digest('hex');

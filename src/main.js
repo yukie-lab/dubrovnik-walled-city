@@ -441,6 +441,10 @@ addEventListener('resize', () => {
 
 // ---------------------------------------------------------------- 呼吸 ----
 audio && (player.onStep = (zone, pace) => audio.step(zone, pace));
+// Prepare the initial lighting texture alongside the world resources. Every
+// later environment update is scheduled across displayed frames.
+player.pose(camera);
+lighting.initialize(sunState(state.time),started?camera.position.y:titleCam.pose(0).y);
 let shaftHinted = false;
 let last = performance.now();
 let fps = 60, uiTimer = 0;

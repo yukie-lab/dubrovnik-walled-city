@@ -8,6 +8,7 @@ import { bindSeaAtmosphere } from './atmosphere-sea.js';
 import { ATMOSPHERE_GLSL } from './atmosphere-glsl.js';
 import { ATM, exposureForIlluminance } from './atmosphere-model.js';
 import { localHorizontalIlluminance } from './illumination-meter.js';
+import { makeEnvironmentConvolver } from './environment-convolver.js';
 
 const ZONE_EXPOSURE={stradun:1,square:.98,street:1.02,alley:1.11,shaft:1.19,
   gate:1.14,stair:1.01,wall:.95,port:.95};
@@ -31,7 +32,7 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   scene.fog=new THREE.FogExp2(0x000000,0);
   scene.traverse(o=>{const m=o.material;if(Array.isArray(m))m.forEach(atmosphere.patchMaterial);else atmosphere.patchMaterial(m);});
 
-  const pmrem=new THREE.PMREMGenerator(renderer),envScene=new THREE.Scene();
+  const convolver=makeEnvironmentConvolver(renderer),envScene=new THREE.Scene();
   const envUniforms={...atmosphere.uniforms,uGround:{value:new THREE.Color()}};
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10,24,16),new THREE.ShaderMaterial({
     uniforms:envUniforms,side:THREE.BackSide,toneMapped:false,
@@ -39,7 +40,21 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     fragmentShader:`varying vec3 vDir;uniform vec3 uGround;${ATMOSPHERE_GLSL}
       void main(){vec3 d=normalize(vDir);gl_FragColor=vec4(d.y>=0.0?atSkyRadiance(d):uGround,1.0);}`,
   })));
-  let envRT=null,lastEnvTime=-99,lastSkyY=1;
+  let envRT=null,lastEnvTime=-99,lastSkyY=1,pendingSample=null;
+  const environment={scene:envScene,state:convolver.state,
+    get pending(){return !!pendingSample;},get time(){return lastEnvTime;},get target(){return envRT;}};
+  function publishEnvironment(rt,time,skyY) {
+    const previous=envRT;envRT=rt;lastEnvTime=time;lastSkyY=Math.max(skyY,1e-12);
+    scene.environment=rt.texture;
+    for(const m of specularEnvTargets)m.envMap=rt.texture;
+    previous?.dispose();
+  }
+  function initialize(sunState,height) {
+    atmosphere.update(sunState,height);atmosphere.applyState(sunState);
+    envUniforms.uGround.value.copy(sunState.hemiGround);
+    const sy=sunState.hemiSky.r*.2126+sunState.hemiSky.g*.7152+sunState.hemiSky.b*.0722;
+    publishEnvironment(convolver.initial(envScene),sunState.time,sy);
+  }
   const state={exposure:.6,targetExposure:.6,glare:0,snap:false};
   function place(light,dir,colour,intensity,camPos) {
     light.position.copy(camPos).addScaledVector(dir,500);light.target.position.copy(camPos);
@@ -79,19 +94,19 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
       c.near = 500 - radius * 1.2; c.far = far;
       c.updateProjectionMatrix();
     }
-      // アクネを避けるのに要る深度は「1 テクセルぶん横に動いたときの深度差」
+    // アクネを避けるのに要る深度は「1 テクセルぶん横に動いたときの深度差」
       // = texel·cos(el)。以前は高度に **比例** する固定値 0.156·sin(el) を使い、
       // しかも sin に床 0.28 を置いていたので、el 16.3° 以下で補正が止まり、
       // 影の後退量が 1/sin(el) で発散していた(el 4.7° で bias 由来 0.537m)。
-      const texelW = (c.right - c.left) / sun.shadow.mapSize.x;
-      const elRad = Math.max(elForShadow, 1.2) * Math.PI / 180;
-      sun.shadow.bias = -(texelW * 1.7 * Math.cos(elRad) + 0.006) / (c.far - c.near);
+    const texelW = (c.right - c.left) / sun.shadow.mapSize.x;
+    const elRad = Math.max(elForShadow, 1.2) * Math.PI / 180;
+    sun.shadow.bias = -(texelW * 1.7 * Math.cos(elRad) + 0.006) / (c.far - c.near);
       // radius に比例させると城壁上で 0.125m になり、瓦の起伏(4cm)や窓の見込みの
       // セルフシャドウが丸ごと消える。平方根で伸ばす。
       // normalBias は法線方向のずらしなので、水平面では 1/tan(el) で効く。低い
       // 太陽では絞らないと、これだけで 0.575m 影が後退する。
-      sun.shadow.normalBias = 0.025 * Math.sqrt(c.right / 34)
-        * clamp(Math.sin(elRad) / 0.35, 0.30, 1);
+    sun.shadow.normalBias = 0.025 * Math.sqrt(c.right / 34)
+      * clamp(Math.sin(elRad) / 0.35, 0.30, 1);
     // テクセルスナップ
     const texel = texelW;
     sun.target.position.x = Math.round(sun.target.position.x / texel) * texel;
@@ -118,17 +133,21 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     litWindowsMat.color.setRGB(.012,.012,.012);
     litWindowsMat.opacity=glassNightUniform.value*.95;
     const sy=sunState.hemiSky.r*.2126+sunState.hemiSky.g*.7152+sunState.hemiSky.b*.0722;
-    if(Math.abs(sunState.time-lastEnvTime)>.012||!envRT) {
-      lastEnvTime=sunState.time;lastSkyY=Math.max(sy,1e-12);
+    // A manual time jump cancels the obsolete work. Normal clock motion keeps
+    // one frozen sky sample throughout all filters, then publishes atomically.
+    if(pendingSample&&Math.abs(sunState.time-pendingSample.time)>.05) {
+      convolver.cancel();pendingSample=null;
+    }
+    if(pendingSample) {
+      const rt=convolver.step();
+      if(rt){publishEnvironment(rt,pendingSample.time,pendingSample.skyY);pendingSample=null;}
+    }else if(Math.abs(sunState.time-lastEnvTime)>.012) {
       envUniforms.uGround.value.copy(sunState.hemiGround);
-      const rt=pmrem.fromScene(envScene,0.04,.1,100,{size:128});
-      const prev=envRT;envRT=rt;scene.environment=rt.texture;
-      for(const m of specularEnvTargets){m.envMap=rt.texture;}
-      prev?.dispose();
+      convolver.begin(envScene);pendingSample={time:sunState.time,skyY:sy};
     }
     scene.environmentIntensity=sy/lastSkyY;
     tex.clock.draw(sunState.time);
     return state;
   }
-  return {sun,hemi,update,state,envUniforms,atmosphere,waterLight};
+  return {sun,hemi,update,initialize,state,envUniforms,environment,atmosphere,waterLight};
 }
