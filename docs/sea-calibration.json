@@ -1,0 +1,25 @@
+{
+  "baselineCommit": "56c7019",
+  "reference": "vogue_travel10.jpg (user supplied; offline measurement only)",
+  "referenceSize": [1200, 800],
+  "horizonInReference": false,
+  "photoRegions": {
+    "shelf": [[344,545],[377,552],[412,555],[459,546],[468,551],[444,565],[405,569],[362,560]],
+    "mid": [[535,514],[627,492],[659,513],[648,555],[568,572],[534,554]],
+    "deep": [[22,218],[140,218],[165,270],[148,390],[24,398]],
+    "distant": [[48,30],[486,30],[486,96],[48,96]]
+  },
+  "pose": {"position":[370,330,-395],"target":[158,30,29],"fov":9,"time":11.8},
+  "renderRegions": {
+    "shelf": [[235,476],[260,468],[282,468],[292,475],[275,484],[247,489]],
+    "mid": [[50,665],[173,652],[192,687],[172,744],[50,744]],
+    "deep": [[20,175],[135,175],[156,250],[142,345],[22,350]],
+    "distant": [[48,30],[425,30],[425,96],[48,96]]
+  },
+  "protectedDiagnostics": [2,3,4,5,8,9,12],
+  "notes": [
+    "Photo solar/camera conditions are inferred, not recovered metadata.",
+    "Distant means upper-frame open water; it is not a horizon sample.",
+    "Freeze region polygons before fitting. All ROI averages include every masked pixel."
+  ]
+}

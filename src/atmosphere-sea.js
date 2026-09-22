@@ -1,6 +1,8 @@
 // The water's intrinsic optics stay in sea.js. This adapter replaces only the
 // old illumination floors and camera-to-water fog with the shared atmospheric
-// radiometry. No changes to sigma, Fresnel, waves, GGX, twinkle or foam coverage.
+// radiometry. The user-authorized colour calibration supplies live extinction
+// and volume scattering coefficients. Fresnel, waves, GGX and foam stay in sea.js.
+import {makeWaterOptics} from './water-optics.js';
 export function bindSeaAtmosphere(sea,atmosphere) {
   const uniforms=sea.uniforms,mat=sea.mesh.material;
   Object.assign(uniforms,atmosphere.uniforms);
@@ -25,10 +27,9 @@ export function bindSeaAtmosphere(sea,atmosphere) {
   if(start<0||end<0)throw new Error('Sea aerial-perspective interface changed');
   shader=shader.slice(0,start)+'  col = atAerial(col, rayW * camD, cameraPosition);'+shader.slice(end);
   mat.fragmentShader=shader;mat.needsUpdate=true;
-  const baseInscat=uniforms.uInscat.value.clone();
-  // Captured immediately after world construction: the coefficient is a water
-  // property (scattering / extinction), not an adjustable night colour.
+  const optics=makeWaterOptics(sea);
   return {
+    optics,
     update(sun) {
       const lunar=sun.moonIntensity>sun.sunIntensity;
       const intensity=lunar?sun.moonIntensity:sun.sunIntensity;
@@ -39,7 +40,13 @@ export function bindSeaAtmosphere(sea,atmosphere) {
       // by exactly the same surface response as the sun.
       uniforms.uNight.value=0;uniforms.uDusk.value=0;
       illumination.value=Math.max(0,sun.ghi)/20;
-      uniforms.uInscat.value.copy(baseInscat).multiplyScalar(illumination.value);
+      const sky=atmosphere.radiometry.skyIrradiance;
+      const es=sun.sunIntensity*Math.max(0,sun.dir.y),em=sun.moonIntensity*Math.max(0,sun.moonDir.y);
+      optics.illuminate({
+        r:sky.r+sun.sunCol.r*es+sun.moonCol.r*em,
+        g:sky.g+sun.sunCol.g*es+sun.moonCol.g*em,
+        b:sky.b+sun.sunCol.b*es+sun.moonCol.b*em,
+      });
     },
   };
 }

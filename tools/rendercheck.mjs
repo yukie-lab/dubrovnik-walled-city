@@ -107,6 +107,22 @@ try {
     const {environmentConvolverChecks}=await import('./environment-convolver-check.mjs');
     await environmentConvolverChecks(page,{rows,errors});views=[];
   }
+  if(args.includes('--sea-calibration')) {
+    const {seaCalibrationCapture}=await import('./sea-calibration-capture.mjs');
+    await seaCalibrationCapture(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--sea-regression')) {
+    const {seaRegressionCapture}=await import('./sea-regression-capture.mjs');
+    await seaRegressionCapture(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--sea-fit')) {
+    const {seaFit}=await import('./sea-fit.mjs');
+    await seaFit(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--sea-probe')) {
+    const {seaTransportProbe}=await import('./sea-transport-probe.mjs');
+    await seaTransportProbe(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--reference-photographs')) {
     for(const [id,url] of [
       ['walls','https://citywallsdubrovnik.hr/wp-content/uploads/2020/06/P1100931-Large-1024x576.jpg'],
