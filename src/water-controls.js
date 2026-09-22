@@ -31,10 +31,21 @@ export function makeWaterControls(optics,clock) {
       inputs.push({key,index,number,range,lo,hi});set.appendChild(row);
     });
   }
+  {
+    const set=document.createElement('fieldset');
+    set.innerHTML='<legend>海底の拡散反射率</legend><label><span>石灰岩の基準値</span><input type="number" min="0" max="1" step=".01" aria-label="海底の反射率"><input type="range" min="0" max="1000" step="1" aria-label="海底の反射率スライダー"></label>';
+    const number=set.querySelector('[type=number]'),range=set.querySelector('[type=range]');
+    number.addEventListener('change',()=>{
+      const value=Number(number.value);
+      if(Number.isFinite(value)&&value>=0&&value<=1)optics.set({bottomAlbedo:value});else update(optics.values);
+    });
+    range.addEventListener('input',()=>optics.set({bottomAlbedo:Number(range.value)/1000}));
+    inputs.push({key:'bottomAlbedo',number,range,lo:0,hi:1,linear:true});fields.appendChild(set);
+  }
   function update(values) {
-    for(const {key,index,number,range,lo,hi}of inputs) {
-      const value=values[key][index];number.value=Number(value.toPrecision(6));
-      range.value=Math.max(0,Math.min(1000,Math.log(Math.max(lo,value)/lo)/Math.log(hi/lo)*1000));
+    for(const {key,index,number,range,lo,hi,linear}of inputs) {
+      const value=index===undefined?values[key]:values[key][index];number.value=Number(value.toPrecision(6));
+      range.value=linear?value*1000:Math.max(0,Math.min(1000,Math.log(Math.max(lo,value)/lo)/Math.log(hi/lo)*1000));
     }
     panel.querySelector('textarea').value=JSON.stringify(values,null,2);
   }

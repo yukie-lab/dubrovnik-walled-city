@@ -24,6 +24,10 @@ export async function seaCalibrationCapture(page,{name,dir,rows,errors,args}) {
     window.__world.worldState.time=time;
     do{await window.__captureFrame();}while(window.__world.lighting.environment.pending);
   },pose.time);
+  if(args.includes('--sea-values')) {
+    const values=JSON.parse(readFileSync(option('--sea-values'),'utf8'));
+    await page.evaluate(async values=>{window.__waterOptics.set(values);await window.__captureFrame();},values);
+  }
   const sea=await page.evaluate(()=>{
     const w=window.__world,m=w.scene.getObjectByName('sea.surface'),s=w.sunState,T=w.THREE;
     const landmarks={fort:[176,15,57.8],cathedral:[130,27,52],quay:[174,1.7,16],bell:[147,31,-3.2]};

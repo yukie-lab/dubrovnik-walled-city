@@ -1,0 +1,6 @@
+{
+  "purpose": "Additional transparency reference over the actual limestone shelf; not a photographic colour-fit ROI.",
+  "pose": {"position":[-65,17,104],"target":[-65,-0.412,115],"fov":32,"time":12.87},
+  "protectedDiagnostics": [1,2,3,4,5,8,9,10,12],
+  "bottomProbe": {"x":-65,"z":115,"analyticHeight":-0.41191262038828663}
+}

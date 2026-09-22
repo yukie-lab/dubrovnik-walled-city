@@ -60,10 +60,10 @@ async function fitTransport(page,{name,dir,rows,config,reference}) {
   // A bounded effective-band search. A zero-scattering diagnosis is useful,
   // but not an admissible solution for liquid water. Hold the red attenuation
   // and all geometry fixed; constrain the change in short-path transmission.
-  const bounds=[[.12,.22],[.025,.09],[.00002,.001155],[.00004,.00075],[.00008,.00063]];
+  const bounds=[[.12,.22],[.025,.09],[.00002,.001155],[.00004,.00075],[.00008,.002],[.08,.45]];
   const trace=[];
   async function evaluate(vector,label) {
-    const values={extinction:[1,vector[0],vector[1]],backscatter:vector.slice(2)};
+    const values={extinction:[1,vector[0],vector[1]],backscatter:vector.slice(2,5),bottomAlbedo:vector[5]};
     const data=await page.evaluate(async values=>{
       window.__waterOptics.set(values);
       return {png:await window.__captureFrame(),calls:window.__RENDER_STATS.drawCalls,
@@ -83,15 +83,15 @@ async function fitTransport(page,{name,dir,rows,config,reference}) {
     trace.push(entry);writeFileSync(new URL(name+'-fit-trace.json',dir),JSON.stringify(trace,null,2)+'\n');
     return {...entry,png};
   }
-  let best=await evaluate([.16,.03,.001155,.00075,.00063],'initial');
-  for(const p of [[.16,.03,.00002,.00004,.00008],[.22,.09,.00002,.00004,.00008],
-    [.20,.065,.00004,.00008,.00015],[.22,.09,.00004,.00008,.00025]]) {
+  let best=await evaluate([.22,.09,.00002,.00004,.00008,.30],'initial');
+  for(const p of [[.16,.03,.00002,.00004,.00008,.10],[.22,.09,.00002,.00004,.00008,.10],
+    [.20,.04,.00004,.00008,.00063,.10],[.22,.03,.00002,.00004,.001,.08]]) {
     const trial=await evaluate(p,'coarse');if(trial.score<best.score)best=trial;
   }
   let span=.5;
   for(let round=0;round<8;round++) {
     const start=best.score;
-    for(let axis=0;axis<5;axis++)for(const direction of [-1,1]) {
+    for(let axis=0;axis<bounds.length;axis++)for(const direction of [-1,1]) {
       const v=best.vector.slice(),[lo,hi]=bounds[axis];
       v[axis]=Math.max(lo,Math.min(hi,v[axis]+direction*(hi-lo)*span));
       if(v[axis]===best.vector[axis])continue;
@@ -99,9 +99,9 @@ async function fitTransport(page,{name,dir,rows,config,reference}) {
     }
     writeFileSync(new URL(name+'-best.png',dir),best.png);
     const {png,...record}=best;writeFileSync(new URL(name+'-best.json',dir),JSON.stringify(record,null,2)+'\n');
-    console.log(JSON.stringify({round,score:best.score,extinction:best.extinction,backscatter:best.backscatter,improvement:start-best.score}));
+    console.log(JSON.stringify({round,score:best.score,extinction:best.extinction,backscatter:best.backscatter,bottomAlbedo:best.bottomAlbedo,improvement:start-best.score}));
     if(start-best.score<.10)span*=.5;
   }
   rows.push({view:'sea-fit-transport',extinction:best.extinction,backscatter:best.backscatter,
-    score:best.score,evaluations:trace.length});
+    bottomAlbedo:best.bottomAlbedo,score:best.score,evaluations:trace.length});
 }

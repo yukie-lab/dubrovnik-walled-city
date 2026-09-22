@@ -22,15 +22,13 @@ for view in ['parapet','shelf']:
                 total+=sum(diff);peak=max(peak,*diff);changed+=max(diff)>0
             entry['protected'][str(mode)]={'meanAbsolute8bit':total/(count*3),'maximum8bit':peak,'changedPixels':changed}
         report.append(entry)
-fig=Image.new('RGB',(1200,800),'#f1eee7')
 from PIL import ImageDraw, ImageFont
-font=ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc',15);draw=ImageDraw.Draw(fig)
-for i,phase in enumerate(['noon','gold','sunset','night']):
+font=ImageFont.truetype('/System/Library/Fonts/Helvetica.ttc',15)
+for phase in ['noon','gold','sunset','night']:
+    sheet=Image.new('RGB',(1200,840),'#f1eee7')
     for j,prefix in enumerate([a.baseline,a.candidate]):
         im=read(prefix,'shelf',phase,0);im.thumbnail((590,365),Image.Resampling.LANCZOS)
         # Separate contact sheets retain full aspect ratio without hiding scene edges.
-        if i==0: pass
-        sheet=Image.new('RGB',(1200,840),'#f1eee7') if j==0 else sheet
         sheet.paste(im,(j*600,30));ImageDraw.Draw(sheet).text((j*600+8,8),prefix+' / '+phase,font=font,fill='#342e24')
         par=read(prefix,'parapet',phase,0);par.thumbnail((590,365),Image.Resampling.LANCZOS);sheet.paste(par,(j*600,430))
     sheet.save(str(a.output)+'-'+phase+'.png')

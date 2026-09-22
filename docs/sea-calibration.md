@@ -65,3 +65,91 @@ see [NASA's IOP description](https://modis.gsfc.nasa.gov/data/dataprod/Iop.php).
 diagnostics. `sept27seapreservebase` preserves noon, golden hour, sunset and true
 night at two fixed water viewpoints. Calibration and regression are not yet
 complete; the continuous sunset recording and city inspection loop remain active.
+
+## September 22 inspection checkpoint
+
+The current candidate is `extinction = [1, .22, .09] m⁻¹` and effective volume
+backscattering `beta = [.00002, .00004, .00008] m⁻¹ sr⁻¹`. Nominal bottom albedo
+remains `.30` (scale1 on the existing varied bottom materials). Bathymetry,
+Fresnel, wave spectrum, foam and glitter code in `sea.js` remain byte-identical
+to `56c7019`. These are provisional rendering coefficients, not measured
+spectral properties of the Adriatic, and the photograph match is **not complete**.
+
+The old illumination adapter captured a construction-time scattering ratio,
+overwriting changes on the next frame. The live transport state now evaluates
+`E_RGB * beta / extinction` from the actual sun, moon and sky irradiance each
+frame. The sea's far reflection also contained one fixed horizon/zenith blend,
+affecting all four photo-view regions. This source-radiance approximation now
+uses12 deterministic GGX importance samples of the physical sky LUT. The
+Fresnel response and solar/lunar glitter lobe are unchanged.
+
+Offline search results, weighted8-bit RGB RMSE over the same polygons:
+
+| Search | Evaluations | Best RMSE | Decision |
+|---|---:|---:|---|
+| Backscatter only |60|47.61|Zero-scattering result rejected as a liquid-water solution|
+| Bounded extinction + nonzero backscatter |45|38.23|Short-path transmission bounds reached|
+| Same search with integrated reflected sky |45|33.84|Current optical candidate|
+| Add bottom albedo |57|27.70|Albedo .08 rejected: it darkens bare submerged limestone|
+
+The final rounds of the accepted search made no further improvement within
+those bounds. The lower-error bottom fit converged to an albedo boundary, with
+the last improvements only .020–.021 RGB units, but fails the visual preservation
+criterion. Its images and trace are retained as rejected evidence. The live
+panel still exposes bottom albedo for user adjustment, applied before the
+terrain BRDF through the common near/far terrain material paths (two materials),
+and to the unresolved-bottom fallback. At the default it is an identity.
+
+Current differences (`sept27colourcandidate`, render minus photograph):
+
+| Region | Render H/S/L | Difference H/S/L |
+|---|---|---|
+| Shelf |204.51 /25.57 /39.50|+86.83 /+18.51 /+15.33|
+| Mid depth |207.02 /61.66 /31.34|−0.77 /−29.16 /+14.15|
+| Deep |213.86 /48.73 /28.17|+0.73 /−46.88 /+6.52|
+| Distant, not horizon |214.84 /42.82 /28.86|+2.94 /−51.07 /+1.73|
+
+[Side-by-side crops](../shots/rendercheck/sept27colourcandidate-crops.png) and
+[the full numerical report](../shots/rendercheck/sept27colourcandidate.json)
+retain the large residuals. Low-saturation shelf hue is poorly conditioned;
+its87° hue error must not be interpreted like a saturated open-water hue error.
+
+The component probe reads half-float radiance before observer/exposure/output
+processing. At the matched camera, after the sky-integration fix, deep-water
+red is mostly sky reflection (.01328), glitter (.01115) and aerial perspective
+(.00858), in5000cd/m² units. Even removing **all** bottom and volume radiance in
+an inspection-only diagnostic leaves rendered deep mean R35.72, versus R2.42
+in the JPEG. This is evidence that lowering water scattering further cannot
+remove the residual; it is not a proof that every conceivable atmospheric or
+camera condition has been exhausted. No water tint or selective tone transform
+was added to force the JPEG's clipped channel floor.
+
+The shelf regions also differ materially: the rendered region contains preserved
+foam, which supplies about73% of its red radiance; the photograph samples darker
+water immediately under the stone ledge. Actual depth, shade, polarization and
+camera processing are unknown. The model's harbour geometry and high-camera
+shadow coverage limit exact registration. The polygons have not been moved to
+hide these mismatches, and sea-floor albedo is not reduced to compensate for them.
+
+`sept27watercomparison` compares six protected diagnostic images at two views
+and four times using3,286,046 baseline-defined water pixels. Maximum difference
+is1/255; worst mean absolute difference is .000243/255. This small GPU arithmetic
+variation is reported rather than claiming bit identity. Water-column length,
+Fresnel, normals, foam generation/coverage and glitter all pass. All-pass maximum
+is148 draws, GPU errors0. The additional `sea-clarity.json` reference looks onto
+the actual0.412m-deep southern shelf; `sept27claritybase` is replayed directly
+from baseline Git sources, and `sept27claritylow` records the rejected albedo.
+
+Spectral transmittance itself necessarily changes with the authorized extinction
+adjustment. For0.5m vertical depth at35° depression and58° sun elevation, the
+round-trip path is1.461m: RGB transmission changes from `[.232,.792,.957]` to
+`[.232,.725,.877]`. At2m it changes from `[.00289,.393,.839]` to
+`[.00289,.276,.591]`. The water remains transmissive; these numbers must not be
+described as unchanged transparency. The rejected albedo fit demonstrates why
+preserving the appearance of the shelf takes precedence over a smaller RGB error.
+
+The right-hand **海の光学** panel provides live numeric/log sliders for the six
+transport coefficients, a bottom-albedo control, pause, reset and a copyable
+parameter record. Title, old map, clock and debug remain. The supplied photograph
+is only read by offline Python; neither it nor any extracted pixel data is sent
+to the rendering browser. The continuous sunset and city inspection loop continue.

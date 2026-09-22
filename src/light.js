@@ -31,6 +31,7 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   const localLights=[];scene.traverse(o=>{if(o.isPointLight)localLights.push(o);});
   scene.fog=new THREE.FogExp2(0x000000,0);
   scene.traverse(o=>{const m=o.material;if(Array.isArray(m))m.forEach(atmosphere.patchMaterial);else atmosphere.patchMaterial(m);});
+  waterLight.optics.bindBottomMaterials(scene);
 
   const convolver=makeEnvironmentConvolver(renderer),envScene=new THREE.Scene();
   const envUniforms={...atmosphere.uniforms,uGround:{value:new THREE.Color()}};

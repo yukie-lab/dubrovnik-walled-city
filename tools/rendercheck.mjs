@@ -54,8 +54,19 @@ const errors = [], rows = [];
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
-  if(args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source') || args.includes('--folk-contact-source') || args.includes('--folk-pose-source')) {
+  if(args.includes('--source-ref') || args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source') || args.includes('--folk-contact-source') || args.includes('--folk-pose-source')) {
     const overrides=new Map();
+    if(args.includes('--source-ref')) {
+      const ref=option('--source-ref');
+      const listing=spawnSync('git',['ls-tree','-r','--name-only',ref,'--','src','index.html'],{encoding:'utf8'});
+      if(listing.status)throw new Error('Cannot read baseline source tree');
+      for(const file of listing.stdout.trim().split('\n')) {
+        const result=spawnSync('git',['show',ref+':'+file],{encoding:'utf8',maxBuffer:8*1024*1024});
+        if(result.status)throw new Error('Cannot read baseline '+file);
+        overrides.set('/'+file,result.stdout);
+        if(file==='index.html')overrides.set('/',result.stdout);
+      }
+    }
     for(const module of ['folk-contact','folk-pose'])if(args.includes('--'+module+'-source'))
       overrides.set('/src/'+module+'.js',readFileSync(option('--'+module+'-source'),'utf8'));
     if(args.includes('--buildings-source'))overrides.set('/src/buildings.js',readFileSync(option('--buildings-source'),'utf8'));
@@ -65,7 +76,7 @@ try {
     await page.setRequestInterception(true);
     page.on('request',request=>{
       const source=overrides.get(new URL(request.url()).pathname);
-      if(source!==undefined)request.respond({status:200,contentType:'text/javascript',body:source});
+      if(source!==undefined)request.respond({status:200,contentType:new URL(request.url()).pathname.endsWith('.js')?'text/javascript':'text/html',body:source});
       else request.continue();
     });
   }
