@@ -29,7 +29,7 @@ export function makeUI(plan, counts, presets = []) {
   const $ = id => document.getElementById(id);
   const els = {
     title: $('title'), btnStart: $('btnStart'), hint: $('hint'),
-    ttlMain: $('ttlMain'), btnSound: $('btnSound'), btnKeys: $('btnKeys'), keysCard: $('keysCard'),
+    ttlMain: $('ttlMain'), btnSound: $('btnSound'), btnSoundWalk: $('btnSoundWalk'), btnKeys: $('btnKeys'), keysCard: $('keysCard'),
     timeArc: $('timeArc'), timeLabel: $('timeLabel'), timeCtl: $('timeCtl'),
     debug: $('debug'), map: $('map'), mapCanvas: $('mapCanvas'), fade: $('fade'),
     spots: $('spots'),

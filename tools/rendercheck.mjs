@@ -48,7 +48,9 @@ mkdirSync(dir, { recursive: true });
 const browser = await puppeteer.launch({
   protocolTimeout:600000,
   executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-  headless: 'new', args: ['--headless=new', '--use-angle=metal', '--window-size=1640,1060'],
+  headless: 'new', args: ['--headless=new', '--use-angle=metal', '--window-size=1640,1060',
+    ...(args.includes('--audio-check')?['--autoplay-policy=user-gesture-required',
+      '--disable-features=PreloadMediaEngagementData,MediaEngagementBypassAutoplayPolicies']:[])],
 });
 const errors = [], rows = [];
 try {
@@ -83,6 +85,10 @@ try {
   }
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
+  if(args.includes('--audio-check')) {
+    const {audioCheck}=await import('./audio-check.mjs');
+    await audioCheck(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--atmosphere-probe')) {
     const {atmosphereProbe}=await import('./atmosphere-probe.mjs');
     await atmosphereProbe(page,{name,dir,rows,errors,args});views=[];

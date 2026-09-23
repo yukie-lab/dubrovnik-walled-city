@@ -12,6 +12,8 @@ export class CityAudio {
     this.ctx = null;
     this.bellPos = bellPos;
     this.muted = false;
+    this.error = null;
+    this.onStateChange = null;
     this._swiftT = 4;
     this._gullT = 8;
     this._slapT = 5;
@@ -23,9 +25,37 @@ export class CityAudio {
   }
 
   start() {
-    if (this.ctx) { this.ctx.resume(); return; }
+    // User preference and browser suspension are different states. Every entry
+    // point (title, walking, automatic route, focus recovery) respects mute.
+    if (this.muted) return Promise.resolve(false);
+    try {
+      if (!this.ctx || this.ctx.state === 'closed') this._createContext();
+      const ctx = this.ctx;
+      this.error = null;
+      this.onStateChange?.();
+      if (ctx.state === 'running') return Promise.resolve(true);
+      // resume() can reject asynchronously. Do not turn an audio permission or
+      // device interruption into the application's fatal loading-error overlay.
+      return ctx.resume().then(() => {
+        if (this.ctx === ctx) this.onStateChange?.();
+        return this.ctx === ctx && ctx.state === 'running' && !this.muted;
+      }).catch(error => {
+        if (this.ctx === ctx) { this.error = error; this.onStateChange?.(); }
+        return false;
+      });
+    } catch (error) {
+      this.error = error;
+      this.onStateChange?.();
+      return Promise.resolve(false);
+    }
+  }
+
+  _createContext() {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     this.ctx = ctx;
+    ctx.addEventListener('statechange', () => {
+      if (this.ctx === ctx) this.onStateChange?.();
+    });
     this.master = ctx.createGain();
     this.master.gain.value = 0.85;
     const comp = ctx.createDynamicsCompressor();
@@ -124,8 +154,9 @@ export class CityAudio {
   }
 
   setMuted(m) {
-    this.muted = m;
-    if (this.master) this.master.gain.value = m ? 0 : 0.85;
+    this.muted = !!m;
+    if (this.master) this.master.gain.value = this.muted ? 0 : 0.85;
+    this.onStateChange?.();
   }
 
   // 毎フレーム: ゾーンと地形から音場を組む

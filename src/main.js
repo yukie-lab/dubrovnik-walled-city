@@ -22,6 +22,7 @@ import { MesopicShader } from './mesopic.js';
 import { shareFrameShadows } from './frame-shadows.js';
 import { warmShadowPrograms } from './shader-warmup.js';
 import { CityAudio } from './audio.js';
+import { makeAudioControls } from './audio-controls.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
 import { makeWaterControls } from './water-controls.js';
@@ -373,27 +374,8 @@ function startRoute(r) {
   auto.start(r);
 }
 
-// ---- 音。ブラウザは操作前の発音を許さないので、最初の操作で必ず立ち上げる。
-let soundOn = true;
-const armAudio = (ev) => {
-  // 音の札そのものを押したときは、ここで先に鳴らさない。
-  // 先に鳴らすと札の分岐が「既に鳴っている」を見てしまい、
-  // **最初の 1 クリックが「消す」になる**(実測)。
-  if (!soundOn || ev?.target === ui.els.btnSound) return;
-  try { audio.start(); } catch (err) { /* まだ操作前 */ }
-};
-addEventListener('pointerdown', armAudio, { capture: true });
-addEventListener('keydown', armAudio, { capture: true });
-try { audio.start(); } catch (e) { /* 操作前は必ずここに来る */ }
-ui.els.btnSound?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  // ブラウザは操作前の発音を許さない。だから表題の第一フレームでは
-  // 文脈は suspended のまま待っている。最初の一押しは「鳴らす」。
-  const live = audio.ctx && audio.ctx.state === 'running';
-  if (!live) { soundOn = true; try { audio.start(); } catch (err) { /* noop */ } }
-  else { soundOn = false; audio.ctx.suspend(); }
-  ui.els.btnSound.textContent = soundOn ? 'SOUND ON' : 'SOUND OFF';
-});
+// ---- 音。表題と街の中で、同じ起動・ミュート・再開状態を表示する。
+makeAudioControls(audio,[ui.els.btnSound,ui.els.btnSoundWalk]);
 ui.els.btnKeys?.addEventListener('click', (e) => { e.stopPropagation(); ui.toggleKeys(); });
 
 ui.els.btnStart?.addEventListener('click', () => {
@@ -524,12 +506,12 @@ function frame(now) {
     shaftHinted = true;
     ui.hint('壁の中の階段 — 上りきれば、歩廊', 4200);
   }
-  if (audio.ctx && started) {
+  if (audio.ctx?.state === 'running') {
     audio.update(dt, {
-      zone: player.zone, y: player.smoothY, pos: { x: player.x, z: player.z },
-      seaDist: sea.shoreDist(player.x, player.z),
-      portDist: Math.hypot(player.x - 168, player.z - 8),
-      sun, time: state.time, camYaw: player.yaw,
+      zone: player.zone, y: camera.position.y - 1.62, pos: camera.position,
+      seaDist: sea.shoreDist(camera.position.x, camera.position.z),
+      portDist: Math.hypot(camera.position.x - 168, camera.position.z - 8),
+      sun, time: state.time, camYaw: camera.rotation.y,
       nearFolk: life.near?.folk ?? 0, nearSitting: life.near?.sitting ?? 0,
       nearList: life.near?.list, nearSteps: life.near?.steps,
     });

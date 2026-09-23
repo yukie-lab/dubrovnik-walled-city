@@ -111,6 +111,14 @@
   #hud { transition: opacity 2.4s ease; }
   #hud { position: fixed; inset: 0; z-index: 20; pointer-events: none;
          font-family: "Hiragino Mincho ProN", Georgia, serif; color: #efe6d2; }
+  #btnSoundWalk {
+    position: absolute; bottom: 20px; right: 16px; pointer-events: auto;
+    font: 10.5px "Hiragino Mincho ProN", Georgia, serif; letter-spacing: .18em;
+    color: #efe6d2; background: rgba(7,14,22,.62); border: 1px solid rgba(239,230,210,.3);
+    border-radius: 3px; padding: 9px 12px; cursor: pointer;
+  }
+  #btnSoundWalk:focus-visible { outline: 2px solid #efe6d2; outline-offset: 3px; }
+  body.titling #btnSoundWalk { visibility: hidden; }
   #hint {
     position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
     font-size: 12.5px; letter-spacing: .12em; padding: 7px 16px; border-radius: 3px;
@@ -228,7 +236,7 @@
   </p>
   <button id="btnStart" disabled>ENTER THE CITY</button>
   <div id="titleFoot">
-    <button id="btnSound">SOUND ON</button>
+    <button id="btnSound" type="button">SOUND START</button>
     <button id="btnKeys">CONTROLS</button>
   </div>
 
@@ -241,6 +249,7 @@
   </div>
 
 <div id="hud">
+  <button id="btnSoundWalk" type="button">SOUND START</button>
   <div id="timeCtl"><canvas id="timeArc" width="296" height="92"></canvas><div id="timeLabel">--:--</div></div>
   <div id="debug"></div>
   <div id="map"><canvas id="mapCanvas" width="2600" height="2600"></canvas></div>
