@@ -95,6 +95,10 @@ try {
     const {atmosphereMotionChecks}=await import('./atmosphere-motion-capture.mjs');
     await atmosphereMotionChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--sky-depth-order')) {
+    const {skyDepthOrderCheck}=await import('./sky-depth-order-check.mjs');
+    await skyDepthOrderCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--geometry-profile')) {
     const {frameGeometryProfile}=await import('./frame-geometry-profile.mjs');
     await frameGeometryProfile(page,{name,dir,rows,errors});views=[];

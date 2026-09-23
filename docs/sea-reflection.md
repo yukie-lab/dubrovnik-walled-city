@@ -80,6 +80,35 @@ background-horizon strip and broad postprocessing influence at night. The new
 `water-mask.mjs` reads an exact pre-postprocess mask for future comparisons.
 Old baseline hashes and photographs are never overwritten.
 
+`sept30glarebaseline2` / `sept30glareaccepted` compare 2,206,508 actual water
+pixels across four times and two views. Bottom radiance, path length, wave
+normal, foam generation, foam coverage and direct glitter differ by at most
+one 8-bit step; the largest mean difference is 0.0000122/255. Effective rough
+sky Fresnel is the intentional revision, while its interface F0 is unchanged.
+
+The initial integration incurred a measured cost: sea 41.2 to 30.5fps, roof
+24.8 to 21.8fps under contemporaneous moving-clock checks. Drawing the far-depth
+sky after opaque surfaces lets early depth rejection avoid the hidden work.
+`sept30skydepth` verifies 32 views/times with bit-identical before/after PNGs;
+sea recovers to 42.8fps and roof to 25.2fps. These are DPR=1 inspection figures,
+not a claim that every laptop/view sustains 60fps. Draw calls remain unchanged.
+
+The original Downloads photo is no longer present. Comparing the current
+matched-pose render with its previously saved polygon measurements yields:
+
+| Region | Δ hue (degrees) | Δ saturation (points) | Δ lightness (points) |
+| --- | ---: | ---: | ---: |
+| Shallow rock shelf | +86.71 | +18.53 | +15.15 |
+| Mid-depth | −0.60 | −31.06 | +14.56 |
+| Deep open water | +0.80 | −45.63 | +5.82 |
+| Distant water | +3.28 | −49.69 | +0.31 |
+
+`sept30glarephoto.json` explicitly identifies the cached reference report and
+original SHA256. The photo itself was not resampled. Its weakly saturated shelf
+has unstable hue; coverage/geometry differ there. The photograph has no horizon.
+The significant saturation mismatch remains, and no colour grade was added to
+hide it. These values supersede the earlier render-side numbers for this state.
+
 Inspection page: `shots/rendercheck/sept30glareaccepted-review.html`, generated
 by `node tools/sea-glare-review.mjs`. The before/after slider includes component
 ablations and links to full-size captures. Photo calibration remains an offline

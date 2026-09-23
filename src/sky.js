@@ -78,7 +78,10 @@ export function makeSky() {
   const mat=new THREE.ShaderMaterial({uniforms,vertexShader,fragmentShader,side:THREE.BackSide,
     depthWrite:false,fog:false});
   const dome=new THREE.Mesh(new THREE.SphereGeometry(5200,32,20),mat);
-  dome.frustumCulled=false;dome.renderOrder=-20;
+  // Its vertex depth is exactly the far plane. Drawing after opaque geometry
+  // lets early depth rejection skip the atmosphere/ocean integral behind the
+  // city and detailed water, while transparent stars still draw afterwards.
+  dome.frustumCulled=false;dome.renderOrder=20;
   group.add(tagMesh(dome,'sky.dome',{thin:true,reason:'atmospheric radiance at infinity',noCollide:true,backdrop:true}));
   const starUniforms={uStarPixel:{value:1e-6},uStarDPR:{value:1},uSidereal:{value:0}};
   const stars=new THREE.Points(starCatalogue(),new THREE.ShaderMaterial({uniforms:starUniforms,
