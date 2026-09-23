@@ -5,6 +5,7 @@
 // アマツバメ、港のカモメ。すべてインスタンスか小さなマージ。
 // ============================================================================
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {chainMaterialShader} from './material-patch.js';
 import { mulberry32, hash2, clamp, lerp, smoothstep, nearestOnPolyline, polylineLength, tagMesh } from './util.js';
 import { rngFor } from './seed.js';
@@ -12,6 +13,8 @@ import { makePottedPlants } from './plants.js';
 import { makeFolkGeometry } from './folk-shape.js';
 import { patchFolkPose } from './folk-pose.js';
 import { makeFolkContact } from './folk-contact.js';
+import {makeBirdContact} from './bird-contact.js';
+import {patchBirdPose} from './bird-pose.js';
 import { seatPottedPlants } from './prop-support.js';
 import { sharedSkyVis } from './buildings.js';
 import { makeSkyVis, urbanTint, bounceRad, patchSkyVisInstanced } from './skyvis.js';
@@ -29,7 +32,7 @@ function depthFor(mat) {
 }
 
 
-export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSupport) {
+export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSupport,birdSupport=actorSupport) {
   // 時刻で変わるもの。update() が行列を書き換えるだけの設計だったので、
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
@@ -1597,6 +1600,7 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
   // ---- 鳩。広場に地上の鳥が一羽もいないことが、この街を模型に見せていた。
   // ルジャとオノフリオは、現実のドゥブロヴニクで「鳩がいることそのものが風景」。
   const PIGEONS = [];
+  let birdContact;
   const pigeonMesh = (() => {
     const head = (g, v) => {
       const n = g.attributes.position.count;
@@ -1620,24 +1624,11 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     };
     const legs = new THREE.BoxGeometry(0.020, 0.032, 0.018);
     legs.translate(0, 0.016, 0.004);
-    const g = mergeSimple([head(body, 0), head(neck, 0.45), head(hd, 1), head(beak, 1),
+    const g = mergeGeometries([head(body, 0), head(neck, 0.45), head(hd, 1), head(beak, 1),
       head(tail, 0), head(wing(-1), 0), head(wing(1), 0), head(legs, 0)]);
+    birdContact=makeBirdContact(g,birdSupport);
     const mat = new THREE.MeshStandardMaterial({ roughness: 0.82, envMapIntensity: 0.35 });
-    mat.onBeforeCompile = (sh) => {
-      sh.uniforms.uT = clothTime;
-      sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', '#include <common>\nuniform float uT; attribute float aHead; attribute float aPh2;')
-        .replace('#include <begin_vertex>', `#include <begin_vertex>
-          // ついばみ: 首と頭だけが前下に落ちる
-          float pk = smoothstep(0.55, 1.0, sin(uT * 2.35 + aPh2 * 6.28));
-          transformed.y -= aHead * pk * 0.062;
-          transformed.z += aHead * pk * 0.034;
-          // ゆっくり向きを変える(位相は個体ごと)
-          float yy = sin(uT * 0.29 + aPh2 * 11.0) * 0.62;
-          float cy = cos(yy), sy = sin(yy);
-          transformed.xz = mat2(cy, -sy, sy, cy) * transformed.xz;`);
-    };
-    mat.customProgramCacheKey = () => 'pigeon';
+    patchBirdPose(mat,clothTime);
     patchSkyVisInstanced(mat);
     // 配置: 広場ごとの群れ。等分布ではなく中心寄りのガウス。
     const spots = [];
@@ -1689,6 +1680,9 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     const sk3 = new Float32Array(spots.length);
     const dm6 = new THREE.Object3D(); const cc6 = new THREE.Color();
     spots.forEach((p2, i) => {
+      // The geographic height is a layer hint. The posed feet must meet the
+      // real roof tiles, wall coping or paving at this same horizontal point.
+      p2.y=birdContact(p2,p2.ph*6.28318,.94+p2.ph*.16,0)??p2.y;
       dm6.position.set(p2.x, p2.y, p2.z);
       dm6.rotation.set(0, p2.ph * 6.28318, 0);
       dm6.scale.setScalar(0.94 + p2.ph * 0.16);
@@ -1707,8 +1701,9 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     g.setAttribute('aPh2', new THREE.InstancedBufferAttribute(ph3, 1));
     g.setAttribute('aSkyI', new THREE.InstancedBufferAttribute(sk3, 1));
     mesh.castShadow = true;
+    mesh.customDepthMaterial=depthFor(mat);
     mesh.frustumCulled = false;
-    group.add(tagMesh(mesh, 'life.bird', { thin: true, reason: '飛ぶ鳥は板', noCollide: true }));
+    group.add(tagMesh(mesh, 'life.bird', { solid:true,creature:true,noCollide:true }));
     return mesh;
   })();
   const pigeonDummy = new THREE.Object3D();
@@ -1975,24 +1970,29 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
         let dirty = false;
         for (let i = 0; i < PIGEONS.length; i++) {
           const p2 = PIGEONS[i];
+          const scale=.94+p2.ph*.16,restRotation=p2.ph*6.28318;
+          if(!p2.fly)p2.y=birdContact(p2,restRotation,scale,elapsed)??p2.y;
           const dx2 = p2.x - camPos.x, dz2 = p2.z - camPos.z;
           const d2p = dx2 * dx2 + dz2 * dz2;
-          if (!p2.fly && d2p < 16 && d2p > 1e-4) {
+          if (!p2.fly && d2p < 16 && d2p > 1e-4 && Math.abs(p2.y-camPos.y)<2.6) {
             const dl = Math.sqrt(d2p);
-            p2.fly = elapsed; p2.dur = 1.9 + (p2.ph % 1) * 0.9;
-            p2.sx = p2.x; p2.sz = p2.z; p2.sy = p2.y;
+            p2.dur = 1.9 + (p2.ph % 1) * 0.9;
             const jit = (p2.ph - 0.5) * 1.1;
             const ux = dx2 / dl, uz = dz2 / dl;
-            p2.hx = p2.x + (ux * Math.cos(jit) - uz * Math.sin(jit)) * 7.5;
-            p2.hz = p2.z + (ux * Math.sin(jit) + uz * Math.cos(jit)) * 7.5;
-            const g2 = plan.groundAt(p2.hx, p2.hz, p2.y + 1.4);
-            if (!g2 || Math.abs(g2.y - p2.y) > 1.6) { p2.hx = p2.x - ux * 6.0; p2.hz = p2.z - uz * 6.0; }
-            else p2.hy = g2.y;
+            for(const [dx,dz] of [[(ux*Math.cos(jit)-uz*Math.sin(jit))*7.5,
+              (ux*Math.sin(jit)+uz*Math.cos(jit))*7.5],[-ux*6,-uz*6]]) {
+              const landing={...p2,x:p2.x+dx,z:p2.z+dz};
+              const y=birdContact(landing,restRotation,scale,elapsed+p2.dur,p2.y+1.6);
+              if(y===null||Math.abs(y-p2.y)>1.6)continue;
+              p2.hx=landing.x;p2.hz=landing.z;p2.hy=y;p2.fly=elapsed;
+              p2.sx=p2.x;p2.sz=p2.z;p2.sy=p2.y;break;
+            }
           }
           if (p2.fly) {
             const t4 = (elapsed - p2.fly) / p2.dur;
             if (t4 >= 1) {
               p2.fly = 0; p2.x = p2.hx; p2.z = p2.hz; p2.y = p2.hy ?? p2.y;
+              p2.y=birdContact(p2,restRotation,scale,elapsed)??p2.y;
               pigeonDummy.position.set(p2.x, p2.y, p2.z);
               pigeonDummy.rotation.set(0, p2.ph * 6.28318, 0);
             } else {
@@ -2006,6 +2006,12 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
             pigeonDummy.updateMatrix();
             pigeonMesh.setMatrixAt(i, pigeonDummy.matrix);
             dirty = true;
+          } else {
+            // Turning on a sloping tile changes which foot is supporting the
+            // body. Update the shared pose instead of retaining a fixed offset.
+            pigeonDummy.position.set(p2.x,p2.y,p2.z);
+            pigeonDummy.rotation.set(0,restRotation,0);pigeonDummy.scale.setScalar(scale);
+            pigeonDummy.updateMatrix();pigeonMesh.setMatrixAt(i,pigeonDummy.matrix);dirty=true;
           }
         }
         if (dirty) pigeonMesh.instanceMatrix.needsUpdate = true;

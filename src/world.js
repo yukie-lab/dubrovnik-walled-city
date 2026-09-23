@@ -58,10 +58,15 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
     return a===null?b:b===null?a:Math.max(a,b);
   }};
   const buildings = makeBuildings(plan, tex, support);
+  const roofSupport=life?makeGroundSupport(buildings.group,[],['house.roof','house.ridgeTile']):null;
+  const birdSupport=life?{height(x,z,ceiling){
+    const a=actorSupport.height(x,z,ceiling),b=roofSupport.height(x,z,ceiling);
+    return a===null?b:b===null?a:Math.max(a,b);
+  }}:null;
   const surround = makeSurround(plan, tex);
   const seaObj = sea ? makeSea(plan) : null;
   const skyObj = sky ? makeSky(tex) : null;
-  const lifeObj = life ? makeLife(plan, tex, stepPool, support, actorSupport) : null;
+  const lifeObj = life ? makeLife(plan, tex, stepPool, support, actorSupport,birdSupport) : null;
   const steps = stepPool.finalize(getSharedSkyVis(),walls.stairLayouts,walls.stairShadows);
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
   plan.walkingCollide=makeWallStairCollision(plan,walls.group.getObjectByName('wall.curtain').geometry);

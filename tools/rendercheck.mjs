@@ -106,6 +106,10 @@ try {
     const {birdSupportSurvey}=await import('./bird-support-survey.mjs');
     await birdSupportSurvey(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--bird-poses')) {
+    const {birdPoseCheck}=await import('./bird-pose-check.mjs');
+    await birdPoseCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--moon-study')) {
     const {moonChecks}=await import('./moon-capture.mjs');
     await moonChecks(page,{name,dir,rows,errors});views=[];

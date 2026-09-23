@@ -38,7 +38,8 @@ export async function birdSupportSurvey(page,{name,dir,rows,errors}) {
   });
   const bad=result.observations.filter(o=>o.closest===null||Math.abs(o.closest)>.02);
   const row={view:'bird-support',count:result.observations.length,bad:bad.length,
-    maxFloat:Math.max(...bad.map(o=>o.closest??0)),maxSink:Math.max(...bad.map(o=>-(o.closest??0))),gpuError:result.gpuError};
+    maxFloat:Math.max(0,...result.observations.map(o=>o.closest??0)),
+    maxSink:Math.max(0,...result.observations.map(o=>-(o.closest??0))),gpuError:result.gpuError};
   rows.push(row);writeFileSync(new URL(name+'-bird-support.json',dir),JSON.stringify({...result,...row},null,2)+'\n');
   console.log(JSON.stringify(row));
   if(result.gpuError)errors.push('Bird support survey GPU error');
