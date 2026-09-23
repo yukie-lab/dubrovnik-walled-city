@@ -1,4 +1,5 @@
 import {writeFileSync} from 'node:fs';
+import {captureWaterMask} from './water-mask.mjs';
 
 export async function seaRegressionCapture(page,{name,dir,rows,errors}) {
   await page.setViewport({width:1200,height:800,deviceScaleFactor:1});
@@ -32,6 +33,8 @@ export async function seaRegressionCapture(page,{name,dir,rows,errors}) {
       const png=Buffer.from((await page.evaluate(()=>window.__captureFrame())).split(',')[1],'base64');
       writeFileSync(new URL(`${name}-${view}-${phase}-${mode}.png`,dir),png);
     }
+    const mask=await captureWaterMask(page);
+    writeFileSync(new URL(`${name}-${view}-${phase}-mask.png`,dir),Buffer.from(mask.split(',')[1],'base64'));
     rows.push({view:'sea-'+view,phase,time,pose,...result});console.log(JSON.stringify(rows.at(-1)));
     if(result.gpuError||result.calls>200)errors.push('Sea regression GPU/budget failure');
   }

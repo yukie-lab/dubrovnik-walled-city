@@ -3,7 +3,8 @@
 // This is its unresolved background continuation, behind all scene geometry.
 // It uses the existing water's scattering/extinction ratio and Fresnel F0; no
 // painted horizon blend, new water colour or change to the near wave spectrum.
-export const OCEAN_HORIZON_GLSL=/* glsl */`
+import {WATER_REFLECTION_GLSL} from './water-reflection.js';
+export const OCEAN_HORIZON_GLSL=WATER_REFLECTION_GLSL+/* glsl */`
 uniform vec3 uAtOceanInscat;
 uniform float uAtOceanF0;
 vec3 atOceanHorizon(vec3 d,vec3 sky) {
@@ -11,12 +12,9 @@ vec3 atOceanHorizon(vec3 d,vec3 sky) {
   bool ground;float distanceKm=atBoundary(origin,d,ground);
   if(!ground)return sky;
   vec3 n=normalize(origin+d*distanceKm);
-  vec3 reflected=reflect(d,n);
-  // Match the protected surface's unresolved reflection cone at grazing angles.
-  reflected.y=max(reflected.y,.008);
-  vec3 reflectedSky=atSkyRadiance(normalize(reflected));
-  float cosTheta=clamp(dot(-d,n),0.0,1.0);
-  float fresnel=uAtOceanF0+(1.0-uAtOceanF0)*pow(1.0-cosTheta,5.0);
-  vec3 water=mix(uAtOceanInscat,reflectedSky,fresnel);
+  // Same unresolved GGX and masking as the detailed sea. At the horizon the
+  // open-water wind field tends to .42+.78*.5+.34*.5=.98 on a pixel footprint.
+  vec4 reflected=waterSkyReflection(-d,n,.42/.98,uAtOceanF0);
+  vec3 water=uAtOceanInscat*(1.0-reflected.a)+reflected.rgb;
   return atAerial(water,d*distanceKm*1000.0,cameraPosition);
 }`;

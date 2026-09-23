@@ -1,0 +1,18 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+const before=process.argv[2]||'sept30glareprobe',after=process.argv[3]||'sept30glareaccepted';
+const rows=JSON.parse(readFileSync(`shots/rendercheck/${after}-glare.json`,'utf8')).rows;
+const baseline=JSON.parse(readFileSync(`shots/rendercheck/${before}-glare.json`,'utf8')).rows;
+const labels={'parapet-am':'城壁・朝','parapet-noon':'城壁・正午','parapet-gold':'城壁・夕方','parapet-sunset':'城壁・日没後','parapet-night':'城壁・夜','harbour-noon':'旧港・正午','limestone-noon':'石灰岩の浅瀬','photo':'写真比較の俯瞰位置'};
+const data=rows.map(r=>({id:r.id,label:labels[r.id],old:baseline.find(b=>b.id===r.id)?.whitePercent,new:r.whitePercent}));
+const html=`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>海の白い反射 — 比較</title>
+<style>body{margin:0;background:#eeeae1;color:#302e28;font:16px/1.7 system-ui,sans-serif}main{max-width:1200px;margin:auto;padding:24px}h1{font-size:26px;margin:0}select,input{font:inherit}select{padding:6px;margin:12px 0}label{margin-right:20px}.compare{position:relative;aspect-ratio:3/2;background:#222;overflow:hidden}.compare img{position:absolute;width:100%;height:100%;object-fit:contain}.compare .before{clip-path:inset(0 50% 0 0)}.divider{position:absolute;left:50%;width:2px;height:100%;background:#eee8db}.tag{position:absolute;top:8px;background:#eee8dbdd;padding:2px 10px}.tag.right{right:8px}.tag.left{left:8px}input[type=range]{width:100%;margin:12px 0}p{max-width:940px}a{color:#334f68}.links{display:flex;gap:24px;flex-wrap:wrap}small{display:block}</style>
+<main><h1>海の白い反射を抑える</h1><p>波面同士の遮蔽を含めて空の反射を積分。太陽のきらめき、泡、波、水中の減衰・散乱係数は維持しています。</p>
+<label>視点 <select id="view"></select></label><label>表示 <select id="mode"><option value="normal">通常</option><option value="noSky">空の反射を除く診断</option><option value="noGlitter">太陽のきらめきを除く診断</option><option value="noFoam">泡を除く診断</option></select></label>
+<div class="compare"><img id="new" alt="調整後"><img class="before" id="old" alt="調整前"><div class="divider"></div><span class="tag left">調整前</span><span class="tag right">調整後</span></div>
+<label>比較境界 <input id="slider" type="range" min="0" max="100" value="50"></label><p id="numbers"></p><small>計測基準：水面画素のRGB最小値160以上、最大値と最小値の差45以下。画面上の白さを比較する固定基準で、測光学的な白色の定義ではありません。</small>
+<p class="links"><a id="oldLink">調整前の原寸画像</a><a id="newLink">調整後の原寸画像</a><a href="/">歩行体験へ</a></p><p>岸際の白い帯は泡が主成分のため今回の調整では残っています。水平線・夜景・浅瀬も同じ条件で比較できます。</p></main>
+<script>const data=${JSON.stringify(data)},before=${JSON.stringify(before)},after=${JSON.stringify(after)};
+const select=document.getElementById('view'),mode=document.getElementById('mode');
+for(const d of data){const option=document.createElement('option');option.value=d.id;option.textContent=d.label;select.append(option)}select.value='parapet-noon';
+function update(){const d=data.find(x=>x.id===select.value);const old=before+'-'+d.id+'-'+mode.value+'.png',next=after+'-'+d.id+'-'+mode.value+'.png';document.getElementById('old').src=old;document.getElementById('new').src=next;document.getElementById('oldLink').href=old;document.getElementById('newLink').href=next;document.getElementById('numbers').textContent='通常表示での明るく低彩度の水面：'+d.old.toFixed(2)+'% → '+d.new.toFixed(2)+'%';}select.onchange=mode.onchange=update;update();document.getElementById('slider').oninput=e=>{document.getElementById('old').style.clipPath='inset(0 '+(100-e.target.value)+'% 0 0)';document.querySelector('.divider').style.left=e.target.value+'%';};</script></html>`;
+writeFileSync(`shots/rendercheck/${after}-review.html`,html);console.log(`http://localhost:8765/shots/rendercheck/${after}-review.html`);

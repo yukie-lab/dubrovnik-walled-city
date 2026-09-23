@@ -53,6 +53,7 @@ const browser = await puppeteer.launch({
 const errors = [], rows = [];
 try {
   const page = await browser.newPage();
+  page.setDefaultNavigationTimeout(120000);
   await page.setViewport({ width: 1600, height: 1000, deviceScaleFactor: 1 });
   if(args.includes('--source-ref') || args.includes('--buildings-source') || args.includes('--leaf-cpu') || args.includes('--masonry-source') || args.includes('--leaf-source') || args.includes('--folk-contact-source') || args.includes('--folk-pose-source')) {
     const overrides=new Map();
@@ -157,6 +158,14 @@ try {
   if(args.includes('--sea-regression')) {
     const {seaRegressionCapture}=await import('./sea-regression-capture.mjs');
     await seaRegressionCapture(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--sea-glare')) {
+    const {seaGlareCapture}=await import('./sea-glare-capture.mjs');
+    await seaGlareCapture(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--water-reflection-check')) {
+    const {waterReflectionCheck}=await import('./water-reflection-check.mjs');
+    await waterReflectionCheck(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--sea-fit')) {
     const {seaFit}=await import('./sea-fit.mjs');

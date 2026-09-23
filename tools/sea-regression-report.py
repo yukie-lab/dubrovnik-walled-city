@@ -4,16 +4,23 @@ from pathlib import Path
 from PIL import Image
 
 p=argparse.ArgumentParser();p.add_argument('baseline');p.add_argument('candidate');p.add_argument('--output',required=True)
+p.add_argument('--sky-reflection-revision',action='store_true',help='Authorized visible-facet sky reflection change; optics, waves, glint and foam must stay fixed.')
 a=p.parse_args();root=Path('shots/rendercheck');report=[]
 def read(prefix,view,phase,mode):
     return Image.open(root/f'{prefix}-{view}-{phase}-{mode}.png').convert('RGB')
 for view in ['parapet','shelf']:
     for phase in ['noon','gold','sunset','night']:
         f=read(a.baseline,view,phase,3);n=read(a.baseline,view,phase,4)
-        mask=[max(abs(x-y) for x,y in zip(u,v))>1 for u,v in zip(f.get_flattened_data(),n.get_flattened_data())]
+        maskpath=root/f'{a.baseline}-{view}-{phase}-mask.png'
+        if maskpath.exists():
+            mask=[v==255 for v in Image.open(maskpath).convert('L').get_flattened_data()]
+        elif a.sky_reflection_revision:
+            raise RuntimeError('Exact pre-tonemap water mask required for a horizon-reflection revision: '+str(maskpath))
+        else:
+            mask=[max(abs(x-y) for x,y in zip(u,v))>1 for u,v in zip(f.get_flattened_data(),n.get_flattened_data())]
         count=sum(mask);entry={'view':view,'phase':phase,'waterPixels':count,'protected':{}}
         if not count: raise RuntimeError('Empty diagnostic water mask')
-        for mode in [2,3,4,5,8,12]:
+        for mode in ([1,2,4,5,8,12] if a.sky_reflection_revision else [2,3,4,5,8,12]):
             b=read(a.baseline,view,phase,mode);c=read(a.candidate,view,phase,mode)
             total=0;peak=0;changed=0
             for old,new,keep in zip(b.get_flattened_data(),c.get_flattened_data(),mask):
@@ -34,12 +41,12 @@ for phase in ['noon','gold','sunset','night']:
     sheet.save(str(a.output)+'-'+phase+'.png')
 # A path calculation is reported separately: changing extinction is an allowed
 # spectral transport change, so it must never be misreported as identical T.
-sigma0=[1,.16,.03];sigma1=[1,.22,.09];trans=[]
+sigma0=[1,.22,.09] if a.sky_reflection_revision else [1,.16,.03];sigma1=[1,.22,.09];trans=[]
 for depth in [.25,.5,1,2]:
     path=depth*(1/math.sin(math.radians(35))+1/math.sin(math.radians(58.0075806175)))
     b=[math.exp(-s*path) for s in sigma0];c=[math.exp(-s*path) for s in sigma1]
     trans.append({'verticalDepthMetres':depth,'roundTripMetres':path,'baselineRGB':b,'candidateRGB':c})
-data={'baseline':a.baseline,'candidate':a.candidate,'diagnostics':report,'transmission35DegreeView':trans}
+data={'baseline':a.baseline,'candidate':a.candidate,'skyReflectionRevision':a.sky_reflection_revision,'diagnostics':report,'transmission35DegreeView':trans}
 Path(str(a.output)+'.json').write_text(json.dumps(data,indent=2)+'\n')
 print(json.dumps(data,indent=2))
 if any(v['maximum8bit']>2 or v['meanAbsolute8bit']>.01 for r in report for v in r['protected'].values()):
