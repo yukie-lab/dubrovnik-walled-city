@@ -110,6 +110,14 @@ try {
     const {birdPoseCheck}=await import('./bird-pose-check.mjs');
     await birdPoseCheck(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--masonry-study')) {
+    const {masonryAtlasCapture}=await import('./masonry-atlas-capture.mjs');
+    await masonryAtlasCapture(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--masonry-repeat')) {
+    const {masonryRepeatCheck}=await import('./masonry-repeat-check.mjs');
+    await masonryRepeatCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--moon-study')) {
     const {moonChecks}=await import('./moon-capture.mjs');
     await moonChecks(page,{name,dir,rows,errors});views=[];
@@ -304,6 +312,10 @@ try {
     if (checkLOD) console.log(`  LOD culled=${row.culledInstances}, tris ${fullStats.triangles} → ${row.triangles}: ${lodDifference}`);
     if (row.drawCalls > 200 || !row.instances || row.instances > row.instanceCapacity
       || row.instances !== row.exposedInstances || row.dpr > 2 || !row.stableFrames) errors.push(`${view}: telemetry/stability/budget check failed`);
+  }
+  if(!views.length&&args.includes('--program-audit')) {
+    const {materialProgramAudit}=await import('./material-program-audit.mjs');
+    await materialProgramAudit(page,{name,dir,strict:args.includes('--program-strict')});
   }
 } catch(e) {
   errors.push(String(e.stack||e));

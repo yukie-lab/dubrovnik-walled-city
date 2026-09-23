@@ -1461,8 +1461,8 @@ export function makeWalls(plan, tex, stepPool, outsideHeight) {
     // 隠す必要がなくなった。裏返った面はここで即座に「穴」として見える —
     // DoubleSide は欠陥を隠す道具であって、厚みを作る道具ではない。
   });
-  // 4.2m 周期のタイリングが城壁の大面で露骨に見える(最大特徴 0.42m)。
-  // 同じマップを 1/7・1/23 の尺で引いて低周波のうねりを重ねる。テクスチャ追加なし。
+  // Keep broad weathering independent of individual stone selection. The
+  // shared masonry atlas replaces the old 4.2m repeat after world assembly.
   mat.onBeforeCompile = (sh) => {
     sh.fragmentShader = sh.fragmentShader
       .replace('#include <common>', `#include <common>

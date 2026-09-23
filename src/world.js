@@ -30,6 +30,7 @@ import { makeLife } from './life.js';
 import { makeGroundSupport } from './support.js';
 import {makeWallStairGround} from './wall-stair-ground.js';
 import {makeWallStairCollision} from './wall-stair-collision.js';
+import {applyMasonryAtlas} from './masonry-atlas.js';
 
 /**
  * 街を一つ作る。同じ seed からは必ず同じ街が出る。
@@ -87,11 +88,12 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   steps.userData.kind = 'steps';
   groups.steps = steps;
   root.add(steps);
+  const masonry=applyMasonryAtlas(root,tex.fortStone);
   root.updateMatrixWorld(true);
 
   return {
     seed: getWorldSeed(),
-    plan, tex, stepPool, steps, root, groups,
+    plan, tex, stepPool, steps, root, groups,masonry,
     ground, walls, buildings, monuments, surround,
     sea: seaObj, sky: skyObj, life: lifeObj,
     routes: makeRoutes(plan),
