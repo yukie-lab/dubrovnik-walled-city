@@ -9,7 +9,8 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
   await page.waitForFunction('window.__READY && window.__captureFrame',{timeout:60000});
   const ids=await page.evaluate(()=>window.__world.plan.WALL_STAIRS.map(s=>s.id));
   const selected=ids.filter(id=>!args.includes('--stair-id')||id===option('--stair-id'));
-  const times=args.includes('--stair-quick')?[12.87]:[7.9,12.87];
+  const times=args.includes('--stair-times')?option('--stair-times').split(',').map(Number):args.includes('--stair-quick')?[12.87]:[7.9,12.87];
+  if(times.some(t=>!Number.isFinite(t)||t<0||t>24))throw new Error('Invalid stair inspection time');
   for(const hour of times)for(const id of selected) {
     const station=await page.evaluate(({id,hour})=>{
       const w=window.__world,p=w.player,st=w.plan.WALL_STAIRS.find(s=>s.id===id),path=st.pts.map(p=>p.slice());
@@ -30,12 +31,18 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
     },{id,hour});
     for(let i=0;i<4;i++)await page.evaluate(()=>window.__captureFrame());
     if(errors.length)throw new Error('Cannot inspect an ascent with a renderer error: '+errors.at(-1));
-    const stem=`${name}-${id}-${String(hour).replace('.','_')}`,frames=[];
+    const stem=`${name}-${id}-${String(hour).replace('.','_')}`,frames=[],lightSamples=[];
     const saveFrame=async label=>{
       const png=await page.evaluate(()=>window.__captureFrame()),file=stem+'-'+label+'.png';
       const gpuError=await page.evaluate(()=>window.__world.renderer.getContext().getError());
       if(gpuError)throw new Error('GPU rejected an ascent draw: '+gpuError+' at '+stem+'-'+label);
       writeFileSync(new URL(file,dir),Buffer.from(png.split(',')[1],'base64'));frames.push(file);
+      lightSamples.push({label,...await page.evaluate(()=>{
+        const w=window.__world,l=w.lighting.state,s=w.sunState;
+        return {exposure:l.exposure,targetExposure:l.targetExposure,meterIlluminance:l.meterIlluminance,
+          localIlluminance:l.localIlluminance,ghi:s.ghi,moonIntensity:s.moonIntensity,
+          sunElevation:s.el,position:w.camera.position.toArray(),zone:w.player.zone};
+      })});
     };
     await saveFrame('bottom');
     const recorder=args.includes('--no-video')?null:await page.screencast({path:new URL(stem+'.webm',dir).pathname,
@@ -95,7 +102,7 @@ export async function wallStairChecks(page,{name,dir,rows,errors,args}) {
       await page.keyboard.up('KeyW');await page.evaluate(()=>window.__stairRestore());if(recorder)await recorder.stop();
     }
     const result=await page.evaluate(()=>({...window.__stairAscent,stats:{...window.__RENDER_STATS}}));
-    writeFileSync(new URL(stem+'-trace.json',dir),JSON.stringify({station,...result},null,2)+'\n');
+    writeFileSync(new URL(stem+'-trace.json',dir),JSON.stringify({station,lightSamples,...result},null,2)+'\n');
     const row={view:'wall-stair-ascent',id,hour,frames,video:recorder?stem+'.webm':null,completed:!result.failed&&result.done,
       failure:result.failed,elapsed:result.elapsed,samples:result.trace.length,progress:result.progress,peakDrawCalls:result.peakDrawCalls,...result.stats};
     rows.push(row);console.log(JSON.stringify(row));

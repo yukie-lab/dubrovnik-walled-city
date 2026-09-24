@@ -19,8 +19,7 @@ export function makeWallTread(step,{coverM=5}={}) {
   const wearSamples=[-1,-.78,-.52,-.25,0,.25,.52,.78,1].map(x=>lane+x*half).filter(x=>x>0&&x<1);
   const us=unique([...Array.from({length:13},(_,i)=>i/12),...wearSamples,...chips.flatMap(c=>[c.u-c.half,c.u,c.u+c.half])]);
   const radius=Math.min(t.nose,step.d*.24),noseFraction=radius/step.d;
-  const vs=unique([0,noseFraction*.12,noseFraction*.38,noseFraction*.72,noseFraction,.25,.5,.75,1,
-    ...(t.joint?.breaks||[])]);
+  const vs=unique([0,noseFraction*.12,noseFraction*.38,noseFraction*.72,noseFraction,.25,.5,.75,1]);
   const p=[],uv=[],col=[],wear=[],traits=[],ix=[],nu=us.length,nv=vs.length;
   const append=(x,y,z,u,v,w,dust,moss)=>{
     p.push(x,y,z);uv.push(u*width/coverM,v*step.d/coverM);col.push(1,1,1);wear.push(w);

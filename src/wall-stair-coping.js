@@ -7,9 +7,16 @@ export function parapetTop(layout,segment,t) {
   return lerp(segment.a[2],segment.b[2],t)+(last?lerp(1,.22,t):1);
 }
 
+// The wall-side cheek contains the stone ends without changing the surveyed
+// walking width. Its lower crown meets the same landing as the open parapet.
+export function cheekTop(layout,segment,t) {
+  const last=segment.index===layout.segments.at(-1).index;
+  return lerp(segment.a[2],segment.b[2],t)+(last?lerp(.66,.22,t):.66);
+}
+
 // Each cap is a closed rounded limestone solid seated into the parapet core.
 // Individual stones are merged into the existing wall batch by the caller.
-export function makeStairCoping(st,layout,segment,side=segment.railSign) {
+export function makeStairCoping(st,layout,segment,side=segment.railSign,topAt=parapetTop) {
   const n=Math.max(1,Math.round(segment.length/.68)),weights=Array.from({length:n},(_,i)=>
     .82+.36*hash2(Math.round(segment.seed*1e6),i*41+237)),sum=weights.reduce((a,b)=>a+b,0),out=[];
   const half=layout.innerHalf,thick=layout.wallThickness,width=thick+.04;
@@ -36,7 +43,7 @@ export function makeStairCoping(st,layout,segment,side=segment.railSign) {
     const fractions=mortar?[0,1]:[0,.03,.27,.58,.97,1],P=[],U=[],C=[],A=[],K=[],I=[],count=profile.length;
     const at=(u,t,dy)=>{
       if(mortar){u=lerp(.004/width,1-.004/width,u);dy-=.010;}
-      const [a,b]=boundary(t);return new THREE.Vector3(lerp(a[0],b[0],u),parapetTop(layout,segment,t)+dy,lerp(a[1],b[1],u));
+      const [a,b]=boundary(t);return new THREE.Vector3(lerp(a[0],b[0],u),topAt(layout,segment,t)+dy,lerp(a[1],b[1],u));
     };
     const add=(p,uv,profileIndex)=>{
       const [u,dy]=profile[profileIndex],polish=dy>-.025?Math.max(0,1-(u*2-1)**2):0;
@@ -68,8 +75,8 @@ export function makeStairCoping(st,layout,segment,side=segment.railSign) {
       const base=P.length/3,shape=[];
       for(let j=0;j<count;j++) {
         const v=new THREE.Vector3().fromArray(P,(row*count+j)*3),u=profile[j][0];
-        add(v,[u*width,v.y-parapetTop(layout,segment,row?t1:t0)],j);
-        shape.push(new THREE.Vector2(u*width,v.y-parapetTop(layout,segment,row?t1:t0)));
+        add(v,[u*width,v.y-topAt(layout,segment,row?t1:t0)],j);
+        shape.push(new THREE.Vector2(u*width,v.y-topAt(layout,segment,row?t1:t0)));
       }
       for(const [a,b,c] of THREE.ShapeUtils.triangulateShape(shape,[]))triangle(base+a,base+b,base+c);
     }

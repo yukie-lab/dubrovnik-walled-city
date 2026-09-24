@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import {lerp} from './util.js';
 import {planarMasonryUV} from './masonry-uv.js';
-import {makeStairCoping,parapetTop} from './wall-stair-coping.js';
-import {wallStairPoint} from './wall-stair-joints.js';
+import {makeStairCoping,parapetTop,cheekTop} from './wall-stair-coping.js';
 
 // Closed masonry pieces use the same mitred inner lines as the tread layout.
 // Openings are the empty space between solid piers/spandrels, including their
@@ -55,7 +54,7 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
         const a=base+ib*(na+1)+ia,b=a+1,c=a+na+1,d=c+1;I.push(a,b,d,a,d,c);
       }
     }
-    solids.push({name,from,to:I.length/3,type});
+    solids.push({name,from,to:I.length/3,type,segment:segment.index});
   };
   const point=(segment,t,u,y)=>{
     const a=st.offAt(segment.index-1,u<0?-1:1,Math.abs(u)),b=st.offAt(segment.index,u<0?-1:1,Math.abs(u));
@@ -73,18 +72,6 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
     const terrain0=plan.terrainHeight(a[0],a[1])-.30,terrain1=plan.terrainHeight(b[0],b[1])-.30;
     const bottom=t=>Math.min(nominal(t)-.72,lerp(terrain0,terrain1,t));
     prism('foundation',-half,half,0,1,bottom,t=>nominal(t)-.16,'base');
-    // A fitted end remains on real masonry all the way to the existing wall.
-    // The bearing shares its actual footprint and overlaps the original bed.
-    for(const q of layout.steps.filter(q=>q.seg===i&&q.wallStair.joint?.extensions.some(d=>d>0))) {
-      const bounds=[0,...q.wallStair.joint.breaks,1];
-      for(let k=1;k<bounds.length;k++) {
-        const footprint=[[0,bounds[k-1]],[1,bounds[k-1]],[1,bounds[k]],[0,bounds[k]]].map(([u,v])=>wallStairPoint(q.wallStair,u,v,q.y-.28));
-        const low=footprint.map(([x,z])=>Math.min(q.y-.68,plan.terrainHeight(x,z)-.30));
-        const vertices=[...footprint.map(([x,z],k)=>[x,low[k],z]),...footprint.map(([x,z])=>[x,q.y-.28,z])];
-        addSolid('joint-bearing',vertices,segment,'base');
-        Object.assign(solids.at(-1),{segment:i,step:q.step});
-      }
-    }
     if(layout.enclosed) {
       const end=Math.max(0,Math.min(1,(layout.length-1.2-s0)/length));
       if(end<=0)continue;
@@ -104,25 +91,24 @@ export function makeWallStairMasonry(st,layout,plan,coverM=4.2) {
         slits.push({segment:i,side,center,low:lo,high:hi,insideWidth:.38,outsideWidth:.15,
           inner:point(segment,center,u0,(lo+hi)/2),outer:point(segment,center,u1,(lo+hi)/2)});
       }
-    }else if(!layout.spiral) {
-      const side=segment.railSign,u0=side*half,u1=side*(half+thickness);
-      const top=t=>parapetTop(layout,segment,t)-.10;
-      prism('parapet',u0,u1,0,1,bottom,top,'wall');
-      for(const cap of makeStairCoping(st,layout,segment)) {
-        const g=cap.geometry,offset=P.length/3,from=I.length/3;
-        P.push(...g.attributes.position.array);N.push(...g.attributes.normal.array);
-        U.push(...g.attributes.uv.array);C.push(...g.attributes.color.array);
-        A.push(...g.attributes.aStairWall.array);K.push(...g.attributes.aStairStone.array);
-        for(const index of g.index.array)I.push(offset+index);
-        solids.push({name:cap.kind,type:cap.kind,from,to:I.length/3,segment:i,t0:cap.t0,t1:cap.t1});
-        g.dispose();
-      }
-      // The uphill edge is part of the foundation. It meets the tread ends
-      // along exactly the same inner line instead of leaving a second gap.
-      prism('string-course',-u0,-u1,0,1,bottom,t=>nominal(t)-.14,'base');
     }else {
-      for(const side of [-1,1])prism('tower-string',side*half,side*(half+.12),0,1,
-        t=>nominal(t)-.72,t=>nominal(t)-.14,'base');
+      for(const side of [-1,1]) {
+        const crown=!layout.spiral&&side===segment.railSign?'parapet':'cheek';
+        const topAt=crown==='parapet'?parapetTop:cheekTop;
+        // Both ends of every tread meet a real, closed wall on the same
+        // mitred boundary. Do not stretch treads towards unrelated city faces.
+        prism(crown,side*half,side*(half+thickness),0,1,bottom,t=>topAt(layout,segment,t)-.10,'wall');
+        Object.assign(solids.at(-1),{side,crown});
+        for(const cap of makeStairCoping(st,layout,segment,side,topAt)) {
+          const g=cap.geometry,offset=P.length/3,from=I.length/3;
+          P.push(...g.attributes.position.array);N.push(...g.attributes.normal.array);
+          U.push(...g.attributes.uv.array);C.push(...g.attributes.color.array);
+          A.push(...g.attributes.aStairWall.array);K.push(...g.attributes.aStairStone.array);
+          for(const index of g.index.array)I.push(offset+index);
+          solids.push({name:cap.kind,type:cap.kind,from,to:I.length/3,segment:i,side,crown,t0:cap.t0,t1:cap.t1});
+          g.dispose();
+        }
+      }
     }
   }
   const geometry=new THREE.BufferGeometry();geometry.setIndex(I);

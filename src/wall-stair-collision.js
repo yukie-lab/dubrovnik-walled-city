@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 
-// At hand distance the visible masonry also owns body clearance. A fixed-width
-// corridor would leave an invisible wall across a tread fitted to the city.
+// At hand distance the visible masonry also owns body clearance. The city corridor
+// alone cannot resolve the stone cheeks built on the mitred stair boundaries.
 // Index actual vertical triangles once; a walking query only visits nearby cells.
 export function makeWallStairCollision(plan,geometry) {
   const p=geometry.attributes.position,ix=geometry.index,faces=[],cells=new Map(),size=3;
@@ -23,7 +23,7 @@ export function makeWallStairCollision(plan,geometry) {
   return (x,z,r,bodyY,inspect=false)=>{
     const contacts=inspect?[]:null;
     const ground=plan.walkingGroundAt(x,z,bodyY-1);
-    if(!ground.stair?.stone.wallStair.joint)return plan.collide(x,z,r,bodyY);
+    if(!ground.stair)return plan.collide(x,z,r,bodyY);
     const q=ground.stair.stone,rise=q.wallStair.rise||.16;
     // The leading foot lifts over a riser before the body centre crosses it.
     // Include the rise across the body's radius; ankle samples would turn the

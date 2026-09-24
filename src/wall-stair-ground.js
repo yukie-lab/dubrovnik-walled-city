@@ -22,7 +22,7 @@ export function makeWallStairGround(plan,steps) {
       // flight before its real mitred stones begin. A reachable actual tread
       // owns that layer; rejecting it against the nominal height creates a
       // brief, invisible half-metre step.
-      const reachableTread=(onNominalStair||q.wallStair.joint)&&Math.abs(height-currentY)<.5;
+      const reachableTread=onNominalStair&&Math.abs(height-currentY)<.5;
       if(Math.abs(height-nominal.y)>(onNominalStair?.65:.16)&&!reachableTread)continue;
       if(height>y){y=height;stone=q;}
     }

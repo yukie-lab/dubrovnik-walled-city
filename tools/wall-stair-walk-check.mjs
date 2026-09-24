@@ -40,12 +40,12 @@ for(const st of plan.WALL_STAIRS) {
     rows.push({id:st.id,descending,completed:index===course.length,waypoint:index,elapsed,visited:visited.size,blocked,
       maxFootErrorMm:maxFootError*1000,maxGroundStepMm:maxGroundStep*1000,minStepHeadOffset,maxStepHeadOffset,end:[p.x,p.groundY,p.z]});
   }
-  for(const q of world.walls.stairLayouts.get(st.id).steps.filter(q=>q.wallStair.joint)) {
-    const u=q.wallStair.joint.side>0?0:1,edge=wallStairPoint(q.wallStair,u,.5,q.y),other=wallStairPoint(q.wallStair,1-u,.5,q.y);
+  for(const q of world.walls.stairLayouts.get(st.id).steps)for(const u of [0,1]) {
+    const edge=wallStairPoint(q.wallStair,u,.5,q.y),other=wallStairPoint(q.wallStair,1-u,.5,q.y);
     const distance=Math.hypot(other[0]-edge[0],other[1]-edge[1]),x=edge[0]+(other[0]-edge[0])*.36/distance,z=edge[1]+(other[1]-edge[1])*.36/distance;
     const g=plan.walkingGroundAt(x,z,q.y);if(!g.stair)continue;
     const before=plan.collide(x,z,.35,g.y+1),after=plan.walkingCollide(x,z,.35,g.y+1);
-    lateral.push({id:st.id,segment:q.seg,step:q.step,legacyShift:Math.hypot(before.x-x,before.z-z),actualShift:Math.hypot(after.x-x,after.z-z)});
+    lateral.push({id:st.id,segment:q.seg,step:q.step,side:u,legacyShift:Math.hypot(before.x-x,before.z-z),actualShift:Math.hypot(after.x-x,after.z-z)});
   }
 }
 const report={rows,lateral,legacyGhosts:lateral.filter(r=>r.legacyShift>.02&&r.actualShift<.002).length};

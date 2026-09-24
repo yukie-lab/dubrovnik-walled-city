@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {buildPlan} from '../src/plan.js';
 import {wallStairLayout} from '../src/wall-stair-layout.js';
 import {makeWallStairMasonry} from '../src/wall-stair-masonry.js';
-import {parapetTop} from '../src/wall-stair-coping.js';
+import {parapetTop,cheekTop} from '../src/wall-stair-coping.js';
 import {wallStairPoint} from '../src/wall-stair-joints.js';
 import {stepSurfaceAt} from '../src/step-stone.js';
 
@@ -39,14 +39,14 @@ for(const st of plan.WALL_STAIRS) {
     row.solids++;if(s.type==='coping')row.copings++;
   }
   const parapet=g.clone(),railIndices=[];
-  for(const s of g.userData.stairSolids.filter(s=>s.name==='parapet'))for(let i=s.from*3;i<s.to*3;i++)railIndices.push(ix.getX(i));
+  for(const s of g.userData.stairSolids.filter(s=>s.name==='parapet'||s.name==='cheek'))for(let i=s.from*3;i<s.to*3;i++)railIndices.push(ix.getX(i));
   parapet.setIndex(railIndices);const rail=new THREE.Mesh(parapet,new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
   for(const s of g.userData.stairSolids.filter(s=>s.type==='coping'||s.type==='coping-mortar')) {
-    const segment=layout.segments.find(q=>q.index===s.segment),side=segment.railSign;
+    const segment=layout.segments.find(q=>q.index===s.segment),side=s.side??segment.railSign;
     const a=st.offAt(segment.index-1,side,layout.innerHalf-.02),b=st.offAt(segment.index,side,layout.innerHalf-.02);
     const c=st.offAt(segment.index-1,side,layout.innerHalf+layout.wallThickness+.02),d=st.offAt(segment.index,side,layout.innerHalf+layout.wallThickness+.02);
     for(const u of [.10,.5,.90])for(const v of [.02,.5,.98]) {
-      const t=s.t0+(s.t1-s.t0)*v,top=parapetTop(layout,segment,t),bottom=top-(s.type==='coping'?.14:.15);
+      const t=s.t0+(s.t1-s.t0)*v,top=(s.crown==='cheek'?cheekTop:parapetTop)(layout,segment,t),bottom=top-(s.type==='coping'?.14:.15);
       const at=new THREE.Vector3((a[0]*(1-t)+b[0]*t)*(1-u)+(c[0]*(1-t)+d[0]*t)*u,top+1,
         (a[1]*(1-t)+b[1]*t)*(1-u)+(c[1]*(1-t)+d[1]*t)*u);
       ray.set(at,down);const hit=ray.intersectObject(rail,false)[0];row.copingSeatingQueries++;
