@@ -1,0 +1,322 @@
+diff --git a/src/buildings.js b/src/buildings.js
+index a30f85c..931cd91 100644
+--- a/src/buildings.js
++++ b/src/buildings.js
+@@ -1192,0 +1193,2 @@ export function makeBuildings(plan, tex, floorSupport) {
++  // The conservative bound includes both ring and tube polygonal sagitta.
++  doorIronwork.userData.detailGeometry={geometry:doorIronworkGeometry({distant:true}),maxDeviation:.006};
+diff --git a/src/instance-lod.js b/src/instance-lod.js
+index 4f7189a..26e45fd 100644
+--- a/src/instance-lod.js
++++ b/src/instance-lod.js
+@@ -26,0 +27,3 @@ export class StaticInstanceLOD {
++    this.detail=mesh.userData.detailGeometry??null;
++    this.detailEnabled=true;
++    if(this.detail)this.detailErrors=new Float32Array(this.capacity);
+@@ -43,0 +47 @@ export class StaticInstanceLOD {
++      if(this.detail)this.detailErrors[i]=this.detail.maxDeviation*matrix.getMaxScaleOnAxis();
+@@ -62,0 +67,21 @@ export class StaticInstanceLOD {
++    if(this.detail) {
++      const far=this.farMesh=new THREE.InstancedMesh(this.detail.geometry,mesh.material,this.capacity);
++      far.name=mesh.name+'.distant';far.count=0;
++      far.position.copy(mesh.position);far.quaternion.copy(mesh.quaternion);far.scale.copy(mesh.scale);
++      far.matrix.copy(mesh.matrix);far.matrixAutoUpdate=mesh.matrixAutoUpdate;
++      far.layers.mask=mesh.layers.mask;far.castShadow=mesh.castShadow;far.receiveShadow=mesh.receiveShadow;
++      far.customDepthMaterial=mesh.customDepthMaterial;far.customDistanceMaterial=mesh.customDistanceMaterial;
++      far.frustumCulled=mesh.frustumCulled;far.boundingSphere=mesh.boundingSphere.clone();
++      far.userData={solid:mesh.userData.solid,small:mesh.userData.small,detailParent:mesh.name};
++      this.farIds=new Int32Array(this.capacity).fill(-1);this.nextFarIds=new Int32Array(this.capacity);
++      this.farStreams=this.streams.map(stream=>{
++        const original=stream.attribute;let attribute;
++        if(original===mesh.instanceMatrix)attribute=far.instanceMatrix;
++        else if(original===mesh.instanceColor)attribute=far.instanceColor=original.clone();
++        else {
++          const name=Object.keys(mesh.geometry.attributes).find(key=>mesh.geometry.attributes[key]===original);
++          attribute=original.clone();far.geometry.setAttribute(name,attribute);
++        }
++        return {...stream,attribute};
++      });
++    }
+@@ -65 +90,2 @@ export class StaticInstanceLOD {
+-  update(viewPlanes, shadowPlanes, cameraPosition, pixelScale, shadowPixelScale, occlusion = null, shadowView = null) {
++  update(viewPlanes, shadowPlanes, cameraPosition, pixelScale, shadowPixelScale, occlusion = null, shadowView = null,
++    viewMask=1,detailPixelScale=pixelScale*3) {
+@@ -67 +93 @@ export class StaticInstanceLOD {
+-    let count = 0, changed = false;
++    let count = 0, changed = false,farCount=0,farChanged=false;
+@@ -90,0 +117,10 @@ export class StaticInstanceLOD {
++      // The near geometry remains authoritative whenever its deviation is
++      // resolvable in either the actual viewport or the directional shadow map.
++      // Offscreen shadow casters do not need a fictitious close camera LOD.
++      if(this.detail&&this.detailEnabled&&
++        (!inView||this.detailErrors[i]*detailPixelScale/near<=.20)&&
++        (!inShadow||this.detailErrors[i]*shadowPixelScale<=.20)) {
++        this.nextFarIds[farCount]=i;
++        if(this.farIds[farCount]!==i)farChanged=true;
++        farCount++;continue;
++      }
+@@ -94,0 +131,2 @@ export class StaticInstanceLOD {
++    if(this.farMesh&&(farChanged||farCount!==this.farMesh.count))
++      writeSelection(this.farMesh,this.farStreams,this.farIds,this.nextFarIds,farCount);
+@@ -97,10 +135 @@ export class StaticInstanceLOD {
+-    for (const { attribute, source, size } of this.streams) {
+-      const target = attribute.array;
+-      for (let i = 0; i < count; i++) {
+-        const from = nextIds[i] * size, to = i * size;
+-        for (let j = 0; j < size; j++) target[to + j] = source[from + j];
+-      }
+-      attribute.needsUpdate = true;
+-    }
+-    ids.set(nextIds.subarray(0, count));
+-    mesh.count = count;
++    writeSelection(mesh,this.streams,ids,nextIds,count);
+@@ -109,0 +139 @@ export class StaticInstanceLOD {
++    if(this.farMesh)this.farMesh.count=0;
+@@ -119,0 +150,12 @@ export class StaticInstanceLOD {
++function writeSelection(mesh,streams,ids,nextIds,count) {
++  for (const {attribute,source,size} of streams) {
++    const target=attribute.array;
++    for(let i=0;i<count;i++) {
++      const from=nextIds[i]*size,to=i*size;
++      for(let j=0;j<size;j++)target[to+j]=source[from+j];
++    }
++    attribute.needsUpdate=true;
++  }
++  ids.set(nextIds.subarray(0,count));mesh.count=count;
++}
++
+@@ -139,0 +182,3 @@ export function makeInstanceLOD(root, plan) {
++  // Attach after traversal so generated tiers cannot register themselves as
++  // another source batch. Diagnostics and shader setup see both draw batches.
++  for(const batch of batches)if(batch.farMesh)batch.mesh.parent?.add(batch.farMesh);
+@@ -143 +188 @@ export function makeInstanceLOD(root, plan) {
+-  const signature=new Float64Array(37).fill(NaN), nextSignature=new Float64Array(37);
++  const signature=new Float64Array(38).fill(NaN), nextSignature=new Float64Array(38);
+@@ -147,0 +193 @@ export function makeInstanceLOD(root, plan) {
++    geometricDetailEnabled:true,
+@@ -168,0 +215,4 @@ export function makeInstanceLOD(root, plan) {
++      const projection=camera.projectionMatrix.elements;
++      // Bound perspective magnification even at the viewport corners. Radial
++      // distance alone underestimates projected error at a wide field of view.
++      const detailPixelScale=pixelScale*(1+1/(projection[0]**2)+1/(projection[5]**2));
+@@ -176,0 +227 @@ export function makeInstanceLOD(root, plan) {
++      nextSignature[37]=this.geometricDetailEnabled ? 1 : 0;
+@@ -182,2 +233,5 @@ export function makeInstanceLOD(root, plan) {
+-      for (const b of batches) b.update(view.planes, sun.castShadow ? shadow.planes : null,
+-        camera.position, pixelScale, shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc,camera.layers.mask);
++      for (const b of batches) {
++        b.detailEnabled=this.geometricDetailEnabled;
++        b.update(view.planes, sun.castShadow ? shadow.planes : null,
++          camera.position, pixelScale, shadowPixelScale,this.occlusionEnabled ? occlusion : null,sc,camera.layers.mask,detailPixelScale);
++      }
+diff --git a/src/joinery.js b/src/joinery.js
+index 868f13f..5884d7a 100644
+--- a/src/joinery.js
++++ b/src/joinery.js
+@@ -104 +104 @@ export function doorArchTopGeometry() {
+-export function doorIronworkGeometry() {
++export function doorIronworkGeometry({distant=false}={}) {
+@@ -105,0 +106 @@ export function doorIronworkGeometry() {
++  const block=(w,h,d,x,y,z,bevel)=>distant?new THREE.BoxGeometry(w,h,d).translate(x,y,z):chamferedBlock(w,h,d,x,y,z,bevel);
+@@ -108,2 +109,2 @@ export function doorIronworkGeometry() {
+-      parts.push(chamferedBlock(.125,.040,.012,sign*.422,y,.064,.002));
+-      const pin=new THREE.CylinderGeometry(.011,.011,.085,8);pin.translate(sign*.48,y,.071);parts.push(pin);
++      parts.push(block(.125,.040,.012,sign*.422,y,.064,.002));
++      const pin=new THREE.CylinderGeometry(.011,.011,.085,distant?6:8);pin.translate(sign*.48,y,.071);parts.push(pin);
+@@ -111 +112 @@ export function doorIronworkGeometry() {
+-        const bolt=new THREE.SphereGeometry(.007,6,4);bolt.scale(1,1,.50);bolt.translate(sign*x,y,.073);parts.push(bolt);
++        const bolt=new THREE.SphereGeometry(.007,distant?4:6,distant?2:4);bolt.scale(1,1,.50);bolt.translate(sign*x,y,.073);parts.push(bolt);
+@@ -114,3 +115,3 @@ export function doorIronworkGeometry() {
+-    parts.push(chamferedBlock(.046,.11,.014,sign*.098,1.22,.071,.004));
+-    const ring=new THREE.TorusGeometry(.043,.008,6,16);ring.translate(sign*.098,1.167,.093);parts.push(ring);
+-    const stud=new THREE.SphereGeometry(.014,8,6);stud.scale(1,1,.65);stud.translate(sign*.098,1.215,.088);parts.push(stud);
++    parts.push(block(.046,.11,.014,sign*.098,1.22,.071,.004));
++    const ring=new THREE.TorusGeometry(.043,.008,distant?4:6,distant?8:16);ring.translate(sign*.098,1.167,.093);parts.push(ring);
++    const stud=new THREE.SphereGeometry(.014,distant?6:8,distant?4:6);stud.scale(1,1,.65);stud.translate(sign*.098,1.215,.088);parts.push(stud);
+@@ -118 +119 @@ export function doorIronworkGeometry() {
+-  parts.push(chamferedBlock(.040,.066,.012,.052,.985,.070,.004));
++  parts.push(block(.040,.066,.012,.052,.985,.070,.004));
+diff --git a/src/rainware.js b/src/rainware.js
+index b039509..fd6353c 100644
+--- a/src/rainware.js
++++ b/src/rainware.js
+@@ -21 +21 @@ export function pipeShell(outer=.055,inner=.051,height=1,segments=12) {
+-export function pipeBracketGeometry() {
++export function pipeBracketGeometry({distant=false}={}) {
+@@ -26 +26 @@ export function pipeBracketGeometry() {
+-  for(const y of [-.034,.034]){const bolt=pipeBoltGeometry();bolt.translate(0,y,0);parts.push(bolt);}
++  if(!distant)for(const y of [-.034,.034]){const bolt=pipeBoltGeometry();bolt.translate(0,y,0);parts.push(bolt);}
+@@ -160,0 +161,4 @@ export function makeRainware(proposals,support,body=null) {
++  // Both bolt heads project 7 mm beyond the unchanged closed mounting plate.
++  // The shared LOD keeps them whenever that displacement can resolve in colour
++  // or shadow; the full hollow ring, strap and wall seat remain at all distances.
++  fixings.userData.detailGeometry={geometry:pipeBracketGeometry({distant:true}),maxDeviation:.0071};
+diff --git a/tools/instance-lod-check.mjs b/tools/instance-lod-check.mjs
+index f35ee23..87ab505 100644
+--- a/tools/instance-lod-check.mjs
++++ b/tools/instance-lod-check.mjs
+@@ -55,0 +56,28 @@ assert(stretched.boundingSphere.containsPoint(new THREE.Vector3(0,0,-5)));
++
++// Two geometry tiers must partition the same source instances, preserve every
++// stream on each side of a transition, and retain resolvable shadow detail.
++const tierGeometry=new THREE.BoxGeometry(.1,.1,.1);
++tierGeometry.setAttribute('aWeather',new THREE.InstancedBufferAttribute(new Float32Array([.1,.2,.3,.4]),1));
++const tierMesh=new THREE.InstancedMesh(tierGeometry,new THREE.MeshStandardMaterial(),4);
++for(const [i,xyz]of [[0,[0,0,-1]],[1,[0,0,-100]],[2,[10,0,-100]],[3,[0,0,100]]]) {
++  tierMesh.setMatrixAt(i,new THREE.Matrix4().makeTranslation(...xyz));
++  tierMesh.setColorAt(i,new THREE.Color(i/4,.5,1-i/4));
++}
++tierMesh.castShadow=true;tierMesh.userData.detailGeometry={geometry:new THREE.BoxGeometry(.099,.099,.099),maxDeviation:.001};
++const tiers=new StaticInstanceLOD(tierMesh,{minPixels:0}),tierSource=tiers.streams.map(s=>s.source.slice());
++const frontView=new THREE.PerspectiveCamera(50,1.6,.1,1000),frustum=new THREE.Frustum().setFromProjectionMatrix(frontView.projectionMatrix);
++tiers.update(frustum.planes,null,frontView.position,500,0);
++assert.deepEqual([...tiers.ids.subarray(0,tierMesh.count)],[0]);
++assert.deepEqual([...tiers.farIds.subarray(0,tiers.farMesh.count)],[1,2]);
++assert.equal(tiers.farMesh.geometry.attributes.aWeather.getX(0),Math.fround(.2));
++assert.equal(tiers.farMesh.instanceColor.getX(1),.5);
++assert.equal(tiers.farMesh.instanceMatrix.array[14],-100);
++// A fine shadow map can resolve all details even when colour cannot.
++tiers.update(frustum.planes,[],frontView.position,500,1000);
++assert.equal(tiers.farMesh.count,0);assert.equal(tierMesh.count,4);
++tiers.detailEnabled=false;tiers.update(frustum.planes,null,frontView.position,500,0);
++assert.deepEqual([...tiers.ids.subarray(0,tierMesh.count)],[0,1,2]);
++tiers.detailEnabled=true;tiers.update(frustum.planes,null,frontView.position,500,0);
++assert.equal(tiers.farMesh.count,2);assert.equal(tierMesh.count,1);
++tiers.restore();assert.equal(tiers.farMesh.count,0);assert.equal(tierMesh.count,4);
++tiers.streams.forEach((s,i)=>assert.deepEqual(s.attribute.array,tierSource[i]));
+diff --git a/tools/rendercheck.mjs b/tools/rendercheck.mjs
+index cfaad1d..580b997 100644
+--- a/tools/rendercheck.mjs
++++ b/tools/rendercheck.mjs
+@@ -111,0 +112,4 @@ try {
++  if(args.includes('--detail-study')) {
++    const {detailLODChecks}=await import('./detail-lod-capture.mjs');
++    await detailLODChecks(page,{name,dir,rows,errors,args});views=[];
++  }
+diff --git a/tools/detail-geometry-check.mjs b/tools/detail-geometry-check.mjs
+new file mode 100644
+index 0000000..57e4bf0
+--- /dev/null
++++ b/tools/detail-geometry-check.mjs
+@@ -0,0 +1,36 @@
++import assert from 'node:assert/strict';
++import * as T from 'three';
++import {writeFileSync} from 'node:fs';
++import {doorIronworkGeometry} from '../src/joinery.js';
++import {pipeBracketGeometry} from '../src/rainware.js';
++import {meshTopology} from './structure/geom.mjs';
++
++// Measure both directions, including face interiors and edge midpoints. The
++// configured bound is conservative; this regression measures actual solids.
++const triangles=g=>{
++  const p=g.attributes.position,ix=g.index,n=ix?.count??p.count,out=[];
++  for(let i=0;i<n;i+=3)out.push(new T.Triangle(...[0,1,2].map(k=>new T.Vector3().fromBufferAttribute(p,ix?ix.getX(i+k):i+k))));
++  return out;
++};
++const distance=(source,target)=>{
++  let maximum=0,samples=0;const point=new T.Vector3(),closest=new T.Vector3();
++  for(const t of source)for(const [a,b,c]of [[1,0,0],[0,1,0],[0,0,1],[.5,.5,0],[0,.5,.5],[.5,0,.5],[1/3,1/3,1/3]]) {
++    point.copy(t.a).multiplyScalar(a).addScaledVector(t.b,b).addScaledVector(t.c,c);
++    let best=Infinity;
++    for(const u of target){u.closestPointToPoint(point,closest);best=Math.min(best,point.distanceToSquared(closest));}
++    maximum=Math.max(maximum,Math.sqrt(best));samples++;
++  }
++  return {maximum,samples};
++};
++const rows=[];
++for(const [name,build,bound]of [['door ironwork',doorIronworkGeometry,.006],['pipe bracket',pipeBracketGeometry,.0071]]) {
++  const full=build(),far=build({distant:true}),topology=meshTopology(far);
++  assert.equal(topology.boundaryEdges,0,name+' open surface');assert.equal(topology.nonManifoldEdges,0,name+' invalid join');
++  assert.equal(topology.flippedEdges,0,name+' winding');assert(topology.volume>0,name+' solid volume');
++  const f=triangles(full),d=triangles(far),outward=distance(f,d),inward=distance(d,f);
++  assert(Math.max(outward.maximum,inward.maximum)<=bound,name+' exceeds the projected-error bound');
++  rows.push({name,fullTriangles:f.length,distantTriangles:d.length,bound,fullToDistant:outward,distantToFull:inward,
++    topology:{boundary:topology.boundaryEdges,nonmanifold:topology.nonManifoldEdges,flipped:topology.flippedEdges,volume:topology.volume}});
++}
++writeFileSync('shots/rendercheck/detail-20260926-geometry.json',JSON.stringify(rows,null,2)+'\n');
++console.log(JSON.stringify(rows));
+diff --git a/tools/detail-lod-capture.mjs b/tools/detail-lod-capture.mjs
+new file mode 100644
+index 0000000..592492c
+--- /dev/null
++++ b/tools/detail-lod-capture.mjs
+@@ -0,0 +1,79 @@
++import {readFileSync,writeFileSync} from 'node:fs';
++import {pngPixels} from './png-pixels.mjs';
++
++export async function detailLODChecks(page,{name,dir,rows,errors,args}) {
++  const option=(key,fallback)=>args.includes(key)?args[args.indexOf(key)+1]:fallback;
++  const dpr=Number(option('--detail-dpr',1));
++  await page.setViewport({width:1600,height:1000,deviceScaleFactor:dpr});
++  await page.goto('http://localhost:8765/?shot=1&hud=0&time=12.87',{waitUntil:'domcontentloaded'});
++  await page.waitForFunction('window.__READY&&window.__captureFrame',{timeout:90000});
++  const stations=[],times=[];
++  for(const raw of readFileSync('tools/campaign.txt','utf8').split('\n')) {
++    const m=raw.replace(/\s+#.*$/,'').trim().match(/^(view|time)\s+(\S+)\s+(.+)$/);
++    if(!m)continue;
++    if(m[1]==='time')times.push({label:m[2],time:Number(m[3])});
++    else {
++      const [x,z,yaw,pitch,extra]=m[3].split(':'),query=new URLSearchParams(extra);
++      stations.push({id:m[2],x:+x,z:+z,yaw:+yaw,pitch:+pitch,gy:query.has('gy')?+query.get('gy'):undefined,fov:+query.get('fov')||60});
++    }
++  }
++  const close=JSON.parse(readFileSync('docs/september-rainware-views.json','utf8')).map(s=>({...s,close:true}));
++  const cases=[...stations.flatMap(s=>times.map(t=>({...s,...t}))),...close.map(s=>({...s,label:'close',time:12.87}))];
++  for(const s of args.includes('--detail-benchmark-only')?[]:args.includes('--quick')?cases.filter(s=>s.id==='v3_roofs'||s.id==='v2_alley'||s.id==='pipe-63'):cases) {
++    await page.evaluate(s=>{
++      const w=window.__world,p=w.player;p.teleport(s.x,s.z,s.yaw,s.pitch);
++      if(s.gy!==undefined){const g=p.floorAt(s.x,s.z,s.gy);p.groundY=p.smoothY=g.y;p.zone=g.zone;}
++      p.bobAmp=0;p.frozen=true;w.camera.fov=s.fov;w.camera.updateProjectionMatrix();w.worldState.time=s.time;
++    },s);
++    const snapshots=[];
++    for(const enabled of [false,true,false]) {
++      const shot=await page.evaluate(async enabled=>{
++        const w=window.__world;w.instanceLOD.geometricDetailEnabled=enabled;
++        let png,frames=0;do{png=await window.__captureFrame();frames++;}while(frames<3||w.lighting.environment.pending);
++        return {png,stats:{...window.__RENDER_STATS},gpuError:w.renderer.getContext().getError(),
++          tiers:w.instanceLOD.batches.filter(b=>b.farMesh).map(b=>({name:b.mesh.name,capacity:b.capacity,near:b.mesh.count,far:b.farMesh.count,
++            ids:[...b.ids.subarray(0,b.mesh.count),...b.farIds.subarray(0,b.farMesh.count)].sort((a,b)=>a-b)}))};
++      },enabled);
++      snapshots.push({...shot,png:Buffer.from(shot.png.split(',')[1],'base64')});
++    }
++    const [full,candidate,restored]=snapshots;
++    const a=pngPixels(full.png),b=pngPixels(candidate.png);let peak=0,total=0,changed=0;
++    for(let i=0;i<a.width*a.height;i++){
++      let pixel=0;for(let c=0;c<3;c++){const delta=Math.abs(a.pixels[i*a.channels+c]-b.pixels[i*b.channels+c]);peak=Math.max(peak,delta);pixel=Math.max(pixel,delta);total+=delta;}
++      changed+=pixel>0;
++    }
++    const sameIDs=JSON.stringify(full.tiers.map(t=>t.ids))===JSON.stringify(candidate.tiers.map(t=>t.ids));
++    const row={id:s.id,time:s.time,close:!!s.close,full:full.stats,candidate:candidate.stats,sameIDs,
++      restored:full.png.equals(restored.png),maxByteError:peak,meanByteError:total/(a.width*a.height*3),changedPixels:changed,
++      tiers:candidate.tiers.map(({ids,...t})=>t),gpuErrors:snapshots.map(s=>s.gpuError)};
++    for(const [label,shot]of [['full',full],['detail',candidate]])writeFileSync(new URL(`${name}-${s.id}-${s.label}-${label}.png`,dir),shot.png);
++    rows.push({view:'detail-lod',...row});console.log(JSON.stringify(row));
++    if(!sameIDs||!row.restored||row.gpuErrors.some(Boolean)||candidate.stats.drawCalls>200)errors.push('Detail LOD state or budget mismatch: '+s.id);
++    if(row.meanByteError>.01||(s.close&&row.changedPixels))errors.push('Visible detail LOD change requires inspection: '+s.id);
++  }
++  // Paired runs in the same process isolate this change from power state,
++  // browser warm-up and other applications. Both runs advance the normal clock.
++  if(args.includes('--detail-benchmark')) {
++    const station=stations.find(s=>s.id==='v3_roofs');
++    const samples=await page.evaluate(async ({s,times})=>{
++      const w=window.__world,p=w.player;p.teleport(s.x,s.z,s.yaw,s.pitch);
++      const g=p.floorAt(s.x,s.z,s.gy);p.groundY=p.smoothY=g.y;p.zone=g.zone;
++      w.camera.fov=s.fov;w.camera.updateProjectionMatrix();const frame=()=>new Promise(resolve=>requestAnimationFrame(resolve)),out=[];
++      const update=w.instanceLOD.update;let lodMS=0;
++      w.instanceLOD.update=function(...args){const start=performance.now();try{return update.apply(this,args);}finally{lodMS+=performance.now()-start;}};
++      try { for(const time of times)for(const enabled of [false,true,true,false,false,true]) {
++        w.instanceLOD.geometricDetailEnabled=enabled;w.worldState.time=time;
++        for(let i=0;i<45;i++)await frame();let previous=performance.now(),lastDelta=1/60;const ms=[],calls=[];
++        lodMS=0;
++        for(let i=0;i<150;i++){
++          w.worldState.time+=Math.min(lastDelta,.05)*36/3600;await frame();const now=performance.now();
++          ms.push(now-previous);calls.push(window.__RENDER_STATS.drawCalls);lastDelta=(now-previous)/1000;previous=now;
++        }
++        out.push({time,enabled,fps:150000/ms.reduce((a,b)=>a+b),maxCalls:Math.max(...calls),lodMS:lodMS/150,ms});
++      } } finally { w.instanceLOD.update=update; }
++      return out;
++    },{s:station,times:option('--detail-times','12.87,19.65').split(',').map(Number)});
++    rows.push({view:'detail-benchmark',samples});console.log(JSON.stringify({benchmark:samples.map(({ms,...s})=>s)}));
++  }
++  writeFileSync(new URL(name+'-detail.json',dir),JSON.stringify(rows,null,2)+'\n');
++}

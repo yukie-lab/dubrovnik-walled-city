@@ -1,0 +1,677 @@
+{
+  "baseline": "53b7893",
+  "decision": "rejected: no repeatable frame-rate improvement; up to four additional draw calls",
+  "viewport": {
+    "width": 1600,
+    "height": 1000,
+    "dpr": 1
+  },
+  "affected": {
+    "doorIronwork": 647,
+    "pipeBrackets": 6764
+  },
+  "maximumGeometricErrorPixels": 0.2,
+  "geometry": [
+    {
+      "name": "door ironwork",
+      "fullTriangles": 1156,
+      "distantTriangles": 444,
+      "bound": 0.006,
+      "fullToDistant": {
+        "maximum": 0.0046149386313751005,
+        "samples": 8092
+      },
+      "distantToFull": {
+        "maximum": 0.0033132757757051135,
+        "samples": 3108
+      },
+      "topology": {
+        "boundary": 0,
+        "nonmanifold": 0,
+        "flipped": 0,
+        "volume": 0.0005948921939026256
+      }
+    },
+    {
+      "name": "pipe bracket",
+      "fullTriangles": 136,
+      "distantTriangles": 88,
+      "bound": 0.0071,
+      "fullToDistant": {
+        "maximum": 0.006999999284744263,
+        "samples": 952
+      },
+      "distantToFull": {
+        "maximum": 1.5612511283791264e-17,
+        "samples": 616
+      },
+      "topology": {
+        "boundary": 0,
+        "nonmanifold": 0,
+        "flipped": 0,
+        "volume": 0.00022974915472902843
+      }
+    }
+  ],
+  "imageComparisons": [
+    {
+      "view": "detail-lod",
+      "id": "v2_alley",
+      "time": 7.9,
+      "close": false,
+      "full": {
+        "instances": 110555,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 47,
+        "residentInstances": 110725,
+        "culledInstances": 1433391,
+        "drawCalls": 144,
+        "triangles": 4187511,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 110555,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 47,
+        "residentInstances": 110725,
+        "culledInstances": 1433391,
+        "drawCalls": 142,
+        "triangles": 4187487,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 61,
+          "far": 0
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 1218,
+          "far": 0
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v2_alley",
+      "time": 12.87,
+      "close": false,
+      "full": {
+        "instances": 111685,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 46,
+        "residentInstances": 111901,
+        "culledInstances": 1432215,
+        "drawCalls": 142,
+        "triangles": 4488177,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 111685,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 46,
+        "residentInstances": 111901,
+        "culledInstances": 1432215,
+        "drawCalls": 140,
+        "triangles": 4488153,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 85,
+          "far": 0
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 1097,
+          "far": 0
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v2_alley",
+      "time": 19.3,
+      "close": false,
+      "full": {
+        "instances": 105832,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 47,
+        "residentInstances": 106002,
+        "culledInstances": 1438114,
+        "drawCalls": 144,
+        "triangles": 3280441,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 105832,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 47,
+        "residentInstances": 106002,
+        "culledInstances": 1438114,
+        "drawCalls": 142,
+        "triangles": 3280417,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 28,
+          "far": 0
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 319,
+          "far": 0
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v2_alley",
+      "time": 21.2,
+      "close": false,
+      "full": {
+        "instances": 106849,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 45,
+        "residentInstances": 107157,
+        "culledInstances": 1436959,
+        "drawCalls": 140,
+        "triangles": 3657413,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 106849,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 45,
+        "residentInstances": 107157,
+        "culledInstances": 1436959,
+        "drawCalls": 138,
+        "triangles": 3657389,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 38,
+          "far": 0
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 587,
+          "far": 0
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v3_roofs",
+      "time": 7.9,
+      "close": false,
+      "full": {
+        "instances": 358588,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 55,
+        "residentInstances": 358620,
+        "culledInstances": 1185496,
+        "drawCalls": 171,
+        "triangles": 13079435,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 358588,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 55,
+        "residentInstances": 358620,
+        "culledInstances": 1185496,
+        "drawCalls": 173,
+        "triangles": 12302627,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 2,
+          "far": 201
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 57,
+          "far": 5110
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v3_roofs",
+      "time": 12.87,
+      "close": false,
+      "full": {
+        "instances": 322568,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 54,
+        "residentInstances": 322646,
+        "culledInstances": 1221470,
+        "drawCalls": 168,
+        "triangles": 14256427,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 322568,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 54,
+        "residentInstances": 322646,
+        "culledInstances": 1221470,
+        "drawCalls": 170,
+        "triangles": 13226003,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 2,
+          "far": 388
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 57,
+          "far": 4978
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v3_roofs",
+      "time": 19.3,
+      "close": false,
+      "full": {
+        "instances": 288554,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 52,
+        "residentInstances": 288637,
+        "culledInstances": 1255479,
+        "drawCalls": 161,
+        "triangles": 6955297,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 288554,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 52,
+        "residentInstances": 288637,
+        "culledInstances": 1255479,
+        "drawCalls": 163,
+        "triangles": 6891513,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 2,
+          "far": 11
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 57,
+          "far": 501
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "v3_roofs",
+      "time": 21.2,
+      "close": false,
+      "full": {
+        "instances": 331044,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 50,
+        "residentInstances": 331265,
+        "culledInstances": 1212851,
+        "drawCalls": 160,
+        "triangles": 8904061,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 331044,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 50,
+        "residentInstances": 331265,
+        "culledInstances": 1212851,
+        "drawCalls": 162,
+        "triangles": 8731285,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 2,
+          "far": 33
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 57,
+          "far": 1310
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "view": "detail-lod",
+      "id": "pipe-63",
+      "time": 12.87,
+      "close": true,
+      "full": {
+        "instances": 13085,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 53,
+        "residentInstances": 13163,
+        "culledInstances": 1530953,
+        "drawCalls": 145,
+        "triangles": 3044262,
+        "dpr": 1
+      },
+      "candidate": {
+        "instances": 13085,
+        "instanceCapacity": 1544116,
+        "instanceBatches": 53,
+        "residentInstances": 13163,
+        "culledInstances": 1530953,
+        "drawCalls": 143,
+        "triangles": 3044238,
+        "dpr": 1
+      },
+      "sameIDs": true,
+      "restored": true,
+      "maxByteError": 0,
+      "meanByteError": 0,
+      "changedPixels": 0,
+      "tiers": [
+        {
+          "name": "door.ironwork",
+          "capacity": 647,
+          "near": 88,
+          "far": 0
+        },
+        {
+          "name": "house.pipeBracket",
+          "capacity": 6764,
+          "near": 1062,
+          "far": 0
+        }
+      ],
+      "gpuErrors": [
+        0,
+        0,
+        0
+      ]
+    }
+  ],
+  "timingSummary": [
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "fullMedianFPS": 19.094172458102047,
+      "trialMedianFPS": 18.865788778402546,
+      "relativeChangePercent": -1.1960910073512632
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "fullMedianFPS": 22.519479350927128,
+      "trialMedianFPS": 22.73381731137268,
+      "relativeChangePercent": 0.9517891471000128
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "fullMedianFPS": 27.20348204570185,
+      "trialMedianFPS": 27.437351381013354,
+      "relativeChangePercent": 0.8597036766050836
+    }
+  ],
+  "timingSamples": [
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 19.049312320517387,
+      "maxCalls": 173
+    },
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 18.794872758486836,
+      "maxCalls": 177
+    },
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 18.865788778402546,
+      "maxCalls": 177
+    },
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 19.094172458102047,
+      "maxCalls": 173
+    },
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 19.277727798483486,
+      "maxCalls": 173
+    },
+    {
+      "date": "2026-09-26",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 18.89430525616875,
+      "maxCalls": 177
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": false,
+      "fps": 22.66922577004913,
+      "maxCalls": 180,
+      "lodMS": 6.279999996821085
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": true,
+      "fps": 23.614237811472115,
+      "maxCalls": 184,
+      "lodMS": 5.8820000171661375
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": true,
+      "fps": 22.666827853324722,
+      "maxCalls": 184,
+      "lodMS": 6.370666666030884
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": false,
+      "fps": 22.479992806723594,
+      "maxCalls": 180,
+      "lodMS": 5.681999994913737
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": false,
+      "fps": 22.519479350927128,
+      "maxCalls": 180,
+      "lodMS": 5.793333326975505
+    },
+    {
+      "date": "2026-09-27",
+      "time": 12.87,
+      "enabled": true,
+      "fps": 22.73381731137268,
+      "maxCalls": 184,
+      "lodMS": 6.343333339691162
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 27.20348204570185,
+      "maxCalls": 173,
+      "lodMS": 4.9366666730244955
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 27.437351381013354,
+      "maxCalls": 177,
+      "lodMS": 4.663999983469645
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 28.237420229794797,
+      "maxCalls": 177,
+      "lodMS": 4.219333349863688
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 28.01538978845458,
+      "maxCalls": 173,
+      "lodMS": 4.32666667620341
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": false,
+      "fps": 27.00075602070508,
+      "maxCalls": 173,
+      "lodMS": 5.1066666634877524
+    },
+    {
+      "date": "2026-09-27",
+      "time": 19.65,
+      "enabled": true,
+      "fps": 27.213846404580032,
+      "maxCalls": 177,
+      "lodMS": 4.988666683832804
+    }
+  ],
+  "limitations": [
+    "Only nine fixed image conditions were compared.",
+    "No DPR=2 or moving-camera visual acceptance; prototype not shipped.",
+    "Triangle submission count is not a GPU timing measurement.",
+    "Absolute speed differs with machine load and power state; repeated in-process toggle used for comparison."
+  ]
+}
