@@ -8,7 +8,6 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
-import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 import { buildWorld } from './world.js';
 import { makeRenderDiagnostics } from './diagnostics.js';
@@ -19,6 +18,7 @@ import { setWetTime } from './wet.js';
 import { monumentTime } from './monuments.js';
 import { makeLighting } from './light.js';
 import { MesopicShader } from './mesopic.js';
+import {makeRadianceStorage,RadianceOutputPass} from './radiance-storage.js';
 import { shareFrameShadows } from './frame-shadows.js';
 import { warmShadowPrograms } from './shader-warmup.js';
 import { CityAudio } from './audio.js';
@@ -82,6 +82,7 @@ window.__RENDER_STATS = diagnostics.stats;
 if (SHOT) window.__captureFrame = () => diagnostics.captureNextFrame();
 
 const lighting = makeLighting(renderer, scene, tex, sky, sea);
+const radianceStorage=makeRadianceStorage(scene,sea);
 const frameShadows = shareFrameShadows(renderer, scene, camera);
 const audio = new CityAudio(monuments.bellPos);
 window.__audio = audio;   // ヘッドレス検証用
@@ -186,6 +187,7 @@ window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
   solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
   renderer,
+  radianceStorage,
   instanceLOD,
   frameShadows,
   counts: world.counts,
@@ -261,8 +263,9 @@ composer.addPass(bloom);
 // Luminance-dependent observer response precedes exposure and display encoding.
 // No painted colour grade, grain, vignette or lifted night-black floor.
 const mesopic = new ShaderPass(MesopicShader);
+mesopic.uniforms.uRadianceScale=radianceStorage.scale;
 composer.addPass(mesopic);
-composer.addPass(new OutputPass());
+composer.addPass(new RadianceOutputPass(radianceStorage.scale));
 
 // ------------------------------------------------------ 表題のカメラ ----
 // 背景は絵でも動画でもない。**動いている街そのもの**。
@@ -489,6 +492,7 @@ function frame(now) {
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
+  radianceStorage.update(sun.ghi);
   sky.update(sun, state.elapsed, camera.position, camera, renderer);
   sea.update(sun, state.elapsed, camera, scene.fog ? scene.fog.density : null);
   lighting.waterLight.update(sun);
@@ -498,7 +502,8 @@ function frame(now) {
   // Threshold in scene radiance tracks exposure; only sources and strong
   // reflections bloom. It cannot brighten an intrinsically dark night sky.
   bloom.strength = 0.0004 + lightState.glare * 0.002;
-  bloom.threshold = 4.0 / Math.max(lightState.exposure, .01);
+  bloom.threshold = 4.0 * radianceStorage.scale.value / Math.max(lightState.exposure, .01);
+  bloom.highPassUniforms.smoothWidth.value=.01*radianceStorage.scale.value;
   bloom.radius = .18;
   buildings.setClock(sun.time);
 

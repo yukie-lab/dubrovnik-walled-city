@@ -3,14 +3,14 @@ import { ATM } from './atmosphere-model.js';
 // scene luminance, before exposure and display encoding. RGB alone cannot
 // recover a unique spectrum or an exact scotopic response (metamerism).
 export const MesopicShader={
-  uniforms:{tDiffuse:{value:null}},
+  uniforms:{tDiffuse:{value:null},uRadianceScale:{value:1}},
   vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
   fragmentShader:/* glsl */`
-    varying vec2 vUv;uniform sampler2D tDiffuse;
+    varying vec2 vUv;uniform sampler2D tDiffuse;uniform float uRadianceScale;
     void main(){
       vec4 c=texture2D(tDiffuse,vUv);
       float Y=max(0.0,dot(c.rgb,vec3(.2126,.7152,.0722)));
-      float cd=Y*${ATM.luxPerUnit.toFixed(1)};
+      float cd=Y*${ATM.luxPerUnit.toFixed(1)}/uRadianceScale;
       float cones=smoothstep(log(.005),log(5.0),log(max(cd,1e-8)));
       // A normalized short-wavelength-sensitive rod proxy: red surfaces lose
       // relative brightness as cone vision recedes. No additive night floor.

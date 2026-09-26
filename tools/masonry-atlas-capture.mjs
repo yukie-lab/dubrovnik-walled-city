@@ -26,7 +26,8 @@ export async function masonryAtlasCapture(page,{name,dir,rows,errors,args}) {
   });
   const times=args.includes('--masonry-times')?args[args.indexOf('--masonry-times')+1].split(',').map(Number):[7.9,12.87];
   if(times.some(t=>!Number.isFinite(t)||t<0||t>24))throw new Error('Invalid masonry inspection time');
-  for(const time of times)for(const s of stations) {
+  const selected=args.includes('--masonry-id')?stations.filter(s=>args[args.indexOf('--masonry-id')+1].split(',').includes(s.id)):stations;
+  for(const time of times)for(const s of selected) {
     const png=await page.evaluate(async({s,time})=>{
       const w=window.__world,p=w.player,g=(w.plan.walkingGroundAt||w.plan.groundAt)(s.x,s.z,s.gy);
       Object.assign(p,{x:s.x,z:s.z,groundY:g.y,smoothY:g.y,zone:g.zone,stair:g.stair??null,
@@ -37,7 +38,11 @@ export async function masonryAtlasCapture(page,{name,dir,rows,errors,args}) {
     },{s,time});
     const file=`${name}-${s.id}-${time}.png`;
     writeFileSync(new URL(file,dir),Buffer.from(png.split(',')[1],'base64'));
-    const stats=await page.evaluate(()=>({...window.__RENDER_STATS,gpuError:window.__world.renderer.getContext().getError()}));
+    const stats=await page.evaluate(()=>{
+      const w=window.__world,l=w.lighting.state;
+      return {...window.__RENDER_STATS,gpuError:w.renderer.getContext().getError(),
+        exposure:l.exposure,meterIlluminance:l.meterIlluminance,storageScale:w.radianceStorage?.scale.value??1};
+    });
     const row={view:'masonry-atlas',id:s.id,time,file,prototype,...stats};rows.push(row);console.log(JSON.stringify(row));
     if(stats.gpuError||stats.drawCalls>200)errors.push('Masonry rendering failure: '+file);
   }

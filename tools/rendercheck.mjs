@@ -125,6 +125,18 @@ try {
     const {masonryAtlasCapture}=await import('./masonry-atlas-capture.mjs');
     await masonryAtlasCapture(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--stair-illuminance')) {
+    const {stairIlluminanceProbe}=await import('./stair-illuminance-probe.mjs');
+    await stairIlluminanceProbe(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--night-precision')) {
+    const {nightPrecisionCheck}=await import('./night-precision-check.mjs');
+    await nightPrecisionCheck(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--radiance-storage')) {
+    const {radianceStorageCheck}=await import('./radiance-storage-check.mjs');
+    await radianceStorageCheck(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--masonry-repeat')) {
     const {masonryRepeatCheck}=await import('./masonry-repeat-check.mjs');
     await masonryRepeatCheck(page,{name,dir,rows,errors});views=[];
@@ -168,6 +180,10 @@ try {
   if(args.includes('--sea-regression')) {
     const {seaRegressionCapture}=await import('./sea-regression-capture.mjs');
     await seaRegressionCapture(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--sea-precision')) {
+    const {seaPrecisionProbe}=await import('./sea-precision-probe.mjs');
+    await seaPrecisionProbe(page,{name,dir,rows,errors});views=[];
   }
   if(args.includes('--sea-glare')) {
     const {seaGlareCapture}=await import('./sea-glare-capture.mjs');

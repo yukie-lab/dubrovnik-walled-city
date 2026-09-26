@@ -48,6 +48,57 @@ rod response. [Night Rendering](https://graphics.stanford.edu/~henrik/papers/nig
 discusses both physical night illumination and these limits of hue reproduction.
 Bright local lamps keep their colour because they are above the mesopic range.
 
+## Radiance storage precision, 25 September
+
+The 5,000 cd/m² scene unit made shaded night radiance too small for the original
+RGBA16F scene targets. Comparing the identical scene in Float32 and Float16 at
+six wall stairs found 83,454 erased pixels out of 256,000 in the enclosed climb;
+32,393 of the 54,144 pixels in its lower, central tread region were zero in
+Float16 despite nonzero Float32 radiance. All six views lost precision. Raising
+camera exposure afterwards cannot recover a value that was already discarded.
+
+`radiance-storage.js` now stores scene colour in power-of-two units, chosen from
+the astronomical illuminance (1 at noon, 4,096 at 22:30). This is an invertible
+representation change, following the pre-exposure principle described in
+[Epic's rendering documentation](https://dev.epicgames.com/documentation/unreal-engine/auto-exposure-in-unreal-engine).
+No source intensity, albedo, atmospheric radiance or exposure law changes.
+The underwater buffer is decoded before refraction and screen-space reflection.
+The mesopic observer reads absolute luminance, while bloom thresholds and final
+display exposure use the stored units. Multiplicative dirt remains a dimensionless
+transmittance coefficient. PMREM uses a separate frozen scale, published together
+with its finished texture so unfinished environment jobs cannot mix units.
+
+`stair-20260925-storage-precision` compares 1,536,000 scene pixels: erased pixels
+are zero in all six views, and relative luminance RMS error versus Float32 stays
+below 0.040%. `storage-20260925-reference` checks 20 combinations of storage scale
+and exposure through the real mesopic/AgX output stages; at scales 4,096 and 8,192,
+the maximum display difference from Float32 is 1/255. Four independent Float32
+PMREM references differ by at most 0.159% RMS, with no erased or nonfinite values.
+The scheduled filter still exactly matches native half-float PMREM at six times.
+
+Three daytime staircase/parapet reference images are pixel-identical to the
+committed baseline. The sky cycle has 16 stable images, 77 valid material
+programs and no GPU errors. This fixes numerical loss; it does not claim that
+the unlit enclosed stair is yet sufficiently legible at night. The preceding
+incident-light/exposure prototype washed out the daytime enclosure and was
+archived without being adopted.
+
+The four-time sea comparison initially failed the old displayed-image tolerance:
+night foam/glitter diagnostics differ by up to 2/255 after precision is restored.
+An independent Float32 probe (`tools/sea-precision-probe.mjs`, `--sea-precision`)
+then compared water-column length, Fresnel, normals, foam components, glitter
+and foam coverage before display processing. All 48 pairs / 13,283,688 water
+samples are bit-identical after decoding storage units. Coefficients and the
+depth-dependent transmission remain unchanged. The old image tolerance was not
+relaxed or reported as passing. Six normal sea images (two views at noon, golden
+hour and sunset) are pixel-identical; the two normal night images differ by at
+most 3/255 because their weak radiance is now retained. The physical sources and
+exposure are identical in both captures.
+
+Normal moving-clock checks at DPR=1 measured 27.3 fps over roofs and 47.8 fps
+over the sea, with maximum 173 frame draw calls and no GPU errors. These are
+measurements on the current test machine, not a universal 60 fps claim.
+
 The sea source file remains unchanged. `atmosphere-sea.js` explicitly connects
 sky reflection, incident irradiance, the fallback bottom/foam illumination floors,
 the dominant sun-or-moon direction, and camera-to-water atmospheric transport.

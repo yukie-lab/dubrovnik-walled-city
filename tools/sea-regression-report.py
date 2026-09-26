@@ -5,6 +5,7 @@ from PIL import Image
 
 p=argparse.ArgumentParser();p.add_argument('baseline');p.add_argument('candidate');p.add_argument('--output',required=True)
 p.add_argument('--sky-reflection-revision',action='store_true',help='Authorized visible-facet sky reflection change; optics, waves, glint and foam must stay fixed.')
+p.add_argument('--same-optics',action='store_true',help='Both captures use the current, unchanged calibrated extinction coefficients.')
 a=p.parse_args();root=Path('shots/rendercheck');report=[]
 def read(prefix,view,phase,mode):
     return Image.open(root/f'{prefix}-{view}-{phase}-{mode}.png').convert('RGB')
@@ -41,12 +42,12 @@ for phase in ['noon','gold','sunset','night']:
     sheet.save(str(a.output)+'-'+phase+'.png')
 # A path calculation is reported separately: changing extinction is an allowed
 # spectral transport change, so it must never be misreported as identical T.
-sigma0=[1,.22,.09] if a.sky_reflection_revision else [1,.16,.03];sigma1=[1,.22,.09];trans=[]
+sigma0=[1,.22,.09] if a.sky_reflection_revision or a.same_optics else [1,.16,.03];sigma1=[1,.22,.09];trans=[]
 for depth in [.25,.5,1,2]:
     path=depth*(1/math.sin(math.radians(35))+1/math.sin(math.radians(58.0075806175)))
     b=[math.exp(-s*path) for s in sigma0];c=[math.exp(-s*path) for s in sigma1]
     trans.append({'verticalDepthMetres':depth,'roundTripMetres':path,'baselineRGB':b,'candidateRGB':c})
-data={'baseline':a.baseline,'candidate':a.candidate,'skyReflectionRevision':a.sky_reflection_revision,'diagnostics':report,'transmission35DegreeView':trans}
+data={'baseline':a.baseline,'candidate':a.candidate,'skyReflectionRevision':a.sky_reflection_revision,'sameOptics':a.same_optics,'diagnostics':report,'transmission35DegreeView':trans}
 Path(str(a.output)+'.json').write_text(json.dumps(data,indent=2)+'\n')
 print(json.dumps(data,indent=2))
 if any(v['maximum8bit']>2 or v['meanAbsolute8bit']>.01 for r in report for v in r['protected'].values()):

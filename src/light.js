@@ -8,6 +8,7 @@ import { bindSeaAtmosphere } from './atmosphere-sea.js';
 import { ATMOSPHERE_GLSL } from './atmosphere-glsl.js';
 import { ATM, exposureForIlluminance } from './atmosphere-model.js';
 import { localHorizontalIlluminance } from './illumination-meter.js';
+import {radianceStorageScale} from './radiance-storage.js';
 import { makeEnvironmentConvolver } from './environment-convolver.js';
 import { skipInactiveLocalLights } from './local-light-shader.js';
 
@@ -39,28 +40,30 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
   waterLight.optics.bindBottomMaterials(scene);
 
   const convolver=makeEnvironmentConvolver(renderer),envScene=new THREE.Scene();
-  const envUniforms={...atmosphere.uniforms,uGround:{value:new THREE.Color()}};
+  const envUniforms={...atmosphere.uniforms,uGround:{value:new THREE.Color()},uEnvScale:{value:1}};
   envScene.add(new THREE.Mesh(new THREE.SphereGeometry(10,24,16),new THREE.ShaderMaterial({
     uniforms:envUniforms,side:THREE.BackSide,toneMapped:false,
     vertexShader:'varying vec3 vDir;void main(){vDir=position;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
-    fragmentShader:`varying vec3 vDir;uniform vec3 uGround;${ATMOSPHERE_GLSL}
-      void main(){vec3 d=normalize(vDir);gl_FragColor=vec4(d.y>=0.0?atSkyRadiance(d):uGround,1.0);}`,
+    fragmentShader:`varying vec3 vDir;uniform vec3 uGround;uniform float uEnvScale;${ATMOSPHERE_GLSL}
+      void main(){vec3 d=normalize(vDir);gl_FragColor=vec4((d.y>=0.0?atSkyRadiance(d):uGround)*uEnvScale,1.0);}`,
   })));
-  let envRT=null,lastEnvTime=-99,lastEnvHeight=NaN,lastSkyY=1,pendingSample=null;
+  let envRT=null,lastEnvTime=-99,lastEnvHeight=NaN,lastSkyY=1,lastEnvScale=1,pendingSample=null;
+  const explicitEnvIntensity=new Map(specularEnvTargets.map(m=>[m,m.envMapIntensity]));
   const environment={scene:envScene,state:convolver.state,
     get pending(){return !!pendingSample;},get time(){return lastEnvTime;},
-    get height(){return lastEnvHeight;},get target(){return envRT;}};
-  function publishEnvironment(rt,time,skyY,height) {
-    const previous=envRT;envRT=rt;lastEnvTime=time;lastEnvHeight=height;lastSkyY=Math.max(skyY,1e-12);
+    get height(){return lastEnvHeight;},get target(){return envRT;},get scale(){return lastEnvScale;}};
+  function publishEnvironment(rt,time,skyY,height,scale) {
+    const previous=envRT;envRT=rt;lastEnvTime=time;lastEnvHeight=height;lastSkyY=Math.max(skyY,1e-12);lastEnvScale=scale;
     scene.environment=rt.texture;
-    for(const m of specularEnvTargets)m.envMap=rt.texture;
+    for(const m of specularEnvTargets){m.envMap=rt.texture;m.envMapIntensity=explicitEnvIntensity.get(m)/scale;}
     previous?.dispose();
   }
   function initialize(sunState,height) {
     atmosphere.update(sunState,height);atmosphere.applyState(sunState);
     envUniforms.uGround.value.copy(sunState.hemiGround);
+    envUniforms.uEnvScale.value=radianceStorageScale(sunState.ghi);
     const sy=sunState.hemiSky.r*.2126+sunState.hemiSky.g*.7152+sunState.hemiSky.b*.0722;
-    publishEnvironment(convolver.initial(envScene),sunState.time,sy,atmosphere.uniforms.uAtHeight.value*1000);
+    publishEnvironment(convolver.initial(envScene),sunState.time,sy,atmosphere.uniforms.uAtHeight.value*1000,envUniforms.uEnvScale.value);
   }
   const state={exposure:.6,targetExposure:.6,glare:0,snap:false};
   function place(light,dir,colour,intensity,camPos) {
@@ -151,12 +154,13 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     }
     if(pendingSample) {
       const rt=convolver.step();
-      if(rt){publishEnvironment(rt,pendingSample.time,pendingSample.skyY,pendingSample.height);pendingSample=null;}
+      if(rt){publishEnvironment(rt,pendingSample.time,pendingSample.skyY,pendingSample.height,pendingSample.scale);pendingSample=null;}
     }else if(Math.abs(sunState.time-lastEnvTime)>.012||Math.abs(skyHeight-lastEnvHeight)>.001) {
       envUniforms.uGround.value.copy(sunState.hemiGround);
-      convolver.begin(envScene);pendingSample={time:sunState.time,skyY:sy,height:skyHeight};
+      envUniforms.uEnvScale.value=radianceStorageScale(sunState.ghi);
+      convolver.begin(envScene);pendingSample={time:sunState.time,skyY:sy,height:skyHeight,scale:envUniforms.uEnvScale.value};
     }
-    scene.environmentIntensity=sy/lastSkyY;
+    scene.environmentIntensity=sy/lastSkyY/lastEnvScale;
     tex.clock.draw(sunState.time);
     return state;
   }

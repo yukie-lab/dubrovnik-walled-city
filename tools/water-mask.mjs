@@ -18,9 +18,10 @@ export async function captureWaterMask(page) {
       mask=new Uint8ClampedArray(pixels.length);
       for(let y=0;y<800;y++)for(let x=0;x<1200;x++) {
         const src=((799-y)*1200+x)*4,dst=(y*1200+x)*4;
-        const r=half?T.DataUtils.fromHalfFloat(pixels[src]):pixels[src];
-        const g=half?T.DataUtils.fromHalfFloat(pixels[src+1]):pixels[src+1];
-        const b=half?T.DataUtils.fromHalfFloat(pixels[src+2]):pixels[src+2];
+        const scale=w.radianceStorage?.scale.value??1;
+        const r=(half?T.DataUtils.fromHalfFloat(pixels[src]):pixels[src])/scale;
+        const g=(half?T.DataUtils.fromHalfFloat(pixels[src+1]):pixels[src+1])/scale;
+        const b=(half?T.DataUtils.fromHalfFloat(pixels[src+2]):pixels[src+2])/scale;
         mask[dst]=mask[dst+1]=mask[dst+2]=r===-1&&g===2&&b===-1?255:0;mask[dst+3]=255;
       }
     };

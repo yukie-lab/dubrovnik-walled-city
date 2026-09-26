@@ -58,7 +58,7 @@ export async function seaTransportProbe(page,{name,dir,rows,errors,args}) {
       w.__seaProbe=Object.fromEntries(Object.entries(indices).map(([key,index])=>{
         const sum=[0,0,0];
         for(const i of index)for(let k=0;k<3;k++)sum[k]+=half?T.DataUtils.fromHalfFloat(pixels[i+k]):pixels[i+k];
-        return [key,sum.map(v=>v/index.length)];
+        return [key,sum.map(v=>v/index.length/(w.radianceStorage?.scale.value??1))];
       }));
     };
     w.__restoreSeaProbe=()=>{R.render=render;m.fragmentShader=original;m.needsUpdate=true;};
