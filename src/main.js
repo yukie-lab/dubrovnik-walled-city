@@ -252,6 +252,13 @@ function renderUnder() {
 }
 
 const composer = new EffectComposer(renderer, composerRT);
+// RenderPass/bloom keep readBuffer (rt2); mesopic and OutputPass swap twice,
+// returning both buffers to these roles at the end of every frame. Only rt2
+// draws geometry. The observer writes one full-screen colour per pixel, so a
+// second multisample colour/depth allocation and resolve cannot add edge AA.
+composer.renderTarget1.samples = 0;
+composer.renderTarget1.depthBuffer = false;
+composer.renderTarget1.texture.name = 'city.observer';
 composer.addPass(new RenderPass(scene, camera));
 // 接地の翳りは GTAO ではなく「天空可視率」を頂点に焼いて作る(skyvis.js)。
 // スクリーン空間の AO は半径が数十cm なので、6m のトンネル・4m の路地の底・
@@ -266,6 +273,11 @@ const mesopic = new ShaderPass(MesopicShader);
 mesopic.uniforms.uRadianceScale=radianceStorage.scale;
 composer.addPass(mesopic);
 composer.addPass(new RadianceOutputPass(radianceStorage.scale));
+// An explicit render target has physical dimensions; EffectComposer otherwise
+// treats them as logical when sizing newly added passes, applying DPR twice.
+// Establish the same logical size used by all subsequent resize operations.
+composer.setSize(innerWidth, innerHeight);
+window.__world.postprocessing = { composer, bloom, mesopic };
 
 // ------------------------------------------------------ 表題のカメラ ----
 // 背景は絵でも動画でもない。**動いている街そのもの**。

@@ -1,0 +1,269 @@
+{
+  "baseline": "2248c140bda7464b5ab747175aee6e04f6d32684",
+  "acceptance": "Remove redundant observer multisampling/depth and correct initial pass dimensions; no shader or physical model changes.",
+  "imageComparison": {
+    "dpr1": {
+      "errors": [],
+      "conditions": 32,
+      "identical": 32,
+      "stable": 32,
+      "maxDrawCalls": 169,
+      "gpuErrors": 0
+    },
+    "deviceDpr2RenderDpr1_6": {
+      "errors": [],
+      "conditions": 32,
+      "identical": 32,
+      "stable": 32,
+      "maxDrawCalls": 169,
+      "gpuErrors": 0
+    }
+  },
+  "allocation": [
+    {
+      "view": "postprocessing-layout",
+      "dpr": 1.6,
+      "canvas": [
+        2048,
+        1280
+      ],
+      "scene": [
+        2048,
+        1280
+      ],
+      "observer": [
+        2048,
+        1280
+      ],
+      "bright": [
+        1024,
+        640
+      ],
+      "sceneSamples": 4,
+      "observerSamples": 0,
+      "observerDepth": false,
+      "removedMultisampleColourBytes": 83886080
+    },
+    {
+      "view": "postprocessing-resize",
+      "width": 1000,
+      "height": 750,
+      "dpr": 1.6,
+      "canvas": [
+        1600,
+        1200
+      ],
+      "scene": [
+        1600,
+        1200
+      ],
+      "observer": [
+        1600,
+        1200
+      ],
+      "bright": [
+        800,
+        600
+      ],
+      "sceneSamples": 4,
+      "observerSamples": 0,
+      "observerDepth": false,
+      "gpuError": 0
+    },
+    {
+      "view": "postprocessing-resize",
+      "width": 800,
+      "height": 1000,
+      "dpr": 1.6,
+      "canvas": [
+        1280,
+        1600
+      ],
+      "scene": [
+        1280,
+        1600
+      ],
+      "observer": [
+        1280,
+        1600
+      ],
+      "bright": [
+        640,
+        800
+      ],
+      "sceneSamples": 4,
+      "observerSamples": 0,
+      "observerDepth": false,
+      "gpuError": 0
+    },
+    {
+      "view": "postprocessing-resize",
+      "width": 1280,
+      "height": 800,
+      "dpr": 1.6,
+      "canvas": [
+        2048,
+        1280
+      ],
+      "scene": [
+        2048,
+        1280
+      ],
+      "observer": [
+        2048,
+        1280
+      ],
+      "bright": [
+        1024,
+        640
+      ],
+      "sceneSamples": 4,
+      "observerSamples": 0,
+      "observerDepth": false,
+      "gpuError": 0
+    }
+  ],
+  "ui": {
+    "view": "ui",
+    "initial": {
+      "title": "DUBROVNIK",
+      "button": true,
+      "dpr": 1.4500000000000002
+    },
+    "map": {
+      "colors": 37,
+      "width": 624,
+      "height": 624,
+      "withinViewport": true
+    },
+    "before": 7.1,
+    "earlier": 6.85,
+    "time": 7.1,
+    "mapClosed": true,
+    "debug": "draw calls 172  tris 4625k  fps 59\ninstances 49,742 drawn / 1,536,705 capacity  LOD culled 1,486,963  DPR 0.85\nzone stradun  t 7.10  exp 1.34  @ -147.0, 4.4, 0.3  yaw -1.571 pitch 0.020\nbuilt: houses:665 win:1915 shut:2958 steps:1889 merlon:203 pine:1490 cloth:360 pot:328 swift:46",
+    "dpr": 0.85,
+    "fps": 58.69310029998704,
+    "instances": 49742,
+    "instanceCapacity": 1536705,
+    "instanceBatches": 55,
+    "residentInstances": 49742,
+    "culledInstances": 1486963,
+    "drawCalls": 172,
+    "triangles": 4625464
+  },
+  "benchmarkProtocol": {
+    "css": [
+      1600,
+      1000
+    ],
+    "dpr": 1,
+    "warmupFrames": 45,
+    "measuredFrames": 180,
+    "clockStepHoursPerFrame": 0.0003,
+    "order": [
+      "before",
+      "after",
+      "after",
+      "before",
+      "before",
+      "after"
+    ],
+    "animation": 40,
+    "note": "Same browser/tab; moving clock and atmosphere, frozen people/waves. Measures observer allocation only, at DPR 1."
+  },
+  "benchmark": [
+    {
+      "time": 12.87,
+      "runs": [
+        {
+          "enabled": false,
+          "fps": 22.766942399636534,
+          "p95": 46.89999999990687,
+          "maxCalls": 180
+        },
+        {
+          "enabled": true,
+          "fps": 23.78969906030601,
+          "p95": 45.299999999813735,
+          "maxCalls": 180
+        },
+        {
+          "enabled": true,
+          "fps": 23.81330369900043,
+          "p95": 44.3000000002794,
+          "maxCalls": 180
+        },
+        {
+          "enabled": false,
+          "fps": 24.42201237381991,
+          "p95": 43.39999999990687,
+          "maxCalls": 180
+        },
+        {
+          "enabled": false,
+          "fps": 23.771162938116618,
+          "p95": 46,
+          "maxCalls": 180
+        },
+        {
+          "enabled": true,
+          "fps": 24.748731627505357,
+          "p95": 43.89999999990687,
+          "maxCalls": 180
+        }
+      ],
+      "medianBefore": 23.771162938116618,
+      "medianAfter": 23.81330369900043,
+      "gpuError": 0
+    },
+    {
+      "time": 19.65,
+      "runs": [
+        {
+          "enabled": false,
+          "fps": 25.829040451147584,
+          "p95": 40,
+          "maxCalls": 173
+        },
+        {
+          "enabled": true,
+          "fps": 27.851274195794858,
+          "p95": 38.5,
+          "maxCalls": 173
+        },
+        {
+          "enabled": true,
+          "fps": 28.128076508366874,
+          "p95": 37.39999999990687,
+          "maxCalls": 173
+        },
+        {
+          "enabled": false,
+          "fps": 27.005130974885606,
+          "p95": 39,
+          "maxCalls": 173
+        },
+        {
+          "enabled": false,
+          "fps": 27.247543936664215,
+          "p95": 38.5,
+          "maxCalls": 173
+        },
+        {
+          "enabled": true,
+          "fps": 27.585361368235105,
+          "p95": 40.60000000009313,
+          "maxCalls": 173
+        }
+      ],
+      "medianBefore": 27.005130974885606,
+      "medianAfter": 27.851274195794858,
+      "gpuError": 0
+    }
+  ],
+  "limits": [
+    "Nominal removed colour storage is width * height * four samples * RGBA16F (8 bytes); not a measured process-memory delta.",
+    "No reliable daytime speed improvement; small evening gain does not establish all-view or all-device 60fps.",
+    "Image equality compares the two observer allocation modes at the corrected pass dimensions. Initial high-DPR sizing is validated against the canvas and unchanged/changed resize behavior."
+  ]
+}

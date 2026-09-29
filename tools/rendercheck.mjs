@@ -109,6 +109,10 @@ try {
     const {frameGeometryProfile}=await import('./frame-geometry-profile.mjs');
     await frameGeometryProfile(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--postprocessing')) {
+    const {postprocessingCheck}=await import('./postprocessing-check.mjs');
+    await postprocessingCheck(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--shader-transition')) {
     const {shaderTransitionCheck}=await import('./shader-transition-check.mjs');
     await shaderTransitionCheck(page,{name,dir,rows,errors});views=[];
