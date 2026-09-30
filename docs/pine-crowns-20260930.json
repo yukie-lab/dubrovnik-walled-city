@@ -1,0 +1,198 @@
+{
+  "baselineCommit": "2ae8104",
+  "change": "Distribute the existing pine branches vertically and taper their lengths through the crown",
+  "shape": {
+    "baseline": "2ae8104",
+    "pines": 24,
+    "unchangedOtherSpecies": 72,
+    "budgetAndRandomStreamUnchanged": true,
+    "meanVertical80PerHeight": {
+      "before": 0.10256376809714945,
+      "after": 0.19271008201971726
+    },
+    "meanRadius90PerHeight": {
+      "before": 0.5007823267296707,
+      "after": 0.426435539324413
+    }
+  },
+  "maxLeafSurfaceAreaDifference": 4.547473508864641e-13,
+  "inventory": {
+    "count": 1490,
+    "sha256": "ec82c3f879ccbd8ca5c9596a072ca264d293efc1decc3f3aa573dbf0317f4018",
+    "islandVertices": "61037b8faf9d8b70a45afc92f5f45b2d9204f6baed6cbfe6e31d287869bb1a38",
+    "census": {
+      "maquis": 605,
+      "aleppoPine": 681,
+      "olive": 48,
+      "cypress": 156
+    },
+    "batches": [
+      {
+        "triangles": 1301820,
+        "vertices": 850570,
+        "closedParts": 99830,
+        "customDepth": true,
+        "castShadow": true
+      },
+      {
+        "triangles": 544980,
+        "vertices": 357296,
+        "closedParts": 42403,
+        "customDepth": true,
+        "castShadow": true
+      }
+    ],
+    "foliage": [
+      {
+        "instances": 1034130,
+        "trianglesPerInstance": 4,
+        "verticesPerInstance": 4,
+        "customDepth": true
+      },
+      {
+        "instances": 438870,
+        "trianglesPerInstance": 4,
+        "verticesPerInstance": 4,
+        "customDepth": true
+      }
+    ],
+    "leafAnchors": {
+      "total": 1473000,
+      "bad": 0,
+      "maxGap": 1.1368683772161603e-13
+    },
+    "cards": 0,
+    "tubes": 0,
+    "displacedRoots": 0
+  },
+  "campaign": {
+    "record": "crown-20260930-sweep",
+    "conditions": 32,
+    "stableConditions": 32,
+    "maxDrawCalls": 169,
+    "note": "This run overlapped the movement/HiDPI checks; its FPS is not used as a performance comparison."
+  },
+  "hidpi": {
+    "record": "crown-20260930-hidpi",
+    "conditions": 9,
+    "stable": true,
+    "gpuErrors": 0,
+    "drawDPR": 1.6,
+    "visualLimitation": "One of three angles is occluded by a foreground cypress; crown shape was inspected from the remaining two angles."
+  },
+  "wind": {
+    "view": "leaf-wind",
+    "cases": 32,
+    "vertices": 32768,
+    "minDet": 0.9977356195449829,
+    "maxNormalError": 0.0007172017358243465,
+    "maxMatrixError": 1.8597783935092593e-07,
+    "maxBaseError": 5.984263135411908e-05,
+    "bad": []
+  },
+  "walks": [
+    {
+      "run": 0,
+      "distanceX": 9.31078192262504,
+      "zone": "wall",
+      "drawCalls": 163
+    },
+    {
+      "run": 1,
+      "distanceX": 8.919987476580445,
+      "zone": "wall",
+      "drawCalls": 163
+    },
+    {
+      "run": 2,
+      "distanceX": 8.893511883255997,
+      "zone": "wall",
+      "drawCalls": 164
+    }
+  ],
+  "density": {
+    "conditions": 13,
+    "exactRestorations": 13
+  },
+  "benchmark": {
+    "record": "crown-20260930-benchmark",
+    "time": 12.87,
+    "warmupFrames": 45,
+    "measuredFrames": 180,
+    "timeStepHours": 0.0003,
+    "animationPhase": 40,
+    "runs": [
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "before",
+        "growthVersion": "before",
+        "fps": 16.57229664410993,
+        "p95": 66.5,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "after",
+        "growthVersion": "after",
+        "fps": 22.667455829926695,
+        "p95": 49.30000001192093,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "after",
+        "growthVersion": "after",
+        "fps": 24.192898040414022,
+        "p95": 43.69999998807907,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "before",
+        "growthVersion": "before",
+        "fps": 23.957196475658716,
+        "p95": 44.099999994039536,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "before",
+        "growthVersion": "before",
+        "fps": 24.065458045903984,
+        "p95": 45.099999994039536,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "view": "pine-crown-benchmark",
+        "mode": "after",
+        "growthVersion": "after",
+        "fps": 24.563989191854745,
+        "p95": 42,
+        "maxCalls": 180,
+        "gpuError": 0
+      }
+    ],
+    "medians": {
+      "before": {
+        "fps": 23.957196475658716,
+        "p95ms": 45.099999994039536
+      },
+      "after": {
+        "fps": 24.192898040414022,
+        "p95ms": 43.69999998807907
+      }
+    },
+    "fpsChangePercent": 0.98384452035023
+  },
+  "review": "shots/rendercheck/crown-20260930-review.html",
+  "limitations": [
+    "The botanical reference informs crown shape, not measured numerical parameters.",
+    "Leaf count and surface area do not increase; sparse crowns and large-looking needle sprays remain refinement targets.",
+    "The small median FPS difference does not establish a speed improvement."
+  ]
+}

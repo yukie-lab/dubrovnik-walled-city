@@ -1,7 +1,10 @@
 import {readFileSync,writeFileSync,existsSync} from 'node:fs';
+import {pathToFileURL} from 'node:url';
 
 // node tools/foliage-review.mjs <output-name> <capture-name> [...capture-names]
-const [name,...records]=process.argv.slice(2),dir=new URL('../shots/rendercheck/',import.meta.url);
+const dir=new URL('../shots/rendercheck/',import.meta.url);
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href) {
+const [name,...records]=process.argv.slice(2);
 if(!name||!records.length||[name,...records].some(s=>!/^[-\w]+$/.test(s)))
   throw new Error('Provide an output name and passing foliage capture names');
 const rows=records.flatMap(record=>{
@@ -16,12 +19,26 @@ const rows=records.flatMap(record=>{
     return {record,id,time,stats,before,after};
   });
 });
+writeFoliageReview(name,rows);
+}
+
+export function writeFoliageReview(name,rows,{
+  title='木々の陰影を比較',
+  description='葉の表裏で混ざっていた面の向きを直し、細かな白い斑点を減らしました。',
+  note='1,490本の木に共通する描画を修正。樹木や葉の配置は維持しています。遠景の枝葉の密度や樹形には、引き続き改善の余地があります。',
+}={}) {
+if(!/^[-\w]+$/.test(name)||!rows.length)throw new Error('A comparison name and images are required');
+for(const r of rows)for(const file of [r.before,r.after])
+  if(!/^[-\w.]+\.png$/.test(file)||!existsSync(new URL(file,dir)))throw new Error('Missing or invalid comparison image');
+const escape=s=>s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const labels={aleppoPine:'松',cypress:'糸杉',olive:'オリーブ',maquis:'低木',roofs:'城壁からの遠景',
+  'aleppoPine-1.8':'松・近景','aleppoPine-4':'松・中景','cypress-1.8':'糸杉・近景','cypress-4':'糸杉・中景',
+  'aleppoPine-hidpi':'松・高解像度',
   v1_stradun:'ストラドゥン',v2_alley:'路地',v3_roofs:'城壁と屋根',v4_srd:'スルジ山',
   v5_sea:'海',v6_lovrijenac:'ロヴリイェナツ要塞',v7_harbour:'港',v8_luza:'ルジャ広場'};
 const stations=[...new Map(rows.map(r=>[r.record+'/'+r.id,{record:r.record,id:r.id}])).values()];
 const page=`<!doctype html><html lang="ja"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>木々の陰影を比較 — Dubrovnik</title><style>
+<title>${escape(title)} — Dubrovnik</title><style>
 *{box-sizing:border-box}body{margin:0;background:#f3f0e9;color:#302e28;font:16px/1.7 system-ui,sans-serif}
 main{max-width:1320px;margin:auto;padding:28px}h1{font:500 28px Georgia,serif;margin:0 0 10px}
 p{max-width:850px}a{color:#3d5846}label{display:inline-flex;gap:10px;align-items:center;margin:0 20px 12px 0}
@@ -32,17 +49,16 @@ select{font:inherit;background:#fffdf7;color:inherit;border:1px solid #a29a8a;pa
 .caption{display:flex;justify-content:space-between;gap:20px;margin-top:8px}input{width:100%;accent-color:#526d53}
 .data{font-size:14px;color:#625b50}footer{border-top:1px solid #cbc3b5;margin-top:28px;padding-top:16px}
 @media(max-width:650px){main{padding:16px}.caption{font-size:13px}}
-</style><main><h1>木々の陰影を比較</h1>
-<p>葉の表裏で混ざっていた面の向きを直し、細かな白い斑点を減らしました。
+</style><main><h1>${escape(title)}</h1>
+<p>${escape(description)}
 同じ位置・時刻で、左に変更前、右に変更後を表示します。スライダーで境界を動かせます。</p>
 <label>視点<select id="station">${stations.map((s,i)=>`<option value="${i}">${labels[s.id]||s.id}</option>`).join('')}</select></label>
 <label>時刻<select id="time"></select></label>
-<div class="view"><img id="old" alt="変更前の木々の陰影"><img class="after" id="new" alt="変更後の木々の陰影"><div class="divider" id="divider"></div></div>
+<div class="view"><img id="old" alt="変更前の木々"><img class="after" id="new" alt="変更後の木々"><div class="divider" id="divider"></div></div>
 <label style="display:block;margin:8px 0"><span class="data">比較境界</span><input id="split" aria-label="変更前後の表示境界" type="range" min="0" max="100" value="50"></label>
 <div class="caption"><a id="oldLink" target="_blank" rel="noopener">変更前の原寸画像</a><a id="newLink" target="_blank" rel="noopener">変更後の原寸画像</a></div>
 <p id="stats" class="data" aria-live="polite"></p>
-<p class="data">1,490本の木に共通する描画を修正。樹木や葉の配置は維持しています。
-遠景の枝葉の密度や樹形には、引き続き改善の余地があります。</p>
+<p class="data">${escape(note)}</p>
 <footer><a href="/">街を歩く</a> · <a href="/docs/september-campaign.md">作業記録</a></footer></main>
 <script>
 const rows=${JSON.stringify(rows)},stations=${JSON.stringify(stations)},el=id=>document.getElementById(id);
@@ -55,6 +71,7 @@ function changeStation(){const previous=el('time').value;el('time').replaceChild
 if(matching().some(r=>String(r.time)===previous))el('time').value=previous;show();}
 el('station').onchange=changeStation;el('time').onchange=show;
 el('split').oninput=()=>{const v=el('split').value+'%';el('new').style.clipPath='inset(0 0 0 '+v+')';el('divider').style.left=v;};
-el('station').value=String(Math.max(0,stations.findIndex(s=>s.id==='aleppoPine')));changeStation();
+el('station').value=String(Math.max(0,stations.findIndex(s=>s.id.startsWith('aleppoPine'))));changeStation();
 </script></html>`;
 writeFileSync(new URL(name+'-review.html',dir),page);console.log(new URL(name+'-review.html',dir).pathname);
+}

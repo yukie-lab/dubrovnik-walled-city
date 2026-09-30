@@ -35,12 +35,15 @@ export function growPine(B,base,rnd,o={}) {
   const n=(detail>.5 ? 6 : 4)+Math.floor(rnd()*3),windA=rnd()*TAU;
   const color=o.foliage??[.095,.16,.118];
   for(let k=0;k<n;k++) {
-    const t=clear+(1-clear)*(.08+.75*rnd()),u=t*(segments-1);
+    // Distribute the existing branch budget through the live crown. Previously
+    // almost equal branch lengths all ended in one narrow horizontal band.
+    // Younger crowns taper upwards; older crowns retain a broader upper dome.
+    const crownT=(k+rnd())/n,t=clear+(1-clear)*(.08+.83*crownT),u=t*(segments-1);
     const j=Math.min(segments-2,Math.floor(u)),from=mix(path[j],path[j+1],u-j);
-    const a=k/n*TAU+(rnd()-.5)*.8;
+    const a=leanA+k*2.3999632297+(rnd()-.5)*.8;
     const asym=.74+.4*(.5+.5*Math.cos(a-windA));
-    const L=H*(.48-(t-clear)*.3)*asym*(.8+rnd()*.33);
-    const tip=[from[0]+Math.cos(a)*L,base[1]+H*(.81+rnd()*.14),from[2]+Math.sin(a)*L];
+    const L=H*(.44-crownT*(.30-age*.14))*asym*(.8+rnd()*.33);
+    const tip=[from[0]+Math.cos(a)*L,base[1]+H*(.67+crownT*(.26-age*.08)+age*.06+rnd()*.07),from[2]+Math.sin(a)*L];
     const middle=mix(from,tip,.55);middle[1]+=H*(.024+rnd()*.025);
     const branch=[from,middle,tip],radius=r0*(.28+rnd()*.15);
     stem(B,branch,[radius,radius*.58,Math.max(.009,radius*.14)],bark,4,phase+k*.2);

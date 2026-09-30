@@ -281,6 +281,14 @@ try {
     const {foliageNormalStudy}=await import('./foliage-normal-study.mjs');
     await foliageNormalStudy(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--pine-crown')) {
+    const {pineCrownCapture}=await import('./pine-crown-capture.mjs');
+    await pineCrownCapture(page,{name,dir,rows,errors});views=[];
+  }
+  if(args.includes('--crown-benchmark')) {
+    const {pineCrownBenchmark}=await import('./pine-crown-capture.mjs');
+    await pineCrownBenchmark(page,{rows,errors});views=[];
+  }
   if(args.includes('--tour')) {
     const {tourChecks}=await import('./tour-capture.mjs');
     await tourChecks(page,{name,dir,rows,errors,args});views=[];
