@@ -47,6 +47,11 @@ export function growLeafCluster(B,at,radii,rnd,color,yaw=0) {
 }
 
 export function woodlandLeafMesh(B,material,depth) {
+  // Opposite sides of this thin closed leaf share vertices. Interpolating their
+  // averaged normals points INTO the solid over part of every face. Derive the
+  // normal from the rendered triangle, after instance growth and wind, without
+  // duplicating vertices or changing foliage geometry, cutouts or shadows.
+  material.flatShading=true;
   const geometry=woodlandLeafGeometry(),count=B.FM.length/16;
   geometry.setAttribute('aTree',new THREE.InstancedBufferAttribute(new Float32Array(B.FT),4));
   geometry.setAttribute('aNeedle',new THREE.InstancedBufferAttribute(new Float32Array(B.FK||count),1));

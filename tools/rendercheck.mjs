@@ -277,6 +277,10 @@ try {
     const {woodlandDensityChecks}=await import('./woodland-density-capture.mjs');
     await woodlandDensityChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--foliage-normals')) {
+    const {foliageNormalStudy}=await import('./foliage-normal-study.mjs');
+    await foliageNormalStudy(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--tour')) {
     const {tourChecks}=await import('./tour-capture.mjs');
     await tourChecks(page,{name,dir,rows,errors,args});views=[];

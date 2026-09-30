@@ -1,0 +1,309 @@
+{
+  "baselineCommit": "0f08417",
+  "change": "Use rendered face normals for closed, shared-vertex woodland leaves",
+  "normalProbe": {
+    "view": "foliage-normal-gpu",
+    "production": [
+      {
+        "instances": 1034130,
+        "flat": true
+      },
+      {
+        "instances": 438870,
+        "flat": true
+      }
+    ],
+    "cases": [
+      {
+        "flat": false,
+        "angle": 0,
+        "samples": 733,
+        "inward": 171,
+        "maxVectorError": 1.998800664800197,
+        "rmsVectorError": 0.9618330718561475
+      },
+      {
+        "flat": false,
+        "angle": 0.6,
+        "samples": 599,
+        "inward": 140,
+        "maxVectorError": 1.9987814987079757,
+        "rmsVectorError": 0.9625838948214189
+      },
+      {
+        "flat": false,
+        "angle": -0.8,
+        "samples": 512,
+        "inward": 121,
+        "maxVectorError": 1.9987974088108957,
+        "rmsVectorError": 0.9684244609749809
+      },
+      {
+        "flat": false,
+        "angle": 2.641592653589793,
+        "samples": 654,
+        "inward": 152,
+        "maxVectorError": 1.999337213605411,
+        "rmsVectorError": 0.9654159476761239
+      },
+      {
+        "flat": false,
+        "angle": 3.141592653589793,
+        "samples": 742,
+        "inward": 173,
+        "maxVectorError": 1.9993210099866914,
+        "rmsVectorError": 0.9662365767931679
+      },
+      {
+        "flat": true,
+        "angle": 0,
+        "samples": 733,
+        "inward": 0,
+        "maxVectorError": 8.307355510109745e-05,
+        "rmsVectorError": 4.343204893728527e-05
+      },
+      {
+        "flat": true,
+        "angle": 0.6,
+        "samples": 599,
+        "inward": 0,
+        "maxVectorError": 7.993663958465924e-05,
+        "rmsVectorError": 3.113101455989538e-05
+      },
+      {
+        "flat": true,
+        "angle": -0.8,
+        "samples": 512,
+        "inward": 0,
+        "maxVectorError": 5.415702805222548e-05,
+        "rmsVectorError": 1.9528166769221432e-05
+      },
+      {
+        "flat": true,
+        "angle": 2.641592653589793,
+        "samples": 654,
+        "inward": 0,
+        "maxVectorError": 8.264846975452396e-05,
+        "rmsVectorError": 3.26440616569056e-05
+      },
+      {
+        "flat": true,
+        "angle": 3.141592653589793,
+        "samples": 742,
+        "inward": 0,
+        "maxVectorError": 9.46343250601038e-05,
+        "rmsVectorError": 3.164219360621877e-05
+      }
+    ],
+    "gpuError": 0
+  },
+  "windProbe": {
+    "view": "leaf-wind",
+    "cases": 32,
+    "vertices": 32768,
+    "minDet": 0.99781334400177,
+    "maxNormalError": 7.30275814930792e-07,
+    "maxMatrixError": 2.1215062417923036e-07,
+    "maxBaseError": 5.984263135411908e-05,
+    "bad": []
+  },
+  "visual": [
+    {
+      "record": "canopy-20260930-normal-study",
+      "conditions": 15,
+      "exactRestorations": 15,
+      "maxDrawCalls": 169,
+      "drawDPR": [
+        1
+      ],
+      "gpuErrors": 0
+    },
+    {
+      "record": "canopy-20260930-sweep",
+      "conditions": 32,
+      "exactRestorations": 32,
+      "maxDrawCalls": 169,
+      "drawDPR": [
+        1
+      ],
+      "gpuErrors": 0,
+      "geometryAndDrawCallsUnchanged": true
+    },
+    {
+      "record": "canopy-20260930-hidpi",
+      "conditions": 15,
+      "exactRestorations": 15,
+      "maxDrawCalls": 169,
+      "drawDPR": [
+        1.6
+      ],
+      "gpuErrors": 0,
+      "geometryAndDrawCallsUnchanged": true
+    }
+  ],
+  "density": {
+    "record": "canopy-20260930-hidpi",
+    "conditions": 13,
+    "exactRestorations": 13,
+    "note": "Density changes intentionally alter pixels; only returning to the same density must match exactly."
+  },
+  "inventory": {
+    "count": 1490,
+    "sha256": "ec82c3f879ccbd8ca5c9596a072ca264d293efc1decc3f3aa573dbf0317f4018",
+    "islandVertices": "61037b8faf9d8b70a45afc92f5f45b2d9204f6baed6cbfe6e31d287869bb1a38",
+    "census": {
+      "maquis": 605,
+      "aleppoPine": 681,
+      "olive": 48,
+      "cypress": 156
+    },
+    "batches": [
+      {
+        "triangles": 1301820,
+        "vertices": 850570,
+        "closedParts": 99830,
+        "customDepth": true,
+        "castShadow": true
+      },
+      {
+        "triangles": 544980,
+        "vertices": 357296,
+        "closedParts": 42403,
+        "customDepth": true,
+        "castShadow": true
+      }
+    ],
+    "foliage": [
+      {
+        "instances": 1034130,
+        "trianglesPerInstance": 4,
+        "verticesPerInstance": 4,
+        "customDepth": true
+      },
+      {
+        "instances": 438870,
+        "trianglesPerInstance": 4,
+        "verticesPerInstance": 4,
+        "customDepth": true
+      }
+    ],
+    "leafAnchors": {
+      "total": 1473000,
+      "bad": 0,
+      "maxGap": 1.1368683772161603e-13
+    },
+    "cards": 0,
+    "tubes": 0,
+    "displacedRoots": 0
+  },
+  "benchmark": [
+    {
+      "time": 12.87,
+      "runs": [
+        {
+          "flat": false,
+          "fps": 24.727992087041898,
+          "p95": 43.299999999813735,
+          "maxCalls": 180
+        },
+        {
+          "flat": true,
+          "fps": 24.717805058910137,
+          "p95": 42.5,
+          "maxCalls": 180
+        },
+        {
+          "flat": true,
+          "fps": 23.648116033420933,
+          "p95": 47.10000000055879,
+          "maxCalls": 180
+        },
+        {
+          "flat": false,
+          "fps": 24.297400178180325,
+          "p95": 44.69999999925494,
+          "maxCalls": 180
+        },
+        {
+          "flat": false,
+          "fps": 24.3909049025725,
+          "p95": 43,
+          "maxCalls": 180
+        },
+        {
+          "flat": true,
+          "fps": 23.747015132124588,
+          "p95": 48.5,
+          "maxCalls": 180
+        }
+      ],
+      "medianFPS": {
+        "before": 24.3909049025725,
+        "after": 23.747015132124588
+      },
+      "changePercent": -2.6398765155285497,
+      "medianP95Ms": {
+        "before": 43.299999999813735,
+        "after": 47.10000000055879
+      },
+      "gpuError": 0
+    },
+    {
+      "time": 19.65,
+      "runs": [
+        {
+          "flat": false,
+          "fps": 27.164480932044288,
+          "p95": 40,
+          "maxCalls": 173
+        },
+        {
+          "flat": true,
+          "fps": 27.96985471214358,
+          "p95": 38.89999999944121,
+          "maxCalls": 173
+        },
+        {
+          "flat": true,
+          "fps": 27.138269483019016,
+          "p95": 43,
+          "maxCalls": 173
+        },
+        {
+          "flat": false,
+          "fps": 29.531919082543517,
+          "p95": 36.39999999944121,
+          "maxCalls": 173
+        },
+        {
+          "flat": false,
+          "fps": 26.78053352774091,
+          "p95": 43,
+          "maxCalls": 173
+        },
+        {
+          "flat": true,
+          "fps": 26.320407088963695,
+          "p95": 48.5,
+          "maxCalls": 173
+        }
+      ],
+      "medianFPS": {
+        "before": 27.164480932044288,
+        "after": 27.138269483019016
+      },
+      "changePercent": -0.09649162482008311,
+      "medianP95Ms": {
+        "before": 40,
+        "after": 43
+      },
+      "gpuError": 0
+    }
+  ],
+  "limitations": [
+    "Tree crown shape, density and botanical leaf dimensions are unchanged.",
+    "The face-normal GPU fixture uses zero wind; deformation is covered by the separate wind probe.",
+    "The performance data do not establish a speed improvement."
+  ],
+  "review": "shots/rendercheck/canopy-20260930-review.html"
+}

@@ -28,7 +28,12 @@ export async function woodlandDensityChecks(page,{name,dir,rows,errors}) {
     const images={},stats={};
     for(const [mode,enabled] of [['source',false],['density',true],['restored',false]]) {
       await page.evaluate(v=>{window.__world.instanceLOD.vegetationDetailEnabled=v;},enabled);
-      for(let f=0;f<4;f++)images[mode]=await page.evaluate(()=>window.__captureFrame());
+      images[mode]=await page.evaluate(async()=>{
+        let image,n=0;
+        do{image=await window.__captureFrame();n++;}while((n<4||window.__world.lighting.environment.pending)&&n<40);
+        if(window.__world.lighting.environment.pending)throw new Error('Vegetation capture has unfinished environment lighting');
+        return image;
+      });
       stats[mode]=await page.evaluate(()=>({...window.__RENDER_STATS,leafBatches:window.__world.instanceLOD.batches.filter(b=>'pixelArea' in b)
         .map(b=>({count:b.mesh.count,capacity:b.capacity,detail:[...b.detail],pixelArea:b.pixelArea}))}));
       if(mode!=='restored')writeFileSync(new URL(`${name}-${s.id}-${mode}.png`,dir),Buffer.from(images[mode].split(',')[1],'base64'));
