@@ -1,0 +1,368 @@
+{
+  "baseline": "32cdc85",
+  "date": "2026-10-02",
+  "change": "Sparse leaf stream updates with source order retained within each tree and recounting limited to changed selections",
+  "sources": {
+    "src/woodland-leaf-lod.js": "f99c1c61c924ca00af5c2f75cd08dc7db17d11952419386704f14dbec849e6e4",
+    "src/woodland-leaf-slots.js": "82d3b1dc569e20edab4d32283238b8ca15a9f94d2aa53de13ed391d8b0aa6500"
+  },
+  "images": {
+    "normal": 55,
+    "hidpi": 31,
+    "total": 86,
+    "allPngHashesAndCountsEqual": true,
+    "maxDrawCalls": 169,
+    "slotStorageBytes": 11808507,
+    "reports": [
+      "slots-20261002-visual",
+      "slots-20261002-hidpi"
+    ]
+  },
+  "unit": {
+    "command": "node tools/woodland-slots-check.mjs",
+    "referenceInstances": 1536,
+    "growthMaxError": 1.1175870895385742e-7,
+    "fractionOnlyUpdates": 63,
+    "instanceUploadsForFractions": 0,
+    "abruptSelections": 96,
+    "slotInstances": 3410,
+    "slotSelections": 240,
+    "individualTreeChanges": 228,
+    "partialUploads": true,
+    "treeOrder": true,
+    "firstChangeBytes": 25168,
+    "oldSuffixBytes": 351312
+  },
+  "wind": {
+    "report": "slots-20261001-final",
+    "view": "leaf-wind",
+    "cases": 32,
+    "vertices": 32768,
+    "minDet": 0.9977356195449829,
+    "maxNormalError": 0.0007172017358243465,
+    "maxMatrixError": 1.8597783935092593e-7,
+    "maxBaseError": 0.00005984263135411908,
+    "bad": []
+  },
+  "programs": {
+    "materialPrograms": 77,
+    "collisions": [],
+    "missing": [],
+    "glErrors": []
+  },
+  "walking": {
+    "report": "slots-20261001-final",
+    "version": "Tree-order correction, before the recount fast path",
+    "runs": [
+      {
+        "run": 0,
+        "distance": 10.14195285057296,
+        "fps": 26.95014223678163,
+        "p95ms": 50.099999999998545,
+        "lodMs": 16.425925926293857,
+        "bufferTraffic": {
+          "calls": 9875,
+          "bytes": 429824844
+        },
+        "leafScheduledBytes": 5882448,
+        "drawCalls": 163,
+        "dpr": 1,
+        "zone": "wall"
+      },
+      {
+        "run": 1,
+        "distance": 9.757111423188544,
+        "fps": 24.93765586029938,
+        "p95ms": 66.09999999999854,
+        "lodMs": 16.85973154298411,
+        "bufferTraffic": {
+          "calls": 10062,
+          "bytes": 418206360
+        },
+        "leafScheduledBytes": 9383104,
+        "drawCalls": 164,
+        "dpr": 1,
+        "zone": "wall"
+      },
+      {
+        "run": 2,
+        "distance": 9.602221478834439,
+        "fps": 24.397734252297095,
+        "p95ms": 66.70000000000437,
+        "lodMs": 17.243356641564336,
+        "bufferTraffic": {
+          "calls": 10445,
+          "bytes": 388583408
+        },
+        "leafScheduledBytes": 12241424,
+        "drawCalls": 163,
+        "dpr": 1,
+        "zone": "wall"
+      }
+    ]
+  },
+  "benchmark": {
+    "report": "slots-20261002-benchmark",
+    "method": "One shared world and buffers; alternating real old/new applySelection methods after source-order and scene-state warmup; 45 warm frames per scene; 240 fixed poses over 10 m backward on north wall, or 180 roof frames advancing clock 0.0003 h/frame; DPR 1, animation 40",
+    "sequence": [
+      "before",
+      "after",
+      "after",
+      "before",
+      "before",
+      "after"
+    ],
+    "scenes": {
+      "north": {
+        "frames": 240,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "matchingPerFrameCountsAndEndpoints": true,
+        "before": {
+          "fps": 35.69250903469799,
+          "p95ms": 99.5,
+          "over50ms": 22,
+          "bufferBytes": 816342412,
+          "bufferCalls": 14050,
+          "leafScheduledBytes": 521542928,
+          "maxCalls": 164
+        },
+        "after": {
+          "fps": 34.85332558814987,
+          "p95ms": 33.80000001192093,
+          "over50ms": 2,
+          "bufferBytes": 305574388,
+          "bufferCalls": 14600,
+          "leafScheduledBytes": 10774904,
+          "maxCalls": 164
+        },
+        "fpsPercent": -2.351147255387165,
+        "transferReductionPercent": 62.567865700943145
+      },
+      "roofs": {
+        "frames": 180,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "matchingPerFrameCountsAndEndpoints": true,
+        "before": {
+          "fps": 23.446964269413467,
+          "p95ms": 44,
+          "over50ms": 1,
+          "bufferBytes": 375416012,
+          "bufferCalls": 10379,
+          "leafScheduledBytes": 80321696,
+          "maxCalls": 180
+        },
+        "after": {
+          "fps": 23.495320515348975,
+          "p95ms": 43.79999998211861,
+          "over50ms": 1,
+          "bufferBytes": 295470172,
+          "bufferCalls": 10394,
+          "leafScheduledBytes": 375856,
+          "maxCalls": 180
+        },
+        "fpsPercent": 0.20623670245698555,
+        "transferReductionPercent": 21.295266436318116
+      }
+    },
+    "runs": [
+      {
+        "mode": "before",
+        "scene": "north",
+        "fps": 35.84871840825307,
+        "p95ms": 97.69999998807907,
+        "over50ms": 22,
+        "bufferTraffic": {
+          "calls": 14050,
+          "bytes": 816342412
+        },
+        "leafScheduledBytes": 521542928,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "fps": 23.37176690559615,
+        "p95ms": 44.099999994039536,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10379,
+          "bytes": 375416012
+        },
+        "leafScheduledBytes": 80321696,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "fps": 34.85332558814987,
+        "p95ms": 33.80000001192093,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388
+        },
+        "leafScheduledBytes": 10774904,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "fps": 23.49869451697128,
+        "p95ms": 43.79999998211861,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172
+        },
+        "leafScheduledBytes": 375856,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "fps": 34.962997494439946,
+        "p95ms": 32.70000001788139,
+        "over50ms": 2,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388
+        },
+        "leafScheduledBytes": 10774904,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "fps": 23.495320515348975,
+        "p95ms": 43.69999998807907,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172
+        },
+        "leafScheduledBytes": 375856,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "mode": "before",
+        "scene": "north",
+        "fps": 35.67818279131801,
+        "p95ms": 99.5,
+        "over50ms": 23,
+        "bufferTraffic": {
+          "calls": 14050,
+          "bytes": 816342412
+        },
+        "leafScheduledBytes": 521542928,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "fps": 23.446964269413467,
+        "p95ms": 44,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10379,
+          "bytes": 375416012
+        },
+        "leafScheduledBytes": 80321696,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "mode": "before",
+        "scene": "north",
+        "fps": 35.69250903469799,
+        "p95ms": 101.7000000178814,
+        "over50ms": 22,
+        "bufferTraffic": {
+          "calls": 14050,
+          "bytes": 816342412
+        },
+        "leafScheduledBytes": 521542928,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "fps": 23.48030263501174,
+        "p95ms": 43.69999998807907,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10379,
+          "bytes": 375416012
+        },
+        "leafScheduledBytes": 80321696,
+        "maxCalls": 180,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "fps": 34.58811321851307,
+        "p95ms": 34.599999994039536,
+        "over50ms": 2,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388
+        },
+        "leafScheduledBytes": 10774904,
+        "maxCalls": 164,
+        "gpuError": 0
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "fps": 23.27746741150974,
+        "p95ms": 44.69999998807907,
+        "over50ms": 1,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172
+        },
+        "leafScheduledBytes": 375856,
+        "maxCalls": 180,
+        "gpuError": 0
+      }
+    ]
+  },
+  "earlierTrials": [
+    {
+      "report": "slots-20261001-diagnose",
+      "reason": "Olive close-up differed at 1/1600000 pixels, max RGB 2/255; canonical order restored exact pixels; fixed by preserving tree order"
+    },
+    {
+      "report": "slots-20261001-benchmark",
+      "reason": "First north run differed by 124 scene instances from all later runs; added day-state warmup and per-frame geometry equality checks"
+    },
+    {
+      "report": "slots-20261001-benchmark-final",
+      "reason": "Valid comparison before the recount fast path; north mean FPS decreased 4.78%, prompting removal of redundant recounts"
+    }
+  ],
+  "caveats": [
+    "Additional CPU arrays total 11808507 bytes, not measured process RSS.",
+    "Buffer bytes count application WebGL bufferSubData traffic, not driver-internal copies.",
+    "North average FPS decreased 2.35% despite fewer long frames; no universal speedup or 60fps claim.",
+    "Separate W-key captures ran under changing host load and are not the accepted FPS comparison."
+  ]
+}

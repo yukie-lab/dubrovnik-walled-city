@@ -277,6 +277,14 @@ try {
     const {woodlandDensityChecks}=await import('./woodland-density-capture.mjs');
     await woodlandDensityChecks(page,{name,dir,rows,errors});views=[];
   }
+  if(args.includes('--leaf-slots')) {
+    const {woodlandSlotsStudy}=await import('./woodland-slots-capture.mjs');
+    await woodlandSlotsStudy(page,{name,dir,rows,errors,args});views=[];
+  }
+  if(args.includes('--slots-benchmark')) {
+    const {woodlandSlotsBenchmark}=await import('./woodland-slots-capture.mjs');
+    await woodlandSlotsBenchmark(page,{rows,errors});views=[];
+  }
   if(args.includes('--foliage-normals')) {
     const {foliageNormalStudy}=await import('./foliage-normal-study.mjs');
     await foliageNormalStudy(page,{name,dir,rows,errors,args});views=[];

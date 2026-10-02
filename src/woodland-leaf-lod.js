@@ -1,10 +1,11 @@
 import * as THREE from 'three';
 import {woodlandWindMargin} from './woodland-wind.js';
 import {makeLeafMorph} from './woodland-morph.js';
+import {WoodlandLeafSlots} from './woodland-leaf-slots.js';
 
 // The small per-tree texture carries continuous growth. Instance streams are
-// compacted only when a whole representative enters/leaves the draw, and only
-// the changed suffix is uploaded. A subpixel growth change costs a few KB.
+// updated only when a whole representative enters/leaves the draw. Stable
+// slots keep a local change from reuploading all the following trees.
 export class WoodlandLeafLOD {
   constructor(mesh) {
     this.mesh=mesh;this.capacity=mesh.count;this.pixelArea=1.5;
@@ -27,6 +28,7 @@ export class WoodlandLeafLOD {
     });
     this.kept=new Uint8Array(this.groups.length).fill(1);this.next=new Uint8Array(this.groups.length);
     this.detail=new Uint16Array(this.groups.length);this.appliedDetail=new Uint16Array(this.groups.length);
+    this.slots=new WoodlandLeafSlots(this.streams,this.capacity,this.groups.length,this.streams.at(-1).source);
     mesh.boundingSphere.radius+=14*maxLeafRadius+Math.max(...mesh.userData.woodlandLeaves.map(t=>woodlandWindMargin(t.height,mesh.material.userData.treeWind.value,t.strength)));
     for(const {attribute} of this.streams)attribute.setUsage(THREE.DynamicDrawUsage);
     this.transferredBytes=0;this.compactions=0;
@@ -48,33 +50,45 @@ export class WoodlandLeafLOD {
     this.applySelection();
   }
   applySelection() {
-    let first=this.groups.length,morphChanged=false,prefix=0;
+    let removed=0,added=0,targetCount=this.mesh.count,morphChanged=false;
     for(let i=0;i<this.groups.length;i++) {
       const level=this.detail[i]>>6,previous=this.appliedDetail[i]>>6;
-      if(this.next[i]!==this.kept[i] || (this.next[i] && level!==previous))first=Math.min(first,i);
+      // Fraction-only growth is the common moving-camera case. Recount only
+      // trees whose visible representatives change, not all 1,490 trees.
+      if(this.next[i]!==this.kept[i] || (this.next[i]&&level!==previous)) {
+        const length=this.groups[i].to-this.groups[i].from;
+        const oldCount=this.kept[i] ? Math.ceil(length/(1<<previous)) : 0;
+        const newCount=this.next[i] ? Math.ceil(length/(1<<level)) : 0;
+        removed+=Math.max(0,oldCount-newCount);added+=Math.max(0,newCount-oldCount);targetCount+=newCount-oldCount;
+      }
       if(this.detail[i]!==this.appliedDetail[i]) {
-        this.morph.data[i*4]=2**level;this.morph.data[i*4+1]=(this.detail[i]%64)/64;morphChanged=true;
+        this.morph.data[i*4]=1<<level;this.morph.data[i*4+1]=(this.detail[i]%64)/64;morphChanged=true;
       }
     }
     if(morphChanged){this.morph.texture.needsUpdate=true;this.transferredBytes+=this.morph.data.byteLength;}
-    if(first<this.groups.length) {
-      for(let i=0;i<first;i++)if(this.next[i])prefix+=Math.ceil((this.groups[i].to-this.groups[i].from)/2**(this.detail[i]>>6));
-      let count=prefix;
-      for(const {attribute,source,size} of this.streams) {
-        let offset=prefix*size;
-        for(let i=first;i<this.groups.length;i++)if(this.next[i]) {
-          const g=this.groups[i],stride=2**(this.detail[i]>>6);
-          if(stride===1){attribute.array.set(source.subarray(g.from*size,g.to*size),offset);offset+=(g.to-g.from)*size;}
-          else for(let j=g.from;j<g.to;j+=stride) {
-            const from=j*size;for(let k=0;k<size;k++)attribute.array[offset+k]=source[from+k];offset+=size;
-          }
+    if(removed||added) {
+      // Teleports and full-detail switches are cheaper as one linear rebuild.
+      if(removed+added>Math.max(this.mesh.count,targetCount)*.25)
+        this.slots.rebuild(this.groups,this.next,this.detail);
+      else {
+        // Remove before adding so the fixed-capacity streams never overflow.
+        for(let i=this.groups.length-1;i>=0;i--)if(this.kept[i]) {
+          const previous=this.appliedDetail[i]>>6,level=this.detail[i]>>6;
+          if(this.next[i]&&level<=previous)continue;
+          const oldStride=1<<previous,stride=1<<level,g=this.groups[i];
+          for(let j=Math.floor((g.to-g.from-1)/oldStride)*oldStride;j>=0;j-=oldStride)
+            if(!this.next[i]||j%stride)this.slots.remove(g.from+j);
         }
-        // A previous render may not yet have consumed its update range. Keep
-        // those ranges too; Three merges them before the next upload.
-        if(offset>prefix*size){attribute.addUpdateRange(prefix*size,offset-prefix*size);attribute.needsUpdate=true;this.transferredBytes+=(offset-prefix*size)*4;}
-        count=offset/size;
+        for(let i=0;i<this.groups.length;i++)if(this.next[i]) {
+          const previous=this.appliedDetail[i]>>6,level=this.detail[i]>>6;
+          if(this.kept[i]&&level>=previous)continue;
+          const oldStride=1<<previous,stride=1<<level,g=this.groups[i];
+          for(let j=0;j<g.to-g.from;j+=stride)
+            if(!this.kept[i]||j%oldStride)this.slots.add(g.from+j);
+        }
+        this.slots.orderTrees(this.groups,this.next,this.detail);
       }
-      this.mesh.count=count;this.compactions++;
+      this.transferredBytes+=this.slots.upload();this.mesh.count=this.slots.count;this.compactions++;
     }
     this.kept.set(this.next);this.appliedDetail.set(this.detail);
   }
