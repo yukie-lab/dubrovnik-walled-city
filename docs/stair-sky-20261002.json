@@ -1,0 +1,213 @@
+{
+  "baseline": "80ed2ca",
+  "date": "2026-10-02",
+  "change": "Higher angular precision for actual enclosed-stair sky visibility, with immutable triangle coefficients and conservative solid proofs",
+  "sourceHash": "151900c86710eca2ca2a184abc6e44fa2bc12dc8a50e779ffe38de0331a4a2cf",
+  "samples": {
+    "before": 16,
+    "after": 32,
+    "reference": 4096
+  },
+  "independent": {
+    "report": "stair-sky-20261002-independent.json",
+    "fixtureChecks": 33,
+    "points": 56,
+    "errors": {
+      "old16": {
+        "maxAbsolute": 0.06266845703125001,
+        "rms": 0.017845027644345677,
+        "missedOpenings": 30,
+        "falseOpenings": 0
+      },
+      "current32": {
+        "maxAbsolute": 0.028978271484375,
+        "rms": 0.01177048386797208,
+        "missedOpenings": 20,
+        "falseOpenings": 0
+      }
+    },
+    "referenceReused": true,
+    "referenceMethod": "Previously computed 4096-direction Three.Mesh.raycast on identical actual solids; final 16/32 intersections independently rerun at all 56 points",
+    "fullBake": {
+      "masonryVertices": 9116,
+      "treadVertices": 36941,
+      "queries": 46057,
+      "uniqueCachedQueries": 21475,
+      "runs": [
+        {
+          "mode": "committed-baseline",
+          "samples": 16,
+          "hierarchyMs": 47.10695899999996,
+          "bakeMs": 812.8682080000001,
+          "cachedMs": 17.222916999999825,
+          "totalMs": 859.975167,
+          "checksum": 7695.234374994764,
+          "stats": null
+        },
+        {
+          "mode": "region-proofs",
+          "samples": 32,
+          "hierarchyMs": 38.41441699999996,
+          "bakeMs": 1157.543833,
+          "cachedMs": 14.750333999999839,
+          "totalMs": 1195.95825,
+          "checksum": 7686.127187494881,
+          "stats": {
+            "cacheMisses": 21475,
+            "insideSolid": 3612,
+            "outsidePlane": 0,
+            "sampled": 17863,
+            "rays": 571616,
+            "planeBytes": 403328
+          }
+        },
+        {
+          "mode": "region-proofs",
+          "samples": 32,
+          "hierarchyMs": 35.42420799999991,
+          "bakeMs": 1145.1560830000003,
+          "cachedMs": 14.226791999999932,
+          "totalMs": 1180.5802910000002,
+          "checksum": 7686.127187494881,
+          "stats": {
+            "cacheMisses": 21475,
+            "insideSolid": 3612,
+            "outsidePlane": 0,
+            "sampled": 17863,
+            "rays": 571616,
+            "planeBytes": 403328
+          }
+        },
+        {
+          "mode": "committed-baseline",
+          "samples": 16,
+          "hierarchyMs": 23.39995799999997,
+          "bakeMs": 819.5233749999998,
+          "cachedMs": 15.485583000000588,
+          "totalMs": 842.9233329999997,
+          "checksum": 7695.234374994764,
+          "stats": null
+        }
+      ],
+      "summary": [
+        {
+          "samples": 16,
+          "runs": 2,
+          "totalMedianMs": 851.4492499999999,
+          "bakeMedianMs": 816.1957914999999,
+          "cachedMedianMs": 16.354250000000206
+        },
+        {
+          "samples": 32,
+          "runs": 2,
+          "totalMedianMs": 1188.2692705,
+          "bakeMedianMs": 1151.3499580000002,
+          "cachedMedianMs": 14.488562999999886
+        }
+      ]
+    }
+  },
+  "images": {
+    "normal": 72,
+    "hidpi": 18,
+    "total": 90,
+    "allStable": true,
+    "sameCounts": true,
+    "sameLighting": true,
+    "samePose": true,
+    "canonicalExact": true,
+    "openStairExact": true,
+    "maxDrawCalls": 169,
+    "errors": [],
+    "reports": [
+      "stair-sky-20261002-visual",
+      "stair-sky-20261002-hidpi"
+    ]
+  },
+  "programs": {
+    "materialPrograms": 77,
+    "missing": [],
+    "collisions": [],
+    "glErrors": []
+  },
+  "walking": {
+    "report": "stair-sky-20261002-walk",
+    "errors": [],
+    "rows": [
+      {
+        "view": "wall-stair-ascent",
+        "id": "mincetaShaft",
+        "hour": 12.87,
+        "frames": [
+          "stair-sky-20261002-walk-mincetaShaft-12_87-bottom.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-p20.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-p40.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-p60.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-p80.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-p100.png",
+          "stair-sky-20261002-walk-mincetaShaft-12_87-emerged-city.png"
+        ],
+        "video": null,
+        "completed": true,
+        "failure": null,
+        "elapsed": 27.01170000000004,
+        "samples": 897,
+        "progress": 0.9963510335702004,
+        "peakDrawCalls": 170,
+        "instances": 225818,
+        "instanceCapacity": 1536705,
+        "instanceBatches": 52,
+        "residentInstances": 225896,
+        "culledInstances": 1310809,
+        "drawCalls": 163,
+        "triangles": 13312204,
+        "dpr": 1
+      },
+      {
+        "view": "wall-stair-ascent",
+        "id": "mincetaShaft",
+        "hour": 22.5,
+        "frames": [
+          "stair-sky-20261002-walk-mincetaShaft-22_5-bottom.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-p20.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-p40.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-p60.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-p80.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-p100.png",
+          "stair-sky-20261002-walk-mincetaShaft-22_5-emerged-city.png"
+        ],
+        "video": null,
+        "completed": true,
+        "failure": null,
+        "elapsed": 26.967100000000112,
+        "samples": 850,
+        "progress": 0.9947626092680657,
+        "peakDrawCalls": 166,
+        "instances": 196787,
+        "instanceCapacity": 1536705,
+        "instanceBatches": 47,
+        "residentInstances": 197054,
+        "culledInstances": 1339651,
+        "drawCalls": 159,
+        "triangles": 8562201,
+        "dpr": 1
+      }
+    ]
+  },
+  "additionalTypedArrayBytes": {
+    "triangles": 1209984,
+    "planes": 403328,
+    "total": 1613312
+  },
+  "limitations": [
+    "This pass improves integration accuracy, not nighttime walking visibility; the dark enclosed treads remain hard to read.",
+    "Twenty positive openings remain missed at the 56 reference probes.",
+    "The measured local sky bake adds about 0.337 seconds; this is not app startup or frame FPS measurement.",
+    "Existing rounded position/normal cache and city-sky multiplication remain unchanged."
+  ],
+  "protection": {
+    "unchangedSources": 5,
+    "houses": 665,
+    "geographyAndRoutesUnchanged": true
+  }
+}

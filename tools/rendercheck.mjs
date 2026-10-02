@@ -133,6 +133,10 @@ try {
     const {stairIlluminanceProbe}=await import('./stair-illuminance-probe.mjs');
     await stairIlluminanceProbe(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--stair-sky')) {
+    const {stairSkyStudy}=await import('./stair-sky-capture.mjs');
+    await stairSkyStudy(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--night-precision')) {
     const {nightPrecisionCheck}=await import('./night-precision-check.mjs');
     await nightPrecisionCheck(page,{name,dir,rows,errors,args});views=[];

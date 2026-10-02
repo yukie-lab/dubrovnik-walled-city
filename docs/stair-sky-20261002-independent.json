@@ -1,0 +1,1300 @@
+{
+  "view": "stair-sky-independent",
+  "stair": "mincetaShaft",
+  "triangles": 12604,
+  "baselineCommit": "80ed2ca",
+  "baselineSourceHash": "65ce0f9a1a3da954063ac699ca50804549f5ed378616d697871ab2cb5c86de9e",
+  "productionSourceHash": "151900c86710eca2ca2a184abc6e44fa2bc12dc8a50e779ffe38de0331a4a2cf",
+  "defaultSamples": 32,
+  "sampleCounts": [
+    16,
+    32
+  ],
+  "bakeCounts": [
+    16,
+    32,
+    32,
+    16
+  ],
+  "geometryHash": "7a1d800bf28eeb3c24c951de17da16651b9925863f6b5c683d4ffa0131d88a1b",
+  "queryHash": "2c72a8963dc4a0b9b5141aa266924ca66448e08c44589bf8a88a526751ce4f31",
+  "fixtureChecks": 33,
+  "fixtureRows": [
+    {
+      "name": "open",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 1,
+      "open": 16,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 1,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "open",
+      "samples": 16,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 1,
+      "open": 16,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 2,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "open",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 1,
+      "open": 32,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 1,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "open",
+      "samples": 32,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 1,
+      "open": 32,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 2,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 16,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 2,
+        "rays": 32,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 16,
+      "query": [
+        0.9,
+        0,
+        1,
+        -1,
+        0,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 3,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 3,
+        "rays": 48,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 32,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 2,
+        "rays": 64,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "closed",
+      "samples": 32,
+      "query": [
+        0.9,
+        0,
+        1,
+        -1,
+        0,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 3,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 3,
+        "rays": 96,
+        "planeBytes": 2304
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 16,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 2,
+        "rays": 32,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 16,
+      "query": [
+        -0.5,
+        0.4,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 3,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 3,
+        "rays": 48,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 16,
+      "query": [
+        0.9,
+        0,
+        1,
+        -1,
+        0,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 4,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 4,
+        "rays": 64,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 32,
+      "query": [
+        0.3,
+        -0.2,
+        0.2
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 2,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 2,
+        "rays": 64,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 32,
+      "query": [
+        -0.5,
+        0.4,
+        0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 3,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 3,
+        "rays": 96,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "slit",
+      "samples": 32,
+      "query": [
+        0.9,
+        0,
+        1,
+        -1,
+        0,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 4,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 4,
+        "rays": 128,
+        "planeBytes": 3456
+      }
+    },
+    {
+      "name": "zero-normal-inside",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        -0.1,
+        0,
+        0,
+        0
+      ],
+      "visibility": 1,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inside-solid",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        -0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 1,
+        "outsidePlane": 0,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inside-solid",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        -0.1
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 1,
+        "outsidePlane": 0,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "outward-surface",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0
+      ],
+      "visibility": 1,
+      "open": 16,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 1,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "outward-surface",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0
+      ],
+      "visibility": 1,
+      "open": 32,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 1,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inward-surface",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 1,
+        "outsidePlane": 0,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inward-surface",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0,
+        0,
+        -1,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 1,
+        "outsidePlane": 0,
+        "sampled": 0,
+        "rays": 0,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "near-surface",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        -0.017
+      ],
+      "visibility": 0.638125,
+      "open": 10,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "near-surface",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        -0.017
+      ],
+      "visibility": 0.6079687500000001,
+      "open": 19,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inward-exterior",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0.1,
+        0,
+        -1,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "inward-exterior",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0.1,
+        0,
+        -1,
+        0
+      ],
+      "visibility": 0.035,
+      "open": 0,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "far-limit",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0
+      ],
+      "visibility": 1,
+      "open": 16,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "far-limit",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0
+      ],
+      "visibility": 1,
+      "open": 32,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 384
+      }
+    },
+    {
+      "name": "unclosed-metadata",
+      "samples": 16,
+      "query": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "visibility": 0.5778125000000001,
+      "open": 9,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 16,
+        "planeBytes": 0
+      }
+    },
+    {
+      "name": "unclosed-metadata",
+      "samples": 32,
+      "query": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        -1
+      ],
+      "visibility": 0.5778125000000001,
+      "open": 18,
+      "stats": {
+        "cacheMisses": 1,
+        "insideSolid": 0,
+        "outsidePlane": 0,
+        "sampled": 1,
+        "rays": 32,
+        "planeBytes": 0
+      }
+    }
+  ],
+  "points": 56,
+  "referenceSamples": 4096,
+  "referenceMs": 141.82020900000003,
+  "referenceReused": true,
+  "referenceReport": "/private/tmp/dubrovnik-stair-sky-near-child.json",
+  "error": {
+    "old16": {
+      "maxAbsolute": 0.06266845703125001,
+      "rms": 0.017845027644345677,
+      "missedOpenings": 30,
+      "falseOpenings": 0
+    },
+    "current32": {
+      "maxAbsolute": 0.028978271484375,
+      "rms": 0.01177048386797208,
+      "missedOpenings": 20,
+      "falseOpenings": 0
+    }
+  },
+  "errorsBySamples": {
+    "16": {
+      "maxAbsolute": 0.06266845703125001,
+      "rms": 0.017845027644345677,
+      "missedOpenings": 30,
+      "falseOpenings": 0
+    },
+    "32": {
+      "maxAbsolute": 0.028978271484375,
+      "rms": 0.01177048386797208,
+      "missedOpenings": 20,
+      "falseOpenings": 0
+    }
+  },
+  "bake": {
+    "masonryVertices": 9116,
+    "treadVertices": 36941,
+    "queries": 46057,
+    "uniqueCachedQueries": 21475,
+    "runs": [
+      {
+        "mode": "committed-baseline",
+        "samples": 16,
+        "hierarchyMs": 47.10695899999996,
+        "bakeMs": 812.8682080000001,
+        "cachedMs": 17.222916999999825,
+        "totalMs": 859.975167,
+        "checksum": 7695.234374994764,
+        "stats": null
+      },
+      {
+        "mode": "region-proofs",
+        "samples": 32,
+        "hierarchyMs": 38.41441699999996,
+        "bakeMs": 1157.543833,
+        "cachedMs": 14.750333999999839,
+        "totalMs": 1195.95825,
+        "checksum": 7686.127187494881,
+        "stats": {
+          "cacheMisses": 21475,
+          "insideSolid": 3612,
+          "outsidePlane": 0,
+          "sampled": 17863,
+          "rays": 571616,
+          "planeBytes": 403328
+        }
+      },
+      {
+        "mode": "region-proofs",
+        "samples": 32,
+        "hierarchyMs": 35.42420799999991,
+        "bakeMs": 1145.1560830000003,
+        "cachedMs": 14.226791999999932,
+        "totalMs": 1180.5802910000002,
+        "checksum": 7686.127187494881,
+        "stats": {
+          "cacheMisses": 21475,
+          "insideSolid": 3612,
+          "outsidePlane": 0,
+          "sampled": 17863,
+          "rays": 571616,
+          "planeBytes": 403328
+        }
+      },
+      {
+        "mode": "committed-baseline",
+        "samples": 16,
+        "hierarchyMs": 23.39995799999997,
+        "bakeMs": 819.5233749999998,
+        "cachedMs": 15.485583000000588,
+        "totalMs": 842.9233329999997,
+        "checksum": 7695.234374994764,
+        "stats": null
+      }
+    ],
+    "summary": [
+      {
+        "samples": 16,
+        "runs": 2,
+        "totalMedianMs": 851.4492499999999,
+        "bakeMedianMs": 816.1957914999999,
+        "cachedMedianMs": 16.354250000000206
+      },
+      {
+        "samples": 32,
+        "runs": 2,
+        "totalMedianMs": 1188.2692705,
+        "bakeMedianMs": 1151.3499580000002,
+        "cachedMedianMs": 14.488562999999886
+      }
+    ]
+  },
+  "convergence": [
+    {
+      "index": 0,
+      "segment": 1,
+      "step": 0,
+      "old16": 0.396875,
+      "current32": 0.42703125,
+      "reference4096": 0.447056884765625,
+      "referenceOpen": 1749
+    },
+    {
+      "index": 1,
+      "segment": 1,
+      "step": 1,
+      "old16": 0.27625,
+      "current32": 0.30640625,
+      "reference4096": 0.27860595703125,
+      "referenceOpen": 1034
+    },
+    {
+      "index": 2,
+      "segment": 1,
+      "step": 2,
+      "old16": 0.155625,
+      "current32": 0.12546875000000002,
+      "reference4096": 0.147379150390625,
+      "referenceOpen": 477
+    },
+    {
+      "index": 3,
+      "segment": 1,
+      "step": 3,
+      "old16": 0.0953125,
+      "current32": 0.0953125,
+      "reference4096": 0.08730224609375001,
+      "referenceOpen": 222
+    },
+    {
+      "index": 4,
+      "segment": 1,
+      "step": 4,
+      "old16": 0.0953125,
+      "current32": 0.06515625,
+      "reference4096": 0.0604443359375,
+      "referenceOpen": 108
+    },
+    {
+      "index": 5,
+      "segment": 1,
+      "step": 5,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.04772216796875001,
+      "referenceOpen": 54
+    },
+    {
+      "index": 6,
+      "segment": 1,
+      "step": 6,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.042303466796875,
+      "referenceOpen": 31
+    },
+    {
+      "index": 7,
+      "segment": 2,
+      "step": 0,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.040418701171875,
+      "referenceOpen": 23
+    },
+    {
+      "index": 8,
+      "segment": 2,
+      "step": 1,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.037827148437500006,
+      "referenceOpen": 12
+    },
+    {
+      "index": 9,
+      "segment": 2,
+      "step": 2,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.03641357421875,
+      "referenceOpen": 6
+    },
+    {
+      "index": 10,
+      "segment": 2,
+      "step": 3,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035706787109375006,
+      "referenceOpen": 3
+    },
+    {
+      "index": 11,
+      "segment": 2,
+      "step": 4,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035235595703125004,
+      "referenceOpen": 1
+    },
+    {
+      "index": 12,
+      "segment": 2,
+      "step": 5,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 13,
+      "segment": 2,
+      "step": 6,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 14,
+      "segment": 2,
+      "step": 7,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 15,
+      "segment": 3,
+      "step": 0,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 16,
+      "segment": 3,
+      "step": 1,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 17,
+      "segment": 3,
+      "step": 2,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 18,
+      "segment": 3,
+      "step": 3,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 19,
+      "segment": 3,
+      "step": 4,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 20,
+      "segment": 3,
+      "step": 5,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035471191406250005,
+      "referenceOpen": 2
+    },
+    {
+      "index": 21,
+      "segment": 3,
+      "step": 6,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.036649169921875,
+      "referenceOpen": 7
+    },
+    {
+      "index": 22,
+      "segment": 3,
+      "step": 7,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.03594238281250001,
+      "referenceOpen": 4
+    },
+    {
+      "index": 23,
+      "segment": 3,
+      "step": 8,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 24,
+      "segment": 3,
+      "step": 9,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 25,
+      "segment": 3,
+      "step": 10,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 26,
+      "segment": 4,
+      "step": 0,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 27,
+      "segment": 4,
+      "step": 1,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.035,
+      "referenceOpen": 0
+    },
+    {
+      "index": 28,
+      "segment": 4,
+      "step": 2,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.036177978515625,
+      "referenceOpen": 5
+    },
+    {
+      "index": 29,
+      "segment": 4,
+      "step": 3,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.038062744140625,
+      "referenceOpen": 13
+    },
+    {
+      "index": 30,
+      "segment": 4,
+      "step": 4,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.037827148437500006,
+      "referenceOpen": 12
+    },
+    {
+      "index": 31,
+      "segment": 4,
+      "step": 5,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.037827148437500006,
+      "referenceOpen": 12
+    },
+    {
+      "index": 32,
+      "segment": 4,
+      "step": 6,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.03829833984375,
+      "referenceOpen": 14
+    },
+    {
+      "index": 33,
+      "segment": 5,
+      "step": 0,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.038533935546875,
+      "referenceOpen": 15
+    },
+    {
+      "index": 34,
+      "segment": 5,
+      "step": 1,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.039005126953125004,
+      "referenceOpen": 17
+    },
+    {
+      "index": 35,
+      "segment": 5,
+      "step": 2,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.039005126953125004,
+      "referenceOpen": 17
+    },
+    {
+      "index": 36,
+      "segment": 5,
+      "step": 3,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.039476318359375005,
+      "referenceOpen": 19
+    },
+    {
+      "index": 37,
+      "segment": 5,
+      "step": 4,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.040654296875,
+      "referenceOpen": 24
+    },
+    {
+      "index": 38,
+      "segment": 5,
+      "step": 5,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.041361083984375005,
+      "referenceOpen": 27
+    },
+    {
+      "index": 39,
+      "segment": 5,
+      "step": 6,
+      "old16": 0.035,
+      "current32": 0.035,
+      "reference4096": 0.042774658203125,
+      "referenceOpen": 33
+    },
+    {
+      "index": 40,
+      "segment": 5,
+      "step": 7,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.042774658203125,
+      "referenceOpen": 33
+    },
+    {
+      "index": 41,
+      "segment": 5,
+      "step": 8,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.044659423828125,
+      "referenceOpen": 41
+    },
+    {
+      "index": 42,
+      "segment": 5,
+      "step": 9,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.04677978515625,
+      "referenceOpen": 50
+    },
+    {
+      "index": 43,
+      "segment": 5,
+      "step": 10,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.048193359375,
+      "referenceOpen": 56
+    },
+    {
+      "index": 44,
+      "segment": 6,
+      "step": 0,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.05054931640625,
+      "referenceOpen": 66
+    },
+    {
+      "index": 45,
+      "segment": 6,
+      "step": 1,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.05337646484375,
+      "referenceOpen": 78
+    },
+    {
+      "index": 46,
+      "segment": 6,
+      "step": 2,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.058795166015625004,
+      "referenceOpen": 101
+    },
+    {
+      "index": 47,
+      "segment": 6,
+      "step": 3,
+      "old16": 0.035,
+      "current32": 0.06515625,
+      "reference4096": 0.06633422851562501,
+      "referenceOpen": 133
+    },
+    {
+      "index": 48,
+      "segment": 6,
+      "step": 4,
+      "old16": 0.0953125,
+      "current32": 0.0953125,
+      "reference4096": 0.080234375,
+      "referenceOpen": 192
+    },
+    {
+      "index": 49,
+      "segment": 6,
+      "step": 5,
+      "old16": 0.155625,
+      "current32": 0.0953125,
+      "reference4096": 0.1037939453125,
+      "referenceOpen": 292
+    },
+    {
+      "index": 50,
+      "segment": 6,
+      "step": 6,
+      "old16": 0.155625,
+      "current32": 0.155625,
+      "reference4096": 0.14879272460937498,
+      "referenceOpen": 483
+    },
+    {
+      "index": 51,
+      "segment": 6,
+      "step": 7,
+      "old16": 0.27625,
+      "current32": 0.24609375,
+      "reference4096": 0.23973266601562498,
+      "referenceOpen": 869
+    },
+    {
+      "index": 52,
+      "segment": 6,
+      "step": 8,
+      "old16": 0.396875,
+      "current32": 0.396875,
+      "reference4096": 0.37166625976562495,
+      "referenceOpen": 1429
+    },
+    {
+      "index": 53,
+      "segment": 6,
+      "step": 9,
+      "old16": 0.45718749999999997,
+      "current32": 0.45718749999999997,
+      "reference4096": 0.46072143554687495,
+      "referenceOpen": 1807
+    },
+    {
+      "index": 54,
+      "segment": 7,
+      "step": 0,
+      "old16": 0.5175,
+      "current32": 0.5476562500000001,
+      "reference4096": 0.56226318359375,
+      "referenceOpen": 2238
+    },
+    {
+      "index": 55,
+      "segment": 7,
+      "step": 1,
+      "old16": 0.75875,
+      "current32": 0.66828125,
+      "reference4096": 0.69608154296875,
+      "referenceOpen": 2806
+    }
+  ]
+}
