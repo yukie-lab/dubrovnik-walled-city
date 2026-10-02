@@ -1,0 +1,646 @@
+{
+  "baseline": "c6ae107",
+  "date": "2026-10-02",
+  "change": "Shadow-first exact static detail selection and changed-suffix attribute uploads with pending ranges retained",
+  "sources": {
+    "src/instance-lod.js": "d1a8ca62da601f23b89265454e9ce8d67b127a9033ba076cac9f434272cfc7a0"
+  },
+  "images": {
+    "normal": 55,
+    "hidpi": 31,
+    "total": 86,
+    "allPngHashesAndCountsEqual": true,
+    "maxDrawCalls": 169,
+    "reports": [
+      "static-20261002-visual",
+      "static-20261002-hidpi"
+    ]
+  },
+  "unit": {
+    "baselineCommit": "c6ae107",
+    "fixtures": 7,
+    "selections": 595,
+    "occlusionSelections": 192,
+    "shadowSelections": 483,
+    "initialUploads": 30,
+    "partialUploads": 855,
+    "partialUploadBytes": 3617572,
+    "prefixShrinks": 5,
+    "emptySelections": 4,
+    "restorations": 26,
+    "interiorRemoval": {
+      "changedSuffixBytes": 1470,
+      "oldSelectedPrefixBytes": 4704,
+      "oldFullBufferUploadBytes": 6272
+    },
+    "shadowOnlyDistanceCalls": {
+      "before": 256,
+      "after": 0
+    },
+    "exactSourceIds": true,
+    "exactAllInstanceAttributes": true,
+    "customBounds": true,
+    "pendingRangeConsumption": true,
+    "initialFullUpload": true,
+    "cutoffEquality": true
+  },
+  "programs": {
+    "materialPrograms": 77,
+    "collisions": [],
+    "missing": [],
+    "glErrors": []
+  },
+  "isolatedCPU": {
+    "report": "static-20261002-cpu-final",
+    "method": "Replay real baseline/current methods on independent mutable streams with actual city bounds and frozen inputs from 24 north and 24 roof poses. Validate all selected IDs and attributes in a separate untimed replay, then warm both complete sequences 3 times and alternate 6 timed runs; no JSON snapshots or ID validation between measured steps.",
+    "batches": 19,
+    "sourceInstances": 56030,
+    "allPerStepSourceIdsAndAttributesEqual": true,
+    "scenes": {
+      "north": {
+        "steps": 24,
+        "beforeMs": 11.391666664431492,
+        "afterMs": 9.495833332339922,
+        "cpuChangePercent": -16.6422823625184,
+        "distanceCalls": {
+          "before": 50001,
+          "after": 22758
+        },
+        "distanceCallChangePercent": -54.48491030179397
+      },
+      "roofs": {
+        "steps": 24,
+        "beforeMs": 7.937500001241763,
+        "afterMs": 6.699999999254942,
+        "cpuChangePercent": -15.590551203694158,
+        "distanceCalls": {
+          "before": 54684,
+          "after": 17236
+        },
+        "distanceCallChangePercent": -68.48072562358276
+      }
+    },
+    "runs": [
+      {
+        "mode": "before",
+        "scene": "north",
+        "ms": 230.80000001192093,
+        "perStepMs": 9.616666667163372,
+        "steps": 24
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "ms": 189.5,
+        "perStepMs": 7.895833333333333,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "ms": 227.89999997615814,
+        "perStepMs": 9.495833332339922,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "ms": 160.7999999821186,
+        "perStepMs": 6.699999999254942,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "ms": 236.89999997615814,
+        "perStepMs": 9.870833332339922,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "ms": 180.59999999403954,
+        "perStepMs": 7.524999999751647,
+        "steps": 24
+      },
+      {
+        "mode": "before",
+        "scene": "north",
+        "ms": 275.80000004172325,
+        "perStepMs": 11.491666668405136,
+        "steps": 24
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "ms": 208.30000001192093,
+        "perStepMs": 8.679166667163372,
+        "steps": 24
+      },
+      {
+        "mode": "before",
+        "scene": "north",
+        "ms": 273.3999999463558,
+        "perStepMs": 11.391666664431492,
+        "steps": 24
+      },
+      {
+        "mode": "before",
+        "scene": "roofs",
+        "ms": 190.50000002980232,
+        "perStepMs": 7.937500001241763,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "north",
+        "ms": 210.09999999403954,
+        "perStepMs": 8.754166666418314,
+        "steps": 24
+      },
+      {
+        "mode": "after",
+        "scene": "roofs",
+        "ms": 150.2999999821186,
+        "perStepMs": 6.262499999254942,
+        "steps": 24
+      }
+    ],
+    "limitations": [
+      "This isolates static selection/copy CPU cost; it excludes rendering, GPU uploads, and frame waiting.",
+      "The 24 poses are coarser than the 240/180-frame rendered paths, and each replay starts from full source selection.",
+      "Initial static-20261002-cpu serialized all IDs between measured steps and was superseded to remove possible GC contamination."
+    ]
+  },
+  "benchmark": {
+    "report": "static-20261002-benchmark",
+    "method": "One shared world/buffers/shaders; alternating actual baseline/current StaticInstanceLOD update and restore methods after full source reset and 45 warm frames. 240 fixed poses over 10 m backward on north wall or 180 roof frames advancing clock .0003 h/frame. DPR 1, animation 40; identical timing wrappers.",
+    "sequence": [
+      "before",
+      "after",
+      "after",
+      "before",
+      "before",
+      "after"
+    ],
+    "scenes": {
+      "north": {
+        "frames": 240,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "before": {
+          "fps": 18.413945494729756,
+          "p95ms": 70.7000000178814,
+          "over50ms": 156,
+          "lodMs": 12.098333334426085,
+          "lodP95ms": 22.099999994039536,
+          "staticMs": 9.338749999552965,
+          "staticCalls": 4560,
+          "bufferTraffic": {
+            "calls": 14600,
+            "bytes": 305574388,
+            "staticCalls": 795,
+            "staticBytes": 66645884
+          }
+        },
+        "after": {
+          "fps": 18.64063191738748,
+          "p95ms": 69.40000000596046,
+          "over50ms": 159,
+          "lodMs": 8.250833334277074,
+          "lodP95ms": 13,
+          "staticMs": 6.275833331545194,
+          "staticCalls": 4560,
+          "bufferTraffic": {
+            "calls": 14545,
+            "bytes": 247985860,
+            "staticCalls": 740,
+            "staticBytes": 9057356
+          }
+        },
+        "fpsChangePercent": 1.2310583993126567,
+        "lodTimeChangePercent": -31.80190108666342,
+        "staticTimeChangePercent": -32.797929788830295,
+        "sceneTransferChangePercent": -18.84599307452429,
+        "staticTransferChangePercent": -86.4097293690335,
+        "allPerFrameGeometryCountsAndEndpointIdsEqual": true
+      },
+      "roofs": {
+        "frames": 180,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "before": {
+          "fps": 13.14770718595813,
+          "p95ms": 89.10000002384186,
+          "over50ms": 180,
+          "lodMs": 7.409444444874922,
+          "lodP95ms": 10.400000005960464,
+          "staticMs": 5.692222220202287,
+          "staticCalls": 3420,
+          "bufferTraffic": {
+            "calls": 10394,
+            "bytes": 295470172,
+            "staticCalls": 769,
+            "staticBytes": 117712572
+          }
+        },
+        "after": {
+          "fps": 12.947404764667157,
+          "p95ms": 90.40000000596046,
+          "over50ms": 180,
+          "lodMs": 9.5894444445769,
+          "lodP95ms": 12.599999994039536,
+          "staticMs": 7.026111110548178,
+          "staticCalls": 3420,
+          "bufferTraffic": {
+            "calls": 10394,
+            "bytes": 218355796,
+            "staticCalls": 769,
+            "staticBytes": 40598196
+          }
+        },
+        "fpsChangePercent": -1.523477960513886,
+        "lodTimeChangePercent": 29.421908969300304,
+        "staticTimeChangePercent": 23.43353507197561,
+        "sceneTransferChangePercent": -26.098869973243865,
+        "staticTransferChangePercent": -65.51073915877058,
+        "allPerFrameGeometryCountsAndEndpointIdsEqual": true
+      }
+    },
+    "runs": [
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "north",
+        "version": "before",
+        "fps": 18.114848137173485,
+        "p95ms": 70.7000000178814,
+        "over50ms": 191,
+        "maxCalls": 164,
+        "lodMs": 11.772916666666667,
+        "lodP95ms": 22.099999994039536,
+        "staticMs": 9.04708333350718,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388,
+          "staticCalls": 795,
+          "staticBytes": 66645884
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "roofs",
+        "version": "before",
+        "fps": 11.815055005658838,
+        "p95ms": 98.7000000178814,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 9.308333333995607,
+        "lodP95ms": 12.700000017881393,
+        "staticMs": 7.092222221030129,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172,
+          "staticCalls": 769,
+          "staticBytes": 117712572
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "north",
+        "version": "after",
+        "fps": 17.40252771715844,
+        "p95ms": 69.40000000596046,
+        "over50ms": 220,
+        "maxCalls": 164,
+        "lodMs": 8.250833334277074,
+        "lodP95ms": 13,
+        "staticMs": 6.275833331545194,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14545,
+          "bytes": 247985860,
+          "staticCalls": 740,
+          "staticBytes": 9057356
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "roofs",
+        "version": "after",
+        "fps": 12.23715608494074,
+        "p95ms": 96.7999999821186,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 10.128888888822662,
+        "lodP95ms": 15.900000005960464,
+        "staticMs": 7.368333331909445,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 218355796,
+          "staticCalls": 769,
+          "staticBytes": 40598196
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "north",
+        "version": "after",
+        "fps": 18.64063191738748,
+        "p95ms": 69.60000002384186,
+        "over50ms": 158,
+        "maxCalls": 164,
+        "lodMs": 16.86833333298564,
+        "lodP95ms": 23.099999994039536,
+        "staticMs": 12.84708333450059,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14545,
+          "bytes": 247985860,
+          "staticCalls": 740,
+          "staticBytes": 9057356
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "roofs",
+        "version": "after",
+        "fps": 12.947404764667157,
+        "p95ms": 90.40000000596046,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 9.5894444445769,
+        "lodP95ms": 12.599999994039536,
+        "staticMs": 7.026111110548178,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 218355796,
+          "staticCalls": 769,
+          "staticBytes": 40598196
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "north",
+        "version": "before",
+        "fps": 18.413945494729756,
+        "p95ms": 78.69999998807907,
+        "over50ms": 156,
+        "maxCalls": 164,
+        "lodMs": 13.68791666701436,
+        "lodP95ms": 24.599999994039536,
+        "staticMs": 10.575416666766008,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388,
+          "staticCalls": 795,
+          "staticBytes": 66645884
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "roofs",
+        "version": "before",
+        "fps": 13.200158401912363,
+        "p95ms": 84.2999999821186,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 7.409444444874922,
+        "lodP95ms": 9.300000011920929,
+        "staticMs": 5.692222220202287,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172,
+          "staticCalls": 769,
+          "staticBytes": 117712572
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "north",
+        "version": "before",
+        "fps": 20.07931328749558,
+        "p95ms": 65.90000000596046,
+        "over50ms": 118,
+        "maxCalls": 164,
+        "lodMs": 12.098333334426085,
+        "lodP95ms": 21.400000005960464,
+        "staticMs": 9.338749999552965,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14600,
+          "bytes": 305574388,
+          "staticCalls": 795,
+          "staticBytes": 66645884
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "before",
+        "scene": "roofs",
+        "version": "before",
+        "fps": 13.14770718595813,
+        "p95ms": 89.10000002384186,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 7.228888888325956,
+        "lodP95ms": 10.400000005960464,
+        "staticMs": 5.550555553370052,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 295470172,
+          "staticCalls": 769,
+          "staticBytes": 117712572
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "north",
+        "version": "after",
+        "fps": 18.852214349641848,
+        "p95ms": 65.80000001192093,
+        "over50ms": 159,
+        "maxCalls": 164,
+        "lodMs": 7.209583332637946,
+        "lodP95ms": 8.700000017881393,
+        "staticMs": 5.496666665871938,
+        "staticCalls": 4560,
+        "bufferTraffic": {
+          "calls": 14545,
+          "bytes": 247985860,
+          "staticCalls": 740,
+          "staticBytes": 9057356
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": -93.9612985002538,
+          "z": -89.1798854264482,
+          "y": 28.140038191183933,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 240,
+        "endpointSelectedInstances": 27585
+      },
+      {
+        "view": "static-stream-benchmark",
+        "mode": "after",
+        "scene": "roofs",
+        "version": "after",
+        "fps": 14.549099168269489,
+        "p95ms": 80.30000001192093,
+        "over50ms": 180,
+        "maxCalls": 180,
+        "lodMs": 5.92888888898823,
+        "lodP95ms": 6.799999982118607,
+        "staticMs": 4.390555555621783,
+        "staticCalls": 3420,
+        "bufferTraffic": {
+          "calls": 10394,
+          "bytes": 218355796,
+          "staticCalls": 769,
+          "staticBytes": 40598196
+        },
+        "dpr": 1,
+        "endpoint": {
+          "x": 58,
+          "z": -88,
+          "y": 24,
+          "zone": "wall"
+        },
+        "gpuError": 0,
+        "frames": 180,
+        "endpointSelectedInstances": 37662
+      }
+    ],
+    "limitations": [
+      "Geometry/count equality is checked each timed frame; exact source IDs are checked at endpoints, not every timed frame.",
+      "FPS and CPU timings are measurements on this machine under current host load, not a guaranteed frame rate.",
+      "WebGL transfer bytes count bufferSubData arguments, not driver-internal copies."
+    ]
+  }
+}

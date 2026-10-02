@@ -2,13 +2,15 @@ import {readFileSync,writeFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import {createHash} from 'node:crypto';
 
-// Only replace the leaf stream manager. Every model, shader, density setting,
-// camera and time remains the same in the two independent page loads.
-export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args}) {
-  const baseline=execFileSync('git',['show','32cdc85:src/woodland-leaf-lod.js'],{encoding:'utf8'});
-  const hidpi=args.includes('--slots-hidpi'),before=new Map();let mode='before';
+// Replace only the leaf or static stream manager. Every model, shader, density
+// setting, camera and time is common to the two independent page loads.
+export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args,staticStreams=false}) {
+  const sourceFile=staticStreams?'instance-lod.js':'woodland-leaf-lod.js';
+  const baseline=execFileSync('git',['show',`${staticStreams?'c6ae107':'32cdc85'}:src/${sourceFile}`],{encoding:'utf8'});
+  const kind=staticStreams?'static-streams':'leaf-slots';
+  const hidpi=args.includes('--slots-hidpi')||args.includes('--static-hidpi'),before=new Map();let mode='before';
   if(hidpi)await page.setViewport({width:1280,height:800,deviceScaleFactor:2});
-  const handler=request=>mode==='before'&&new URL(request.url()).pathname==='/src/woodland-leaf-lod.js'
+  const handler=request=>mode==='before'&&new URL(request.url()).pathname===`/src/${sourceFile}`
     ? request.respond({status:200,contentType:'text/javascript',body:baseline}) : request.continue();
   await page.setCacheEnabled(false);await page.setRequestInterception(true);page.on('request',handler);
   const canonical=[];
@@ -44,7 +46,7 @@ export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args}) {
         return out;
       },{canonical,targets,hidpi});
       for(const s of stations) {
-        const result=await page.evaluate(async s=>{
+        const result=await page.evaluate(async ({s,staticStreams})=>{
           const w=window.__world,p=w.player,leaves=w.instanceLOD.batches.filter(b=>b.mesh.userData.woodlandLeaves);
           Object.assign(p,{x:s.x,z:s.z,groundY:s.gy,smoothY:s.gy,zone:s.zone||'outside',yaw:s.yaw,pitch:s.pitch,vx:0,vz:0,bobAmp:0,frozen:true});
           if(s.canonical) {
@@ -57,9 +59,10 @@ export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args}) {
           if(w.lighting.environment.pending)throw new Error('Unfinished stream comparison lighting');
           const png=await window.__captureFrame(),again=await window.__captureFrame();
           return {png,stable:png===again,stats:{...window.__RENDER_STATS},gpuError:w.renderer.getContext().getError(),
-            version:leaves.every(b=>b.slots)?'after':'before',counts:leaves.map(b=>b.mesh.count),
+            version:staticStreams ? (w.instanceLOD.batches.filter(b=>b.constructor.name==='StaticInstanceLOD')
+              .every(b=>b.update.toString().includes('firstChanged'))?'after':'before') : leaves.every(b=>b.slots)?'after':'before',counts:leaves.map(b=>b.mesh.count),
             slotBytes:leaves.reduce((sum,b)=>sum+(b.slots?b.slots.slotOf.byteLength+b.slots.sourceAt.byteLength+b.slots.dirty.byteLength+(b.slots.touched?.byteLength||0):0),0)};
-        },s);
+        },{s,staticStreams});
         const {png,...data}=result,key=`${s.id}-${s.time}`,buffer=Buffer.from(png.split(',')[1],'base64');
         const hash=createHash('sha256').update(buffer).digest('hex');
         writeFileSync(new URL(`${name}-${key}-${mode}.png`,dir),buffer);
@@ -70,7 +73,7 @@ export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args}) {
           // Diagnose draw-order differences without changing the acceptance
           // criterion. This image must still match exactly to pass.
           let canonicalOrderMatches=null;
-          if(!exact) {
+          if(!exact&&!staticStreams) {
             const sorted=await page.evaluate(async()=>{
               for(const b of window.__world.instanceLOD.batches)if(b.slots) {
                 b.slots.rebuild(b.groups,b.next,b.detail);b.slots.upload();b.mesh.count=b.slots.count;
@@ -81,12 +84,12 @@ export async function woodlandSlotsStudy(page,{name,dir,rows,errors,args}) {
             writeFileSync(new URL(`${name}-${key}-canonical.png`,dir),canonical);
             canonicalOrderMatches=createHash('sha256').update(canonical).digest('hex')===reference.hash;
           }
-          rows.push({view:'leaf-slots',id:s.id,time:s.time,station:s,...data,hash,before:reference,exact,sameCounts,canonicalOrderMatches});
+          rows.push({view:kind,id:s.id,time:s.time,station:s,...data,hash,before:reference,exact,sameCounts,canonicalOrderMatches});
           console.log(`${key}: pixels=${exact} counts=${sameCounts} calls=${data.stats.drawCalls}`);
-          if(!exact||!sameCounts)errors.push(`Leaf slot image/count mismatch: ${key}`);
+          if(!exact||!sameCounts)errors.push(`${kind} image/count mismatch: ${key}`);
         }
         if(!data.stable||data.version!==mode||data.gpuError||data.stats.drawCalls>200||data.stats.dpr!==(hidpi?1.6:1))
-          errors.push(`Leaf slot source/stability/GPU/budget failure: ${key}/${mode}`);
+          errors.push(`${kind} source/stability/GPU/budget failure: ${key}/${mode}`);
       }
     }
   } finally {page.off('request',handler);await page.setRequestInterception(false);await page.setCacheEnabled(true);}

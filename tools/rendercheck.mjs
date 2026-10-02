@@ -285,6 +285,18 @@ try {
     const {woodlandSlotsBenchmark}=await import('./woodland-slots-capture.mjs');
     await woodlandSlotsBenchmark(page,{rows,errors});views=[];
   }
+  if(args.includes('--static-streams')) {
+    const {woodlandSlotsStudy}=await import('./woodland-slots-capture.mjs');
+    await woodlandSlotsStudy(page,{name,dir,rows,errors,args,staticStreams:true});views=[];
+  }
+  if(args.includes('--static-benchmark')) {
+    const {staticStreamsBenchmark}=await import('./static-stream-capture.mjs');
+    await staticStreamsBenchmark(page,{rows,errors});views=[];
+  }
+  if(args.includes('--static-cpu')) {
+    const {staticStreamsCPU}=await import('./static-stream-capture.mjs');
+    await staticStreamsCPU(page,{rows,errors});views=[];
+  }
   if(args.includes('--foliage-normals')) {
     const {foliageNormalStudy}=await import('./foliage-normal-study.mjs');
     await foliageNormalStudy(page,{name,dir,rows,errors,args});views=[];

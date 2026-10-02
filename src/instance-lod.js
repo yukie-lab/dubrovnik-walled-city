@@ -64,7 +64,7 @@ export class StaticInstanceLOD {
 
   update(viewPlanes, shadowPlanes, cameraPosition, pixelScale, shadowPixelScale, occlusion = null, shadowView = null) {
     const { spheres: s, nextIds, ids, margin, mesh } = this;
-    let count = 0, changed = false;
+    let count = 0, firstChanged = this.capacity;
     if(occlusion)for(let i=0;i<this.groupFlags.length;i++) {
       const o=i*4,g=this.groupSpheres,x=g[o],y=g[o+1],z=g[o+2],r=g[o+3]+margin;
       const visible=intersects(viewPlanes,x,y,z,r) && !occlusion.blocked(cameraPosition.x,cameraPosition.y,cameraPosition.z,x,y,z,r);
@@ -83,24 +83,33 @@ export class StaticInstanceLOD {
       const o = i * 4, x = s[o], y = s[o + 1], z = s[o + 2], r = s[o + 3];
       const flags=occlusion ? this.groupFlags[this.groupIds[i]] : 3;
       if(!flags)continue;
-      const near = Math.max(0.01, Math.hypot(x - cameraPosition.x, y - cameraPosition.y, z - cameraPosition.z) - r);
-      const inView = (flags & 1) && 2 * r * pixelScale / near >= this.minPixels && intersects(viewPlanes, x, y, z, r + margin);
+      // The shadow already keeps this source instance. Avoid a second frustum
+      // test and camera distance calculation when their result cannot change
+      // the view/shadow union.
       const inShadow = (flags & 2) && mesh.castShadow && shadowPlanes && 2 * r * shadowPixelScale >= this.minPixels
         && intersects(shadowPlanes, x, y, z, r + margin);
-      if (!inView && !inShadow) continue;
+      if (!inShadow) {
+        if (!(flags & 1)) continue;
+        const near = Math.max(0.01, Math.hypot(x - cameraPosition.x, y - cameraPosition.y, z - cameraPosition.z) - r);
+        if (!(2 * r * pixelScale / near >= this.minPixels) || !intersects(viewPlanes, x, y, z, r + margin)) continue;
+      }
       nextIds[count] = i;
-      if (ids[count] !== i) changed = true;
+      if (ids[count] !== i && firstChanged === this.capacity) firstChanged = count;
       count++;
     }
-    if (count !== mesh.count) changed = true;
-    if (!changed) return;
-    for (const { attribute, source, size } of this.streams) {
-      const target = attribute.array;
-      for (let i = 0; i < count; i++) {
-        const from = nextIds[i] * size, to = i * size;
-        for (let j = 0; j < size; j++) target[to + j] = source[from + j];
+    if (count === mesh.count && firstChanged === this.capacity) return;
+    if (firstChanged < count) {
+      for (const { attribute, source, size } of this.streams) {
+        const target = attribute.array;
+        for (let i = firstChanged; i < count; i++) {
+          const from = nextIds[i] * size, to = i * size;
+          for (let j = 0; j < size; j++) target[to + j] = source[from + j];
+        }
+        // Keep any unconsumed ranges: a culled batch can change several times
+        // before the renderer next uploads it. Three merges these ranges.
+        attribute.addUpdateRange(firstChanged * size, (count - firstChanged) * size);
+        attribute.needsUpdate = true;
       }
-      attribute.needsUpdate = true;
     }
     ids.set(nextIds.subarray(0, count));
     mesh.count = count;
@@ -110,6 +119,7 @@ export class StaticInstanceLOD {
     if (this.mesh.count === this.capacity) return;
     for (const { attribute, source } of this.streams) {
       attribute.array.set(source);
+      attribute.addUpdateRange(0, source.length);
       attribute.needsUpdate = true;
     }
     for (let i = 0; i < this.capacity; i++) this.ids[i] = i;
