@@ -436,6 +436,8 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     const armMesh = new THREE.InstancedMesh(armGeo, armMat, lamps.length);
     const glGeo = new THREE.CylinderGeometry(0.135, 0.115, 0.30, 6);
     glGeo.rotateY(Math.PI / 6); glGeo.translate(0, -0.38, 0.50);
+    glGeo.computeBoundingBox();
+    const glassCentre=glGeo.boundingBox.getCenter(new THREE.Vector3());
     const glMat = new THREE.MeshStandardMaterial({
       color: 0x1a1610, emissive: 0xffbe7d, emissiveIntensity: 0.0, roughness: 0.4,
     });
@@ -466,8 +468,12 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
       dummy.updateMatrix();
       armMesh.setMatrixAt(i, dummy.matrix);
       glMesh.setMatrixAt(i, dummy.matrix);
-      const gy = plan.groundAt(l.x, l.z, 200).y;
-      dummy.position.set(l.x - Math.sin(l.rotY) * 0.44, gy + 0.06, l.z - Math.cos(l.rotY) * 0.44);
+      // The emitter and its ground return follow the actual glass geometry.
+      // Repeating the arm's offset with the opposite sign put the source a
+      // metre behind its fixture, across the supporting wall.
+      l.emitter=glassCentre.clone().applyMatrix4(dummy.matrix);
+      const gy = plan.groundAt(l.emitter.x, l.emitter.z, 200).y;
+      dummy.position.set(l.emitter.x, gy + 0.06, l.emitter.z);
       dummy.rotation.set(0, 0, 0);
       dummy.scale.setScalar(3.4 + l.seed * 1.2);
       dummy.updateMatrix();
@@ -1955,7 +1961,7 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
           if (!l) { pl.visible=true;pl.intensity=0;continue; }
           pl.visible = true;
           // 灯体そのものではなく、ガラス箱の位置(腕の先・下がり)に置く
-          pl.position.set(l.x - Math.sin(l.rotY) * 0.50, l.y - 0.38, l.z - Math.cos(l.rotY) * 0.50);
+          pl.position.copy(l.emitter);
           // 遠い灯は光量を落としてポップを消す
           pl.intensity = on * (100 / 5000) * smoothstep(900, 400, l._d); // 100 cd
         }

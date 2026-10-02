@@ -137,6 +137,10 @@ try {
     const {stairSkyStudy}=await import('./stair-sky-capture.mjs');
     await stairSkyStudy(page,{name,dir,rows,errors,args});views=[];
   }
+  if(args.includes('--lamp-emitter')) {
+    const {lampEmitterStudy}=await import('./lamp-emitter-capture.mjs');
+    await lampEmitterStudy(page,{name,dir,rows,errors,args});views=[];
+  }
   if(args.includes('--night-precision')) {
     const {nightPrecisionCheck}=await import('./night-precision-check.mjs');
     await nightPrecisionCheck(page,{name,dir,rows,errors,args});views=[];

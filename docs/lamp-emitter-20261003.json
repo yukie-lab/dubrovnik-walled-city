@@ -1,0 +1,295 @@
+{
+  "baseline": "beeb1fa",
+  "date": "2026-10-03",
+  "sourceHash": "5a6a453d6d98eb39bac0b7fef5e1e9bca6ee471eba5ef5fde1157b81273fcb3c",
+  "change": "Place pooled point lights at the actual lantern glass centre and project the ground return directly underneath it",
+  "unit": {
+    "fixtureGeometryHash": "f3a54727fd3c3400ec862ec1f2a19390634d0da61657b8770910284dba09f1e5",
+    "fixtureGeometryUnchanged": true,
+    "before": {
+      "lamps": 190,
+      "lightSlots": 8,
+      "assignments": 1462,
+      "maximumEmitterError": 1.0000035057322394,
+      "maximumPoolHorizontalError": 0.9400056515717795,
+      "maximumPoolHeightError": 0.03125616435080758
+    },
+    "after": {
+      "lamps": 190,
+      "lightSlots": 8,
+      "assignments": 1462,
+      "maximumEmitterError": 0.000005105411723124225,
+      "maximumPoolHorizontalError": 0.000006581969747840356,
+      "maximumPoolHeightError": 7.842847757899563e-7
+    }
+  },
+  "images": {
+    "normal": 50,
+    "hidpi": 12,
+    "total": 62,
+    "daylightPairs": 36,
+    "daylightExact": true,
+    "sameCounts": true,
+    "samePose": true,
+    "sameSourceIntensities": true,
+    "stable": true,
+    "maxDrawCalls": 169,
+    "reports": [
+      "lamp-20261003-visual",
+      "lamp-20261003-hidpi"
+    ],
+    "canonicalNight": [
+      {
+        "id": "v1_stradun",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 1275015,
+          "maxRGB": 235
+        },
+        "exposure": {
+          "before": 2994.507126281963,
+          "after": 2621.1327340097064
+        },
+        "localIlluminance": {
+          "before": 0.000022358202736913217,
+          "after": 0.000029824891828322574
+        }
+      },
+      {
+        "id": "v2_alley",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 1387761,
+          "maxRGB": 230
+        },
+        "exposure": {
+          "before": 489.97393616753726,
+          "after": 420.06313741812886
+        },
+        "localIlluminance": {
+          "before": 0.0006535377580442147,
+          "after": 0.0008339577204632154
+        }
+      },
+      {
+        "id": "v3_roofs",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 17830,
+          "maxRGB": 20
+        },
+        "exposure": {
+          "before": 6178.107276197892,
+          "after": 6178.107276197892
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      {
+        "id": "v4_srd",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 167773,
+          "maxRGB": 86
+        },
+        "exposure": {
+          "before": 6177.476738735603,
+          "after": 6177.476738735603
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      {
+        "id": "v5_sea",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        },
+        "exposure": {
+          "before": 6177.476738735603,
+          "after": 6177.476738735603
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      {
+        "id": "v6_lovrijenac",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        },
+        "exposure": {
+          "before": 7411.701531645689,
+          "after": 7411.701531645689
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      {
+        "id": "v7_harbour",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        },
+        "exposure": {
+          "before": 6176.338466977775,
+          "after": 6176.338466977775
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      },
+      {
+        "id": "v8_luza",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 87,
+          "maxRGB": 1
+        },
+        "exposure": {
+          "before": 6501.492571619033,
+          "after": 6501.492571619033
+        },
+        "localIlluminance": {
+          "before": 0,
+          "after": 0
+        }
+      }
+    ],
+    "stairs": [
+      {
+        "id": "pileStair",
+        "exact": false,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 201,
+          "maxRGB": 1
+        }
+      },
+      {
+        "id": "mincetaShaft",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "stjohnStair",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "ploceStair",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "stjohnTop",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "mincetaTop",
+        "exact": true,
+        "difference": {
+          "pixels": 1600000,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      }
+    ]
+  },
+  "water": {
+    "report": "lamp-20261003-water",
+    "method": "Geometry marker read before postprocessing; pure interior detailed-water pixels only. Zero-pixel views do not establish water coverage.",
+    "rows": [
+      {
+        "id": "v3_roofs",
+        "sameMask": true,
+        "difference": {
+          "pixels": 39229,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "v4_srd",
+        "sameMask": true,
+        "difference": {
+          "pixels": 0,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "v5_sea",
+        "sameMask": true,
+        "difference": {
+          "pixels": 300415,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      },
+      {
+        "id": "v8_luza",
+        "sameMask": true,
+        "difference": {
+          "pixels": 0,
+          "changed": 0,
+          "maxRGB": 0
+        }
+      }
+    ]
+  },
+  "programs": {
+    "materialPrograms": 77,
+    "missing": [],
+    "collisions": [],
+    "glErrors": []
+  },
+  "protection": {
+    "unchangedSources": 5,
+    "houses": 665,
+    "geographyAndRoutesUnchanged": true
+  },
+  "limitations": [
+    "The enclosed stair has no nearby lamp illumination at the tested midpoint and remains dark; its image is unchanged.",
+    "Point-light shadowing and normal-play temporal adaptation are outside this correction.",
+    "Light strengths and exposure law are unchanged; the meter responds to the corrected physical light positions.",
+    "FPS and application startup time were not benchmarked in this pass."
+  ]
+}
