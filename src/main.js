@@ -373,11 +373,6 @@ function applyPreset(p) {
 }
 
 ui.onWarp = (p) => { if (p) applyPreset(p); };
-const cafeButton=document.getElementById('btnCafe');
-if(cafeButton) {
-  cafeButton.hidden=!cafe;
-  cafeButton.addEventListener('click',()=>{if(started&&cafe)applyPreset(cafe.layout.approach);});
-}
 
 renderer.domElement.addEventListener('click', () => {
   if (!started) return;

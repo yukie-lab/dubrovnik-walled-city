@@ -3,8 +3,10 @@ import {writeFileSync} from 'node:fs';
 export async function cafeChecks(page,{name,dir,rows,errors}) {
   await page.goto('http://localhost:8765/?shot=1&time=12.87&flow=0',{waitUntil:'domcontentloaded'});
   await page.waitForFunction('window.__READY&&window.__captureFrame',{timeout:180000});
-  // Exercise the visible discoverability control and real browser keyboard.
-  await page.click('#btnCafe');
+  // The on-screen café link was removed at the user's request. The existing
+  // keyboard shortcut and walking entry remain available.
+  if(await page.$('#btnCafe'))errors.push('Removed café link is still present');
+  await page.keyboard.press('c');
   await page.waitForFunction(()=>Math.abs(window.__world.player.x-window.__world.cafe.layout.doorX)<.001);
   await page.evaluate(()=>{window.__world.player.frozen=false;});
   await page.keyboard.down('w');
@@ -49,7 +51,7 @@ export async function cafeChecks(page,{name,dir,rows,errors}) {
   await page.waitForFunction(()=>Math.abs(window.__world.player.x-window.__world.cafe.layout.doorX)>10);
   await page.keyboard.press('c');
   await page.waitForFunction(()=>Math.abs(window.__world.player.x-window.__world.cafe.layout.doorX)<.001);
-  rows.push({view:'cafe-walk',entered,exited,buttonAndShortcut:true});
+  rows.push({view:'cafe-walk',entered,exited,shortcut:true,cafeLinkRemoved:true});
   await page.screenshot({path:new URL(`${name}-discovery.png`,dir).pathname});
   // A second, ordinary session verifies the real 5-second dark adaptation;
   // SHOT deliberately snaps exposure and cannot establish this behaviour.

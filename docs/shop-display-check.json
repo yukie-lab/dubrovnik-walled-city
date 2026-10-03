@@ -1,0 +1,859 @@
+{
+  "date": "2026-10-03",
+  "commands": [
+    "node tools/rendercheck.mjs shop-final --shop-display --program-audit --program-strict",
+    "node tools/rendercheck.mjs shop-cafe --cafe --program-audit --program-strict",
+    "node tools/refinement-protect.mjs",
+    "git diff --check"
+  ],
+  "shopDisplay": {
+    "errors": [],
+    "rows": [
+      {
+        "view": "shop-inventory",
+        "count": 97,
+        "selected": [
+          {
+            "x": -78.89495846491076,
+            "y": 2.6,
+            "z": -4.449999999999999,
+            "rotY": 0,
+            "seed": 0.22677049064077437,
+            "kind": 0
+          },
+          {
+            "x": -110.85697533645902,
+            "y": 2.6,
+            "z": -4.449999999999999,
+            "rotY": 0,
+            "seed": 0.38462188048288226,
+            "kind": 1
+          },
+          {
+            "x": -95.18743065004703,
+            "y": 2.6,
+            "z": -4.449999999999999,
+            "rotY": 0,
+            "seed": 0.819656740874052,
+            "kind": 2
+          },
+          {
+            "x": -106.5845592222028,
+            "y": 2.6,
+            "z": 4.449999999999999,
+            "rotY": 3.141592653589793,
+            "seed": 0.26431264798156917,
+            "kind": 0
+          }
+        ],
+        "kinds": [
+          1,
+          2,
+          0
+        ],
+        "hasCafeLink": false
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -78.89495846491076,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.22677049064077437,
+          "kind": 0
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 12.87,
+        "file": "shop-final-0--0.35-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 124303,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 124519,
+          "culledInstances": 1412053,
+          "drawCalls": 151,
+          "triangles": 4754961,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -79.24495846491075,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -78.89495846491076,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.22677049064077437,
+          "kind": 0
+        },
+        "lat": -1.25,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-0--1.25-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 152561,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 152777,
+          "culledInstances": 1383795,
+          "drawCalls": 149,
+          "triangles": 5171461,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -80.14495846491076,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -78.89495846491076,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.22677049064077437,
+          "kind": 0
+        },
+        "lat": 0.55,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-0-0.55-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 97762,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 97978,
+          "culledInstances": 1438594,
+          "drawCalls": 153,
+          "triangles": 4412495,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -78.34495846491076,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -78.89495846491076,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.22677049064077437,
+          "kind": 0
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 19.3,
+        "file": "shop-final-0--0.35-19.3.png",
+        "stable": true,
+        "stats": {
+          "instances": 117835,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 118005,
+          "culledInstances": 1418567,
+          "drawCalls": 153,
+          "triangles": 3399305,
+          "dpr": 1
+        },
+        "exposure": 3.692006622222221,
+        "groundY": 2.6,
+        "camera": [
+          -79.24495846491075,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -78.89495846491076,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.22677049064077437,
+          "kind": 0
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 22.5,
+        "file": "shop-final-0--0.35-22.5.png",
+        "stable": true,
+        "stats": {
+          "instances": 118508,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 42,
+          "residentInstances": 118862,
+          "culledInstances": 1417710,
+          "drawCalls": 149,
+          "triangles": 3771705,
+          "dpr": 1
+        },
+        "exposure": 994.4314168871821,
+        "groundY": 2.6,
+        "camera": [
+          -79.24495846491075,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -110.85697533645902,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.38462188048288226,
+          "kind": 1
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 12.87,
+        "file": "shop-final-1--0.35-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 102347,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 102563,
+          "culledInstances": 1434009,
+          "drawCalls": 146,
+          "triangles": 4202645,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -111.20697533645901,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -110.85697533645902,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.38462188048288226,
+          "kind": 1
+        },
+        "lat": -1.25,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-1--1.25-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 140378,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 140594,
+          "culledInstances": 1395978,
+          "drawCalls": 146,
+          "triangles": 4813167,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -112.10697533645902,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -110.85697533645902,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.38462188048288226,
+          "kind": 1
+        },
+        "lat": 0.55,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-1-0.55-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 67125,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 67341,
+          "culledInstances": 1469231,
+          "drawCalls": 146,
+          "triangles": 3672995,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -110.30697533645902,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -110.85697533645902,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.38462188048288226,
+          "kind": 1
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 19.3,
+        "file": "shop-final-1--0.35-19.3.png",
+        "stable": true,
+        "stats": {
+          "instances": 97865,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 98035,
+          "culledInstances": 1438537,
+          "drawCalls": 147,
+          "triangles": 3195649,
+          "dpr": 1
+        },
+        "exposure": 3.692006622222221,
+        "groundY": 2.6,
+        "camera": [
+          -111.20697533645901,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -110.85697533645902,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.38462188048288226,
+          "kind": 1
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 22.5,
+        "file": "shop-final-1--0.35-22.5.png",
+        "stable": true,
+        "stats": {
+          "instances": 98429,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 42,
+          "residentInstances": 98783,
+          "culledInstances": 1437789,
+          "drawCalls": 144,
+          "triangles": 3377655,
+          "dpr": 1
+        },
+        "exposure": 872.1179231839897,
+        "groundY": 2.6,
+        "camera": [
+          -111.20697533645901,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -95.18743065004703,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.819656740874052,
+          "kind": 2
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 12.87,
+        "file": "shop-final-2--0.35-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 114792,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 115008,
+          "culledInstances": 1421564,
+          "drawCalls": 151,
+          "triangles": 4557227,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -95.53743065004703,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -95.18743065004703,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.819656740874052,
+          "kind": 2
+        },
+        "lat": -1.25,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-2--1.25-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 148933,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 149149,
+          "culledInstances": 1387423,
+          "drawCalls": 153,
+          "triangles": 5047691,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -96.43743065004703,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -95.18743065004703,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.819656740874052,
+          "kind": 2
+        },
+        "lat": 0.55,
+        "dist": 1.7,
+        "time": 12.87,
+        "file": "shop-final-2-0.55-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 80174,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 80390,
+          "culledInstances": 1456182,
+          "drawCalls": 146,
+          "triangles": 4102199,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -94.63743065004704,
+          4.220000000000001,
+          -2.749999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -95.18743065004703,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.819656740874052,
+          "kind": 2
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 19.3,
+        "file": "shop-final-2--0.35-19.3.png",
+        "stable": true,
+        "stats": {
+          "instances": 108817,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 108987,
+          "culledInstances": 1427585,
+          "drawCalls": 153,
+          "triangles": 3306407,
+          "dpr": 1
+        },
+        "exposure": 3.692006622222221,
+        "groundY": 2.6,
+        "camera": [
+          -95.53743065004703,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -95.18743065004703,
+          "y": 2.6,
+          "z": -4.449999999999999,
+          "rotY": 0,
+          "seed": 0.819656740874052,
+          "kind": 2
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 22.5,
+        "file": "shop-final-2--0.35-22.5.png",
+        "stable": true,
+        "stats": {
+          "instances": 109254,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 42,
+          "residentInstances": 109608,
+          "culledInstances": 1426964,
+          "drawCalls": 148,
+          "triangles": 3594751,
+          "dpr": 1
+        },
+        "exposure": 487.9177577832885,
+        "groundY": 2.6,
+        "camera": [
+          -95.53743065004703,
+          4.220000000000001,
+          -2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "shop-display",
+        "shop": {
+          "x": -106.5845592222028,
+          "y": 2.6,
+          "z": 4.449999999999999,
+          "rotY": 3.141592653589793,
+          "seed": 0.26431264798156917,
+          "kind": 0
+        },
+        "lat": -0.35,
+        "dist": 2.2,
+        "time": 12.87,
+        "file": "shop-final-3--0.35-12.87.png",
+        "stable": true,
+        "stats": {
+          "instances": 20818,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 21034,
+          "culledInstances": 1515538,
+          "drawCalls": 145,
+          "triangles": 3318297,
+          "dpr": 1
+        },
+        "exposure": 0.59450497917868,
+        "groundY": 2.6,
+        "camera": [
+          -106.2345592222028,
+          4.220000000000001,
+          2.249999999999999
+        ],
+        "gpuError": 0
+      },
+      {
+        "view": "cafe-shortcut-without-link",
+        "x": -86.68010520899551,
+        "z": -2.1499999999999995,
+        "zone": "stradun",
+        "removed": true
+      }
+    ],
+    "programAudit": {
+      "materialPrograms": 87,
+      "collisions": [],
+      "missing": [],
+      "glErrors": []
+    }
+  },
+  "cafeRegression": {
+    "errors": [],
+    "rows": [
+      {
+        "view": "cafe",
+        "time": 12.87,
+        "pose": "entry",
+        "stable": true,
+        "stats": {
+          "instances": 88864,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 89080,
+          "culledInstances": 1447492,
+          "drawCalls": 156,
+          "triangles": 4427851,
+          "dpr": 1
+        },
+        "zone": "stradun",
+        "exposure": 0.59450497917868,
+        "meter": 20.289594214618365,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 12.87,
+        "pose": "room",
+        "stable": true,
+        "stats": {
+          "instances": 87752,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 44,
+          "residentInstances": 87968,
+          "culledInstances": 1448604,
+          "drawCalls": 154,
+          "triangles": 4357305,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 2.8206796008746835,
+        "meter": 1.7812036562421187,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 12.87,
+        "pose": "exit",
+        "stable": true,
+        "stats": {
+          "instances": 36845,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 37061,
+          "culledInstances": 1499511,
+          "drawCalls": 153,
+          "triangles": 4035163,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 4.426162677715957,
+        "meter": 0.8809952278632596,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 19.3,
+        "pose": "entry",
+        "stable": true,
+        "stats": {
+          "instances": 81366,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 81536,
+          "culledInstances": 1455036,
+          "drawCalls": 158,
+          "triangles": 2887519,
+          "dpr": 1
+        },
+        "zone": "stradun",
+        "exposure": 3.692006622222221,
+        "meter": 1.1696171102638877,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 19.3,
+        "pose": "room",
+        "stable": true,
+        "stats": {
+          "instances": 80898,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 45,
+          "residentInstances": 81068,
+          "culledInstances": 1455504,
+          "drawCalls": 156,
+          "triangles": 2939369,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 16.86128066016549,
+        "meter": 0.10898703267523355,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 19.3,
+        "pose": "exit",
+        "stable": true,
+        "stats": {
+          "instances": 30523,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 46,
+          "residentInstances": 30693,
+          "culledInstances": 1505879,
+          "drawCalls": 155,
+          "triangles": 2724171,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 25.47073435542135,
+        "meter": 0.057207310818649826,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 22.5,
+        "pose": "entry",
+        "stable": true,
+        "stats": {
+          "instances": 81759,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 42,
+          "residentInstances": 82113,
+          "culledInstances": 1454459,
+          "drawCalls": 154,
+          "triangles": 3192883,
+          "dpr": 1
+        },
+        "zone": "stradun",
+        "exposure": 989.9551879007867,
+        "meter": 0.00018782009224525766,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 22.5,
+        "pose": "room",
+        "stable": true,
+        "stats": {
+          "instances": 80852,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 42,
+          "residentInstances": 81206,
+          "culledInstances": 1455366,
+          "drawCalls": 152,
+          "triangles": 3181733,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 98.34114257171973,
+        "meter": 0.006930147793635723,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe",
+        "time": 22.5,
+        "pose": "exit",
+        "stable": true,
+        "stats": {
+          "instances": 30999,
+          "instanceCapacity": 1536572,
+          "instanceBatches": 43,
+          "residentInstances": 31353,
+          "culledInstances": 1505219,
+          "drawCalls": 151,
+          "triangles": 3020147,
+          "dpr": 1
+        },
+        "zone": "interior",
+        "exposure": 97.4290342201055,
+        "meter": 0.007031786937753538,
+        "gpuError": 0
+      },
+      {
+        "view": "cafe-walk",
+        "entered": {
+          "x": -86.68010520899551,
+          "z": -7.4961353039058345,
+          "y": 2.62,
+          "zone": "interior"
+        },
+        "exited": {
+          "x": -86.68010520899551,
+          "z": -3.4465428208039444,
+          "y": 2.6,
+          "zone": "stradun",
+          "meter": null
+        },
+        "shortcut": true,
+        "cafeLinkRemoved": true
+      },
+      {
+        "view": "cafe-normal-play",
+        "adaptation": {
+          "snap": false,
+          "zone": "interior",
+          "samples": 100,
+          "first": {
+            "exposure": 102.9115395972405,
+            "target": 96.10509750287868,
+            "meter": 0.007183730601832977,
+            "indoor": true
+          },
+          "last": {
+            "exposure": 96.43943306466208,
+            "target": 96.1864791392916,
+            "meter": 0.00717423594912473,
+            "indoor": true
+          }
+        },
+        "restored": {
+          "zone": "stradun",
+          "meter": null
+        }
+      }
+    ],
+    "programAudit": {
+      "materialPrograms": 87,
+      "collisions": [],
+      "missing": [],
+      "glErrors": []
+    }
+  },
+  "protection": {
+    "passed": true,
+    "unchangedSources": 4,
+    "houseRecords": 665,
+    "unchanged": [
+      "wall",
+      "streets",
+      "routes",
+      "presets"
+    ]
+  }
+}

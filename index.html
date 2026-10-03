@@ -125,14 +125,6 @@
     background: rgba(7,14,22,.45); opacity: 0; transition: opacity .9s; white-space: nowrap;
   }
   #hint.show { opacity: .92; }
-  #btnCafe {
-    position:absolute;left:16px;top:58px;pointer-events:auto;
-    color:#efe6d2;background:rgba(7,14,22,.55);border:1px solid rgba(239,230,210,.25);
-    border-radius:3px;padding:9px 12px;cursor:pointer;font:inherit;font-size:11px;letter-spacing:.08em;
-  }
-  #btnCafe:hover { background:rgba(35,67,60,.85); }
-  #btnCafe:focus-visible { outline:2px solid #efe6d2;outline-offset:3px; }
-  body.titling #btnCafe { visibility:hidden; }
 
   /* 時刻ウィジェット(太陽の弧) */
   #timeCtl {
@@ -259,7 +251,6 @@
 
 <div id="hud">
   <button id="btnSoundWalk" type="button">SOUND START</button>
-  <button id="btnCafe" type="button" title="C キーでも移動できます">C &nbsp; カフェ前へ</button>
   <div id="timeCtl"><canvas id="timeArc" width="296" height="92"></canvas><div id="timeLabel">--:--</div></div>
   <div id="debug"></div>
   <div id="map"><canvas id="mapCanvas" width="2600" height="2600"></canvas></div>

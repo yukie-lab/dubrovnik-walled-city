@@ -19,6 +19,7 @@ import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkG
   joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
 import {cafeHouseGeometry} from './cafe-layout.js';
+import {makeShopDisplay} from './shop-display.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
@@ -1403,84 +1404,7 @@ export function makeBuildings(plan, tex, floorSupport) {
       color: 0xa9a08e, roughness: 0.66, envMapIntensity: 0.5, vertexColors: true,
     });
     const arMesh = new THREE.InstancedMesh(arGeo, arMat, shops.length);
-    // 店の奥の暗がり(開口が「穴」に見えるための黒)
-    const darkGeo = new THREE.PlaneGeometry(CW * 2, SPR + CW * 0.9);
-    darkGeo.translate(0, (SPR + CW * 0.9) / 2, 0.016);
-    // 壁に本物の穴を開けずに奥行きを出す = インテリアマッピング。
-    // 視線をフラグメントで箱に当てて、棚と商品をその場で描く。draw call は増えない。
-    const darkMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 1.0, envMapIntensity: 0.22 });
-    darkMat.onBeforeCompile = (sh) => {
-      sh.vertexShader = sh.vertexShader
-        .replace('#include <common>', `#include <common>
-          varying vec3 vIntV; varying vec2 vIntP;`)
-        .replace('#include <project_vertex>', `#include <project_vertex>
-          #ifdef USE_INSTANCING
-            mat4 imx = modelMatrix * instanceMatrix;
-          #else
-            mat4 imx = modelMatrix;
-          #endif
-          vec3 wp = (imx * vec4(transformed, 1.0)).xyz;
-          vec3 Tt = normalize((imx * vec4(1.0, 0.0, 0.0, 0.0)).xyz);
-          vec3 Bt = normalize((imx * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
-          vec3 Nt = normalize((imx * vec4(0.0, 0.0, 1.0, 0.0)).xyz);
-          vec3 Vw = wp - cameraPosition;
-          vIntV = vec3(dot(Vw, Tt), dot(Vw, Bt), dot(Vw, Nt));
-          vIntP = position.xy;`);
-      sh.uniforms.uShopOpen = shopOpen;
-      sh.fragmentShader = sh.fragmentShader
-        .replace('#include <common>', `#include <common>
-          varying vec3 vIntV; varying vec2 vIntP; uniform float uShopOpen;
-          float h11(float n) { return fract(sin(n * 127.1) * 43758.5453); }`)
-        .replace('#include <map_fragment>', `
-          const float CWl = 0.925, HHl = 2.88, DPl = 1.45;
-          vec3 rd = normalize(vIntV);
-          vec3 ro = vec3(vIntP, 0.0);
-          float tz = rd.z < -1e-4 ? (-DPl - ro.z) / rd.z : 1e9;
-          float tx = abs(rd.x) > 1e-4 ? ((rd.x > 0.0 ? CWl : -CWl) - ro.x) / rd.x : 1e9;
-          float ty = abs(rd.y) > 1e-4 ? ((rd.y > 0.0 ? HHl : 0.0) - ro.y) / rd.y : 1e9;
-          float t = min(tz, min(tx, ty));
-          vec3 hp = ro + rd * max(t, 0.0);
-          float depth01 = clamp(-hp.z / DPl, 0.0, 1.0);
-          vec3 icol;
-          if (t == tz) {
-            icol = vec3(0.52, 0.46, 0.375);                    // 奥の壁(漆喰)
-            float sy = hp.y - 0.30;
-            float shelf = floor(sy / 0.56);
-            float inShelf = step(0.0, sy) * step(sy, 2.30);
-            // 棚板
-            if (inShelf > 0.5 && fract(sy / 0.56) < 0.055) icol = vec3(0.24, 0.165, 0.105);
-            else if (inShelf > 0.5) {
-              float cell = floor((hp.x + CWl) / 0.185);
-              float id = shelf * 37.0 + cell;
-              float has = step(0.30, h11(id));
-              float gh = 0.16 + 0.20 * h11(id * 2.7);
-              float fy = fract(sy / 0.56) * 0.56;
-              float gx = fract((hp.x + CWl) / 0.185);
-              if (has > 0.5 && fy < gh && gx > 0.10 && gx < 0.90) {
-                icol = 0.24 + 0.62 * vec3(h11(id * 1.7), h11(id * 2.3), h11(id * 3.1));
-                icol = mix(vec3(dot(icol, vec3(0.33))), icol, 0.72) * vec3(1.10, 1.0, 0.86);
-              }
-            }
-          } else if (t == ty) {
-            icol = rd.y > 0.0 ? vec3(0.22, 0.195, 0.17) : vec3(0.33, 0.26, 0.20);   // 天井 / 床
-          } else {
-            icol = vec3(0.40, 0.35, 0.29);                      // 側壁
-          }
-          // 明るさは開口からの距離で落ちる。奥の壁が明るいと「絵を貼った」に見える。
-          icol *= mix(1.0, 0.30, depth01 * depth01);
-          icol += vec3(0.055, 0.042, 0.028) * smoothstep(2.3, 2.88, hp.y) * (1.0 - depth01 * 0.7);
-          diffuseColor.rgb *= icol;`)
-        .replace('#include <lights_fragment_end>', `#include <lights_fragment_end>
-          reflectedLight.directDiffuse *= 0.05;
-          reflectedLight.directSpecular *= 0.05;
-          // 営業中だけ灯が点く。空の間接光だけだと青い物置に見えるので、
-          // 閉店時は棚も暗く落とす(閉まった店は「暗い」のであって「青い」のではない)。
-          reflectedLight.indirectDiffuse += icol * vec3(0.0062, 0.0042, 0.0020) * uShopOpen
-            * mix(1.0, 0.42, clamp(-hp.z / 1.45, 0.0, 1.0));
-          reflectedLight.indirectDiffuse *= mix(0.45, 1.0, uShopOpen);`);
-    };
-    darkMat.customProgramCacheKey = () => 'shopinterior';
-    const darkMesh = new THREE.InstancedMesh(darkGeo, darkMat, shops.length);
+    const darkMesh = makeShopDisplay(shops,shopOpen);
     const dm = new THREE.Object3D();
     const cc = new THREE.Color();
     shops.forEach((sp, i) => {
@@ -1495,7 +1419,7 @@ export function makeBuildings(plan, tex, floorSupport) {
     });
     arMesh.castShadow = true; arMesh.receiveShadow = true;
     group.add(tagMesh(arMesh, 'arcade.arch', { solid: true, masonry: true, groundContact: true }),
-      tagMesh(darkMesh, 'arcade.shadow', { thin: true, reason: 'アーケード奥の暗がり', noCollide: true, opening: true }));
+      tagMesh(darkMesh, 'arcade.shadow', { thin: true, reason: '商品を立体として描く店舗の開口', noCollide: true, opening: true }));
 
     // ===== 看板と日よけ — 「石の街」に「商いの街」を重ねる。
     // 全店が同じ顔で、看板も日よけも無いと、パン屋も宝石屋も見分けがつかない。
