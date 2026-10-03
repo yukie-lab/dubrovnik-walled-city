@@ -31,6 +31,8 @@ import { makeGroundSupport } from './support.js';
 import {makeWallStairGround} from './wall-stair-ground.js';
 import {makeWallStairCollision} from './wall-stair-collision.js';
 import {applyMasonryAtlas} from './masonry-atlas.js';
+import {planCafe} from './cafe-layout.js';
+import {makeCafe,excavateCafe} from './cafe.js';
 
 /**
  * 街を一つ作る。同じ seed からは必ず同じ街が出る。
@@ -50,7 +52,9 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   const stepPool = makeStepPool(tex);
 
   const monuments = makeMonuments(plan, tex);
+  const cafeLayout=planCafe(plan);
   const ground = makeGround(plan, tex, stepPool);
+  excavateCafe(ground,cafeLayout);
   const walls = makeWalls(plan, tex, stepPool, plan.outsideHeight);
   const support=makeGroundSupport(ground.group,stepPool.items);
   const wallSupport=makeGroundSupport(walls.group,[],['wall.curtain']);
@@ -59,6 +63,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
     return a===null?b:b===null?a:Math.max(a,b);
   }};
   const buildings = makeBuildings(plan, tex, support);
+  const cafe=makeCafe(cafeLayout,tex);
   const roofSupport=life?makeGroundSupport(buildings.group,[],['house.roof','house.ridgeTile']):null;
   const birdSupport=life?{height(x,z,ceiling){
     const a=actorSupport.height(x,z,ceiling),b=roofSupport.height(x,z,ceiling);
@@ -72,7 +77,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
   plan.walkingCollide=makeWallStairCollision(plan,walls.group.getObjectByName('wall.curtain').geometry);
 
-  const parts = { ground, walls, buildings, monuments, surround, sea: seaObj, sky: skyObj, life: lifeObj };
+  const parts = { ground, walls, buildings, monuments, surround, cafe, sea: seaObj, sky: skyObj, life: lifeObj };
   const root = new THREE.Group();
   root.name = 'city';
   const groups = {};
@@ -94,7 +99,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   return {
     seed: getWorldSeed(),
     plan, tex, stepPool, steps, root, groups,masonry,
-    ground, walls, buildings, monuments, surround,
+    ground, walls, buildings, monuments, surround, cafe,
     sea: seaObj, sky: skyObj, life: lifeObj,
     routes: makeRoutes(plan),
     presets: makePresets(plan),

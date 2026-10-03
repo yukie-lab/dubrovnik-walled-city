@@ -73,7 +73,7 @@ const camera = new THREE.PerspectiveCamera(
 // 組み立ては world.js が唯一の定義。ここに順序を書き写すと、検証ツールが
 // 見ている世界とプレイヤーが歩く世界が静かに食い違う。
 const world = buildWorld({ seed: Q.has('seed') ? qf('seed', undefined) : undefined });
-const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps } = world;
+const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps, cafe } = world;
 
 scene.add(world.root);
 const instanceLOD = makeInstanceLOD(world.root, plan);
@@ -185,7 +185,8 @@ window.__auto = auto;
 // ヘッドレス幾何検証用(tools/geomtest.mjs)— 「描画された三角形」を真実として測る
 window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
-  solids: [ground.group, walls.group, buildings.group, monuments.group, steps],
+  solids: [ground.group, walls.group, buildings.group, monuments.group, steps,...(cafe?[cafe.group]:[])],
+  cafe,
   renderer,
   radianceStorage,
   instanceLOD,
@@ -339,6 +340,7 @@ addEventListener('keydown', (e) => {
   // 文字ではなく **物理キーの位置** で選ぶ。I なら JIS でも US でも同じ場所。
   if (e.code === 'KeyI') { ui.toggleDebug(); e.preventDefault(); }
   if (e.code === 'KeyH') { ui.toggleKeys(); e.preventDefault(); }   // 操作の札(街の中でも)
+  if (e.code === 'KeyC'&&cafe) { applyPreset(cafe.layout.approach);e.preventDefault(); }
   if (e.code === 'KeyP') state.paused = !state.paused;
   // 時計の折り返し(4.7〜23.6)と同じ範囲にする。自動進行だけ 23.6 まで
   // 伸ばして、キーは 21.9 のままだったので、手で送ると 21:54 で頭打ちに
@@ -371,6 +373,11 @@ function applyPreset(p) {
 }
 
 ui.onWarp = (p) => { if (p) applyPreset(p); };
+const cafeButton=document.getElementById('btnCafe');
+if(cafeButton) {
+  cafeButton.hidden=!cafe;
+  cafeButton.addEventListener('click',()=>{if(started&&cafe)applyPreset(cafe.layout.approach);});
+}
 
 renderer.domElement.addEventListener('click', () => {
   if (!started) return;
@@ -456,6 +463,7 @@ renderer.setRenderTarget(null);
 frameShadows.beginFrame();
 window.__SHADOW_WARMUP=warmShadowPrograms(renderer,scene,camera);
 let shaftHinted = false;
+let cafeHintState='';
 let last = performance.now();
 let fps = 60, uiTimer = 0;
 
@@ -501,8 +509,10 @@ function frame(now) {
 
   instanceLOD.restoreActors();
   life.update(state.elapsed, sun, camera.position, camera);
+  cafe?.update(sun,camera.position);
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
+  lighting.state.interiorMeter=cafe?.meterAt(camera.position)??null;
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
   radianceStorage.update(sun.ghi);
   sky.update(sun, state.elapsed, camera.position, camera, renderer);
@@ -522,6 +532,13 @@ function frame(now) {
   if (!shaftHinted && started && player.zone === 'shaft') {
     shaftHinted = true;
     ui.hint('壁の中の階段 — 上りきれば、歩廊', 4200);
+  }
+  if(cafe&&started) {
+    const r=cafe.layout,inside=player.zone==='interior';
+    const near=Math.hypot(player.x-r.doorX,player.z-r.z1)<5&&Math.abs(player.groundY-r.floor)<.4;
+    const next=inside?'inside':near?'near':'';
+    if(next&&next!==cafeHintState)ui.hint(inside?'カフェ — 店内を歩いて、同じ入口から通りへ戻れます':'KAVANA — 開いたアーチから、そのまま歩いて入れます',5000);
+    cafeHintState=next;
   }
   if (audio.ctx?.state === 'running') {
     audio.update(dt, {

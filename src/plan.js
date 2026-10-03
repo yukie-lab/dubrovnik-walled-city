@@ -664,6 +664,7 @@ export function buildPlan() {
   const alleyXAt = alleyXAt2;   // 折れ線の路地の中心 x(式はモジュール直下に 1 つ)
   const { streets, northXs, southXs } = makeStreets();
   const houses = buildHouses(northXs, southXs, streets);
+  const interiors = [];
 
   // 路地の縁の空き区画に「庭の塀」を補完する。
   // 路地は必ず石の壁に挟まれている — それがこの街の連続性。
@@ -1507,6 +1508,9 @@ export function buildPlan() {
   // ---- 多層地面の解決 --------------------------------------------------
   // 候補: 街路 / 広場 / 大階段 / 岸壁 / 城壁歩廊 / 壁階段 / 塔テラス / 素地形
   function groundAt(px, pz, curY) {
+    for(const room of interiors) {
+      const floor=room.floorAt(px,pz,curY);if(floor)return floor;
+    }
     const cands = [];
 
     // 広場
@@ -1718,6 +1722,18 @@ export function buildPlan() {
         for (const i of list) {
           const h = houses[i];
           if (py > h.eaves + 0.5) continue;
+          if(h.interior&&py<h.interior.ceiling) {
+            for(const b of h.interior.colliders) {
+              if(py<b.y0||py>b.y1)continue;
+              const hx=(b.x1-b.x0)/2+r,hz=(b.z1-b.z0)/2+r;
+              const mx=(b.x0+b.x1)/2,mz=(b.z0+b.z1)/2,dx=x-mx,dz=z-mz;
+              if(Math.abs(dx)<hx&&Math.abs(dz)<hz) {
+                if(hx-Math.abs(dx)<hz-Math.abs(dz))x=mx+Math.sign(dx||1)*hx;
+                else z=mz+Math.sign(dz||1)*hz;
+              }
+            }
+            continue;
+          }
           const hx = h.w / 2 + r, hz = h.d / 2 + r;
           const dx = x - h.x, dz = z - h.z;
           if (Math.abs(dx) < hx && Math.abs(dz) < hz) {
@@ -1964,7 +1980,7 @@ export function buildPlan() {
   return {
     alleySamples, mincetaGaps, towerGaps, outsideHeight, surfaceAt, pavedY, plazaWall, NEAR, landings, shoreDistAt, seaDepth,
     HOUSE_BASE_BURY,
-    streets, northXs, southXs, houses, PLAZAS, MONUMENTS, GATES,
+    streets, northXs, southXs, houses, interiors, PLAZAS, MONUMENTS, GATES,
     JESUIT_STAIR, WALL_STAIRS, OUTSIDE_WALKS, TOWERS, TERRACES, moatAt, alleyXAt,
     wallPts, wallKinds, wallLen, WALL_KIND, wallNodeHalf, deckEdgeAt, wallSegN, wallWalkYAt, wallWalkYOn,
     terrainHeight, streetY, groundAt, collide, inNoBuild,

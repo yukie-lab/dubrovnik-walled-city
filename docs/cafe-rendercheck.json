@@ -1,0 +1,264 @@
+{
+  "date": "2026-10-03",
+  "errors": [],
+  "cafe": [
+    {
+      "view": "cafe",
+      "time": 12.87,
+      "pose": "entry",
+      "stable": true,
+      "stats": {
+        "instances": 88864,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 44,
+        "residentInstances": 89080,
+        "culledInstances": 1447492,
+        "drawCalls": 156,
+        "triangles": 4427851,
+        "dpr": 1
+      },
+      "zone": "stradun",
+      "exposure": 0.59450497917868,
+      "meter": 20.289594214618365,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 12.87,
+      "pose": "room",
+      "stable": true,
+      "stats": {
+        "instances": 87752,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 44,
+        "residentInstances": 87968,
+        "culledInstances": 1448604,
+        "drawCalls": 154,
+        "triangles": 4357305,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 2.8206796008746835,
+      "meter": 1.7812036562421187,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 12.87,
+      "pose": "exit",
+      "stable": true,
+      "stats": {
+        "instances": 36845,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 45,
+        "residentInstances": 37061,
+        "culledInstances": 1499511,
+        "drawCalls": 153,
+        "triangles": 4035163,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 4.426162677715957,
+      "meter": 0.8809952278632596,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 19.3,
+      "pose": "entry",
+      "stable": true,
+      "stats": {
+        "instances": 81366,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 45,
+        "residentInstances": 81536,
+        "culledInstances": 1455036,
+        "drawCalls": 158,
+        "triangles": 2887519,
+        "dpr": 1
+      },
+      "zone": "stradun",
+      "exposure": 3.692006622222221,
+      "meter": 1.1696171102638877,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 19.3,
+      "pose": "room",
+      "stable": true,
+      "stats": {
+        "instances": 80898,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 45,
+        "residentInstances": 81068,
+        "culledInstances": 1455504,
+        "drawCalls": 156,
+        "triangles": 2939369,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 16.86128066016549,
+      "meter": 0.10898703267523355,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 19.3,
+      "pose": "exit",
+      "stable": true,
+      "stats": {
+        "instances": 30523,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 46,
+        "residentInstances": 30693,
+        "culledInstances": 1505879,
+        "drawCalls": 155,
+        "triangles": 2724171,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 25.47073435542135,
+      "meter": 0.057207310818649826,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 22.5,
+      "pose": "entry",
+      "stable": true,
+      "stats": {
+        "instances": 81759,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 42,
+        "residentInstances": 82113,
+        "culledInstances": 1454459,
+        "drawCalls": 154,
+        "triangles": 3192883,
+        "dpr": 1
+      },
+      "zone": "stradun",
+      "exposure": 989.9551879007867,
+      "meter": 0.00018782009224525766,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 22.5,
+      "pose": "room",
+      "stable": true,
+      "stats": {
+        "instances": 80852,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 42,
+        "residentInstances": 81206,
+        "culledInstances": 1455366,
+        "drawCalls": 152,
+        "triangles": 3181733,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 98.34114257171973,
+      "meter": 0.006930147793635723,
+      "gpuError": 0
+    },
+    {
+      "view": "cafe",
+      "time": 22.5,
+      "pose": "exit",
+      "stable": true,
+      "stats": {
+        "instances": 30999,
+        "instanceCapacity": 1536572,
+        "instanceBatches": 43,
+        "residentInstances": 31353,
+        "culledInstances": 1505219,
+        "drawCalls": 151,
+        "triangles": 3020147,
+        "dpr": 1
+      },
+      "zone": "interior",
+      "exposure": 97.4290342201055,
+      "meter": 0.007031786937753538,
+      "gpuError": 0
+    }
+  ],
+  "walk": {
+    "view": "cafe-walk",
+    "entered": {
+      "x": -86.68010520899551,
+      "z": -7.469182280977914,
+      "y": 2.62,
+      "zone": "interior"
+    },
+    "exited": {
+      "x": -86.68010520899551,
+      "z": -3.430208873918901,
+      "y": 2.6,
+      "zone": "stradun",
+      "meter": null
+    },
+    "buttonAndShortcut": true
+  },
+  "ordinaryPlay": {
+    "snap": false,
+    "zone": "interior",
+    "samples": 100,
+    "first": {
+      "exposure": 103.68959938858374,
+      "target": 96.09024567035486,
+      "meter": 0.007185465562690393,
+      "indoor": true
+    },
+    "last": {
+      "exposure": 97.10526222867227,
+      "target": 96.20664457225725,
+      "meter": 0.007171886464749766,
+      "indoor": true
+    },
+    "restored": {
+      "zone": "stradun",
+      "meter": null
+    }
+  },
+  "outdoors": [
+    {
+      "view": "sea",
+      "drawCalls": 138,
+      "stableFrames": true,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "stradun",
+      "drawCalls": 165,
+      "stableFrames": true,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "alley",
+      "drawCalls": 146,
+      "stableFrames": true,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "roofs",
+      "drawCalls": 170,
+      "stableFrames": true,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    }
+  ],
+  "finalSignShadow": [
+    {
+      "view": "cafe",
+      "drawCalls": 154,
+      "stableFrames": true,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    }
+  ],
+  "notes": [
+    "Nine day/sunset/night room views, real keyboard entry/exit, button and C shortcut, separate ordinary session.",
+    "The final sign receiveShadow correction was checked separately at noon.",
+    "Outdoor checks establish rendering stability, not before/after pixel identity.",
+    "No live speaker listening."
+  ]
+}

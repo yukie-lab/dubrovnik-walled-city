@@ -168,7 +168,7 @@ export class CityAudio {
 
     // ---- 波: 岸までの距離で減衰。路地の中ではさらに壁1枚ぶんこもる。
     const seaAmt = Math.exp(-Math.max(0, seaDist - 6) / 55);
-    const muffle = zone === 'alley' || zone === 'shaft' ? 0.4 : zone === 'street' ? 0.6 : 1;
+    const muffle = zone === 'interior' ? 0.22 : zone === 'alley' || zone === 'shaft' ? 0.4 : zone === 'street' ? 0.6 : 1;
     this.seaLow.gain.setTargetAtTime(0.055 * seaAmt * muffle + 0.004, t, 0.4);
     this.seaWash.gain.setTargetAtTime(0.045 * seaAmt * muffle * (0.7 + 0.3 * Math.sin(this._t * 0.43)), t, 0.35);
 
@@ -180,7 +180,7 @@ export class CityAudio {
     // ---- アマツバメ(朝夕の空)
     const swiftAct = smoothstep(32, 14, Math.abs(sun.el - 8)) * (1 - sun.night);
     this._swiftT -= dt * (0.3 + swiftAct * 1.6);
-    if (this._swiftT <= 0 && swiftAct > 0.15 && zone !== 'shaft') {
+    if (this._swiftT <= 0 && swiftAct > 0.15 && zone !== 'shaft' && zone !== 'interior') {
       this._swiftT = 2.5 + Math.random() * 6;
       const nb = 2 + (Math.random() * 4 | 0);
       for (let i = 0; i < nb; i++) this._swiftScream(t + i * (0.12 + Math.random() * 0.15), swiftAct);
@@ -430,7 +430,7 @@ export class CityAudio {
       g.connect(p2).connect(this.master);
     }
     // ゾーン別の残響へ送る
-    if (zone === 'alley' || zone === 'gate') g.connect(this.verbAlley.conv);
+    if (zone === 'alley' || zone === 'gate' || zone === 'interior') g.connect(this.verbAlley.conv);
     else if (zone === 'shaft') g.connect(this.verbShaft.conv);
     else if (zone === 'stradun' || zone === 'square' || zone === 'street') g.connect(this.verbOpen.conv);
     // 胸壁・港は乾いたまま(風と波が場を語る)

@@ -129,7 +129,10 @@ export function makeLighting(renderer,scene,tex,sky,sea) {
     groundRefY.value=state.groundY??(camPos.y-1.62);
     scene.fog.color.copy(sunState.fogCol);
     state.localIlluminance=localHorizontalIlluminance(localLights,camPos,groundRefY.value);
-    state.meterIlluminance=sunState.ghi+state.localIlluminance;
+    const room=state.interiorMeter;
+    state.meterIlluminance=room
+      ?sunState.ghi*room.sky+state.localIlluminance+room.local
+      :sunState.ghi+state.localIlluminance;
     state.targetExposure=(ZONE_EXPOSURE[zone]??1)*exposureForIlluminance(state.meterIlluminance);
     const tau=state.snap?.0001:(state.targetExposure>state.exposure?5.0:.8);
     // Adapt in stops, so a transition spanning 10+ stops has a sensible rate.

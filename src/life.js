@@ -319,7 +319,9 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
     putPot({ x, z: pz5, y: onFloor(x, pz5, 2.6), s: 0.9 + rng() * 0.5, seed: rng(), boug: false });
   }
   const seating=seatPottedPlants(pots,floorSupport,plan);
-  pots=seating.pots;
+  // Accessible doors need a clear approach, including the plant's crown.
+  // Filter after generation so opening one shop does not reseed the city.
+  pots=seating.pots.filter(p=>!plan.interiors.some(r=>Math.abs(p.x-r.doorX)<r.doorHalf+.45&&p.z>r.z1-.2&&p.z<r.z1+1.6));
   const pottedPlants = makePottedPlants(pots, skyAt, plantTime);
   group.add(pottedPlants.group);
 

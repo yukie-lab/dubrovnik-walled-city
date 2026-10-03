@@ -18,6 +18,7 @@ import { facadeHeightAttribute } from './facade.js';
 import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkGeometry,
   joinerySeeds, patchJoineryMaterial, seatDoorways } from './joinery.js';
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
+import {cafeHouseGeometry} from './cafe-layout.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
@@ -89,7 +90,7 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn, solids) {
     record('box',from);
   };
   if(h.garden)boxP(x0,x1,y0,y1,z0,z1,tint);
-  else geometryP(houseCoreGeometry(h,WALL_COVER),tint,'houseCore');
+  else geometryP(h.interior?cafeHouseGeometry(h,WALL_COVER):houseCoreGeometry(h,WALL_COVER),tint,'houseCore');
   // 立面に走る水平の帯。実測の近景平坦率は 59% — カメラから 3〜4m の壁の
   // 半分が無地だった。石の帯を出すと、その下に必ず影の線が一本入る。
   // 頂点を積むだけなのでドローコールは増えない。
@@ -838,7 +839,7 @@ export function makeBuildings(plan, tex, floorSupport) {
       // 一律に max を採ると、街路が地形より高い所で巾木が宙に浮く。
       const terrY = plan.surfaceAt(fx + f.nx * 0.06, fz + f.nz * 0.06);
       const skirtY = f.paved ? Math.max(groundY, terrY) : terrY;
-      grimes.push({ x: fx + f.nx * 0.03, z: fz + f.nz * 0.03, rotY, w: wallLen * 0.98, h: 0.9 + h.seed * 0.9, y: skirtY });
+      if(!(h.interior&&shopFace))grimes.push({ x: fx + f.nx * 0.03, z: fz + f.nz * 0.03, rotY, w: wallLen * 0.98, h: 0.9 + h.seed * 0.9, y: skirtY });
       // 巾木(base course)— 壁は地面に「刺さって」いない。ここに影が一本入るだけで
       // 建物が地面に立ちはじめる。手続き生成がバレる最大の箇所。
       // 店口の面には巾木を回さない。開口を横切る 0.40m の帯は実物に無い。
@@ -898,7 +899,13 @@ export function makeBuildings(plan, tex, floorSupport) {
             }
             if (cix % 2 === 1) continue;   // 付柱の間だけに開口
           } else if (shopFace) {
-            if (isGround) { shops.push({ x: wx, z: wz, y: groundY, rotY, seed: s }); continue; }
+            if (isGround) {
+              // This bay has actual space behind it. Do not overlay its open
+              // arch with the closed leaf or the old fake-interior plane.
+              if(!h.interior||Math.abs(wx-h.interior.doorX)>.01)
+                shops.push({ x: wx, z: wz, y: groundY, rotY, seed: s });
+              continue;
+            }
             // 通りの規律が命 — 間引かない
           } else {
             if (isGround && !doorPlaced && cix === ((nCols / 2) | 0) && f.kind !== 'plaza' && !isCourt) {

@@ -15,7 +15,10 @@ const protectedFiles = [
 // User-authorized revision, 21 September: physical atmosphere replaces the
 // painted sky. Keep the original hashes immutable and name the exceptions.
 // The sea illumination adapter is audited separately; sea.js itself stays fixed.
-const revisedByUser = new Set(['src/sky.js', 'src/light.js']);
+// 3 October: the user ended refinement and requested one enterable building.
+// plan.js now resolves its floor and shell/furniture collision. The original
+// house records, geography, routes, presets and source manifest remain fixed.
+const revisedByUser = new Set(['src/sky.js', 'src/light.js', 'src/plan.js']);
 const sources = Object.fromEntries(protectedFiles.map(f => [f, hash(readFileSync(new URL(f, root)))]));
 
 installDomShim();
@@ -43,5 +46,5 @@ if (process.argv.includes('--record')) {
   if (failures.length) {
     console.error('PROTECTION FAILED:', failures.join(', '));
     process.exitCode = 1;
-  } else console.log(`Protection passed: ${protectedFiles.length-revisedByUser.size} unchanged sources, ${actual.houseCount} house records, wall, streets, routes and presets. User-authorized atmosphere revision: ${[...revisedByUser].join(', ')}; original manifest retained.`);
+  } else console.log(`Protection passed: ${protectedFiles.length-revisedByUser.size} unchanged sources, ${actual.houseCount} house records, wall, streets, routes and presets. User-authorized atmosphere / enterable-building revisions: ${[...revisedByUser].join(', ')}; original manifest retained.`);
 }
