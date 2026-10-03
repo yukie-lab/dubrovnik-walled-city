@@ -20,6 +20,7 @@ import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkG
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
 import {cafeHouseGeometry} from './cafe-layout.js';
 import {makeShopDisplay} from './shop-display.js';
+import {shopTrade,shopSignUV,hasShopSign,SHOP_ICONS} from './shop-catalog.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
@@ -1472,7 +1473,7 @@ export function makeBuildings(plan, tex, floorSupport) {
           .replace('#include <uv_vertex>', '#include <uv_vertex>\n\tvMapUv += aUvOff;');
       };
       signMat.customProgramCacheKey = () => 'signatlas';
-      const signList = shops.filter(sp => hash2((sp.x * 31) | 0, (sp.z * 29) | 0) < 0.62);
+      const signList = shops.filter(hasShopSign);
       if (signList.length) {
         const signOff = new Float32Array(signList.length * 2);
         const signs = new THREE.InstancedMesh(signGeo, signMat, signList.length);
@@ -1483,12 +1484,11 @@ export function makeBuildings(plan, tex, floorSupport) {
           dm5.scale.setScalar(sc5);
           dm5.updateMatrix();
           signs.setMatrixAt(i, dm5.matrix);
-          const k = (hash2((sp.x * 53) | 0, (sp.z * 47) | 0) * 8) | 0;
-          signOff[i * 2] = (k % 4) * CELL_U;
-          signOff[i * 2 + 1] = ((k / 4) | 0) * CELL_V;
+          signOff.set(shopSignUV(shopTrade(sp)),i*2);
         });
         signGeo.setAttribute('aUvOff', new THREE.InstancedBufferAttribute(signOff, 2));
         signs.castShadow = true;
+        signs.userData.shops=signList.map(sp=>({x:sp.x,z:sp.z,trade:shopTrade(sp),icon:SHOP_ICONS[shopTrade(sp)]}));
         group.add(tagMesh(signs, 'shop.sign', { thin: true, reason: '看板は板', noCollide: true }));
       }
       // --- 日よけ(片流れの縞帆布)

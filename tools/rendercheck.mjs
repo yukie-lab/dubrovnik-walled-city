@@ -91,7 +91,7 @@ try {
   }
   if(args.includes('--shop-display')) {
     const {shopDisplayChecks}=await import('./shop-display-capture.mjs');
-    await shopDisplayChecks(page,{name,dir,rows,errors});views=[];
+    await shopDisplayChecks(page,{name,dir,rows,errors,args});views=[];
   }
   if(args.includes('--audio-check')) {
     const {audioCheck}=await import('./audio-check.mjs');

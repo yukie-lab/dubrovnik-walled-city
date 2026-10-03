@@ -1,16 +1,19 @@
 import * as THREE from 'three';
+import {shopTrade,hasShopSign,SHOP_TRADES,SHOP_ICONS} from './shop-catalog.js';
+import {TRADE_SHAPES,TRADE_COLOURS} from './shop-trade-products.js';
 
 // Storefronts keep one instanced draw. Rays from the actual eye intersect
 // shelves and finite product solids in a shallow display case. Curved bottles,
 // caps and labels therefore have their own silhouettes, normals and parallax.
 export const SHOP_DISPLAY={halfWidth:.925,height:2.975,depth:1.18,rows:4,columns:7};
-export const shopDisplayKind=seed=>Math.min(2,Math.floor(seed*3));
 
 function labelAtlas() {
-  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=512;
+  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
   const ctx=canvas.getContext('2d');
   const labels=[['OLIVE OIL','EXTRA VIRGIN'],['HONEY','LOCAL HARVEST'],['WINE','DALMATIA'],['LAVENDER','HANDMADE'],
-    ['OLIVES','IN BRINE'],['FIG JAM','SMALL BATCH'],['SEA SALT','ADRIATIC'],['ROSEMARY','DRIED HERBS']];
+    ['OLIVES','IN BRINE'],['FIG JAM','SMALL BATCH'],['SEA SALT','ADRIATIC'],['ROSEMARY','DRIED HERBS'],
+    ['APOTEKA','BOTANICAL EXTRACT'],['ROSE WATER','TRADITIONAL TONIC'],['HERBAL BALM','LAVENDER'],['SOAP','OLIVE OIL'],
+    ['LINEN','NATURAL FIBRE'],['THREAD','COTTON'],['POLISH','LEATHER CARE'],['SAGE','DRIED LEAVES']];
   for(let i=0;i<labels.length;i++) {
     const x=(i%4)*256,y=Math.floor(i/4)*256;
     ctx.fillStyle=i===2?'#e9d7ad':'#e6d9b7';ctx.fillRect(x,y,256,256);
@@ -24,7 +27,7 @@ function labelAtlas() {
     for(let j=0;j<3;j++) {
       ctx.beginPath();ctx.ellipse(x+125+j*3,y+80-j*9,9,3,-.55,0,Math.PI*2);ctx.fill();
     }
-    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(i===0||i===2?'250 ml':'NET 180 g',x+128,y+216);
+    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(i===0||i===2?'250 ml':i>=8&&i<=10?'100 ml':'DUBROVNIK',x+128,y+216);
   }
   const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
   map.anisotropy=4;return map;
@@ -88,7 +91,9 @@ const SHAPES=/* glsl */`
       if(p.y>=bottom&&p.y<=top)displayCommit(t,side*normalize((p-centre)/(radius*radius)),p,4.,kind,seed,hit);
     }
   }
+  ${TRADE_SHAPES}
   void displayProduct(vec3 ro,vec3 rd,float kind,float seed,inout DisplayHit hit) {
+    if(kind>5.5){displayTradeProduct(ro,rd,kind,seed,hit);return;}
     if(kind<.5) {
       // Olive oil: thick green glass, broad shoulders and a narrow screw cap.
       displayFrustum(ro,rd,.005,.235,.050,.053,2.,kind,seed,hit);
@@ -137,23 +142,42 @@ const SHAPES=/* glsl */`
     for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.945:.945,1.4875,-.60),vec3(.02,1.4875,.60),0.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,-.02,-.60),vec3(.925,.02,.60),1.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,2.995,-.60),vec3(.925,.02,.60),0.,0.,vDisplaySeed,hit);
+    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5;
+    float columns=fishShop?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
     for(int row=0;row<4;row++) {
-      float shelfY=.79+float(row)*.50;
+      if(fishShop&&row==3)continue;
+      float shelfY=fishShop?.90+float(row)*.57:.79+float(row)*.50;
       displayBox(ro,rd,vec3(0,shelfY-.018,-.925),vec3(.86,.018,.24),1.,0.,vDisplaySeed,hit);
+      if(fishShop) {
+        // Shallow chilled trays with a raised metal lip and crushed-ice bed.
+        displayBox(ro,rd,vec3(0,shelfY+.012,-.92),vec3(.82,.012,.21),15.,10.,vDisplaySeed,hit);
+        displayBox(ro,rd,vec3(0,shelfY+.031,-.70),vec3(.84,.031,.012),10.,17.,vDisplaySeed,hit);
+        for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.831:.831,shelfY+.031,-.92),vec3(.012,.031,.22),10.,17.,vDisplaySeed,hit);
+      }
       // Small paper price cards occupy the timber lip, not the bottles.
       for(int tag=0;tag<3;tag++)displayBox(ro,rd,vec3(-.58+float(tag)*.55,shelfY-.018,-.681),vec3(.053,.014,.0015),6.,0.,float(tag)+float(row)*3.,hit);
       for(int col=0;col<7;col++) {
+        if(float(col)>=columns)continue;
         float id=float(row)*17.+float(col)+vDisplaySeed*311.;
         float seed=displayHash(id+8.2);
         // Stock has deliberate families, modest height variation and a few
         // empty spaces, rather than unrelated colours in an exact grid.
         if(displayHash(id+71.)<.09)continue;
-        float kind=vDisplayKind<.5?(col<3?0.:col<5?1.:4.):vDisplayKind<1.5?(row<2?2.:col<4?0.:1.):(col<5?(mod(float(col+row),3.)<1.?5.:3.):4.);
+        float kind;
+        if(vDisplayKind<.5)kind=mod(float(col+row),2.)<1.?6.:7.;
+        else if(vDisplayKind<1.5)kind=mod(float(col),2.)<1.?12.:13.;
+        else if(vDisplayKind<2.5)kind=col==2?17.:col==0||col==3?9.:8.;
+        else if(vDisplayKind<3.5)kind=10.;
+        else if(vDisplayKind<4.5)kind=row<2?2.:col<4?0.:1.;
+        else if(vDisplayKind<5.5)kind=col==3?5.:col==1||col==5?4.:16.;
+        else if(vDisplayKind<6.5)kind=11.;
+        else kind=col==2?16.:col==0||col==3?14.:15.;
         float scale=.88+seed*.17;
-        vec3 centre=vec3(-.72+float(col)*.24+(displayHash(id+3.)-.5)*.018,shelfY,-.89+(displayHash(id+14.)-.5)*.085);
+        float spacing=1.56/columns;
+        vec3 centre=vec3((float(col)-(columns-1.)*.5)*spacing+(displayHash(id+3.)-.5)*.012,shelfY+(fishShop?.025:0.),-.89+(displayHash(id+14.)-.5)*.085);
         vec3 q=(ro-centre)/scale;
         float a,b;vec3 n;
-        if(!displayBounds(q,rd/scale,vec3(-.091,0,-.091),vec3(.091,.42,.091),a,b,n)||a>hit.t)continue;
+        if(!displayBounds(q,rd/scale,vec3(-.184,0,-.10),vec3(.184,.42,.10),a,b,n)||a>hit.t)continue;
         // Ray parameter remains in world metres even when the product varies.
         displayProduct(q,rd/scale,kind,seed,hit);
       }
@@ -165,11 +189,13 @@ const SHAPES=/* glsl */`
     vec2 cell=vec2(mod(id,4.),floor(id/4.));
     // CanvasTexture is flipped on upload. Keep all samples inside their own
     // atlas cell, including the mip footprint around a label's paper edge.
-    vec2 atlas=(cell+vec2(.025)+clamp(uv,0.,1.)*.95)/vec2(4.,2.);
+    vec2 atlas=(cell+vec2(.025)+clamp(uv,0.,1.)*.95)/vec2(4.,4.);
     atlas.y=1.-atlas.y;return texture2D(uProductLabels,atlas).rgb;
   }
+  ${TRADE_COLOURS}
   vec3 displayColour(DisplayHit hit,vec3 rd,out float gloss) {
     vec3 p=hit.p,n=hit.n;float seed=hit.seed;gloss=0.;
+    if(hit.part>6.5)return tradeColour(hit,gloss);
     if(hit.part<.5) {
       float mottling=sin(p.x*21.+sin(p.y*17.))*sin(p.y*32.+p.z*13.);
       return vec3(.40,.345,.27)*(1.+.035*mottling);
@@ -184,7 +210,7 @@ const SHAPES=/* glsl */`
     }
     if(hit.part>4.5) {
       vec3 paper=vec3(.48,.30,.14)*(1.+.05*sin(p.x*640.)*sin(p.y*530.));
-      if(p.z>.042&&abs(p.x)<.052&&abs(p.y)<.087)paper=displayLabel(vec2(p.x/.104+.5,.5-p.y/.174),seed>.5?3.:6.);
+      if(p.z>.042&&abs(p.x)<.052&&abs(p.y)<.087)paper=displayLabel(vec2(p.x/.104+.5,.5-p.y/.174),vDisplayKind>4.5&&vDisplayKind<5.5?(seed>.5?7.:15.):seed>.5?3.:6.);
       if(abs(p.x)<.0018||abs(p.y+.074)<.0015)paper=vec3(.72,.60,.38);
       return paper;
     }
@@ -221,7 +247,7 @@ export function makeShopDisplay(shops,shopOpen) {
   const {halfWidth,height}=SHOP_DISPLAY;
   const geometry=new THREE.PlaneGeometry(halfWidth*2,height);geometry.translate(0,height/2,.016);
   geometry.setAttribute('aDisplaySeed',new THREE.InstancedBufferAttribute(Float32Array.from(shops,s=>s.seed),1));
-  geometry.setAttribute('aDisplayKind',new THREE.InstancedBufferAttribute(Float32Array.from(shops,s=>shopDisplayKind(s.seed)),1));
+  geometry.setAttribute('aDisplayKind',new THREE.InstancedBufferAttribute(Float32Array.from(shops,shopTrade),1));
   const material=new THREE.MeshStandardMaterial({color:0xffffff,roughness:1,envMapIntensity:.22});
   const labels=labelAtlas();
   material.onBeforeCompile=sh=>{
@@ -248,8 +274,9 @@ export function makeShopDisplay(shops,shopOpen) {
         float displayOcclusion=mix(1.,.58,displayDepth);
         // Creases where products meet timber, with shelf overhang shadow on
         // the rear wall. No black outline is drawn around the product itself.
-        if(displayHit.part>=2.&&displayHit.part<=5.)displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
-        if(displayHit.part<.5&&displayPoint.y>.79)displayOcclusion*=mix(.60,1.,smoothstep(0.,.065,mod(displayPoint.y-.79,.5)));
+        if((displayHit.part>=2.&&displayHit.part<=5.)||displayHit.part>=7.)displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
+        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:.79,shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:.50;
+        if(displayHit.part<.5&&displayPoint.y>shelfBase)displayOcclusion*=mix(.60,1.,smoothstep(0.,.065,mod(displayPoint.y-shelfBase,shelfStep)));
         vec3 displayLit=displayAlbedo*displayDiffuse*displayOcclusion;
         vec3 displayHalf=normalize(displayLight-displayRd);
         float displayHighlight=pow(max(0.,dot(displayNormal,displayHalf)),mix(24.,110.,displayGloss))*displayGloss;
@@ -261,8 +288,8 @@ export function makeShopDisplay(shops,shopOpen) {
         reflectedLight.indirectDiffuse+=displayLit*vec3(.0062,.0042,.0020)*uShopOpen*mix(1.,.42,displayDepth);
         reflectedLight.indirectDiffuse*=mix(.45,1.,uShopOpen);`);
   };
-  material.customProgramCacheKey=()=> 'solid-shop-display-v1';
+  material.customProgramCacheKey=()=> 'trade-shop-display-v2';
   const mesh=new THREE.InstancedMesh(geometry,material,shops.length);
-  mesh.userData.displays=shops.map(s=>({x:s.x,y:s.y,z:s.z,rotY:s.rotY,seed:s.seed,kind:shopDisplayKind(s.seed)}));
+  mesh.userData.displays=shops.map(s=>({x:s.x,y:s.y,z:s.z,rotY:s.rotY,seed:s.seed,kind:shopTrade(s),trade:SHOP_TRADES[shopTrade(s)],icon:SHOP_ICONS[shopTrade(s)],hasSign:hasShopSign(s)}));
   return mesh;
 }

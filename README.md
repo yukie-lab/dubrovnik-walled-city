@@ -54,6 +54,12 @@ node tools/cafe-check.mjs
 node tools/rendercheck.mjs cafe --cafe --program-audit --program-strict
 ```
 
+## 大通りのお店
+
+吊り看板の絵と商品棚が対応しています。ハサミの店は布・糸巻き・裁縫道具、
+魚の店は氷のトレーに魚を並べています。パン屋・鍵屋・酒屋・薬草店・靴屋・
+理髪用品店を含む8業種。詳細は [看板別の商品棚](docs/shop-trades.md) を参照。
+
 ## 検証(実ピクセル)
 
 ```sh
