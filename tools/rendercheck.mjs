@@ -85,6 +85,10 @@ try {
   }
   page.on('pageerror', e => errors.push(String(e)));
   page.on('console', m => { if (m.type() === 'error') errors.push(m.text().slice(0, 1000)); });
+  if(args.includes('--entries')) {
+    const {entryChecks}=await import('./entry-capture.mjs');
+    await entryChecks(page,{name,dir,rows,errors});views=[];
+  }
   if(args.includes('--cafe')) {
     const {cafeChecks}=await import('./cafe-capture.mjs');
     await cafeChecks(page,{name,dir,rows,errors});views=[];

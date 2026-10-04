@@ -1,0 +1,279 @@
+{
+  "checked": "2026-10-05",
+  "sources": {
+    "index.html": "a7332f3ee0959e23a5ca4715eb3e555df6fa3331903aac29b8a9789c342dc590",
+    "src/main.js": "2d75c687576807a1e823342fcb20ade82bfd5a8e87404d92f72c9995fd5bd67c",
+    "src/player.js": "69e0235adcba225069be9b490cb5f5bf671067ece2a1c5ab77c3426375c37326",
+    "src/world.js": "8a260fb9119e2fd25f1bdc542574ca9a8c724badb424b5906be4c37d66b084e7",
+    "src/buildings.js": "6801da5f2649a8b41c027f919f0b309d33bea7118ae3aee354a08d1745d8fc92",
+    "src/cafe.js": "520dc7d2693d09146f7a4c2646abe908882707a90df81444dbf111fcb07daae0",
+    "src/cafe-layout.js": "a4196ca67b863874f1639446e7e51ac06cd948d999cf3719031be1707a989d37",
+    "src/life.js": "feefc511450858ef67e6e988a57bc6e137b18615c4c8378134c5cb41db6554e2",
+    "src/entry-door.js": "176fb50663c6d78578c5f77ea4f0d02b7342a0584a828a7c6c07467459be0cf8",
+    "src/entry-controls.js": "dfcbe61f6cafb3f0bcc6c2157bbc9378f9cfcafbfad28a45d3dc6ade87609511",
+    "src/sponza-layout.js": "afc0d103264d2b96dc8b7bdf5616d2ce095f8b29d748cb69e8115ae21aa165a1",
+    "src/sponza-gallery.js": "7e7777461354127d0689f9f8f4119468471d5c88563ed310d274395381f0966e"
+  },
+  "cpu": {
+    "results": [
+      {
+        "id": "stradun-cafe",
+        "closedDoorBlocks": true,
+        "raySelection": true,
+        "physicalOpening": true,
+        "floorSamples": 3,
+        "ceiling": true,
+        "walkInOut": true,
+        "outdoorCrowdExcluded": true
+      },
+      {
+        "id": "sponza-gallery",
+        "closedDoorBlocks": true,
+        "raySelection": true,
+        "physicalOpening": true,
+        "floorSamples": 41,
+        "ceiling": true,
+        "walkInOut": true,
+        "outdoorCrowdExcluded": true
+      }
+    ]
+  },
+  "interactions": [
+    {
+      "view": "entry-interaction",
+      "id": "stradun-cafe",
+      "meshClick": true,
+      "keyboardExit": true,
+      "buttonEntry": true,
+      "outdoorMeterRestored": true
+    },
+    {
+      "view": "entry-interaction",
+      "id": "sponza-gallery",
+      "meshClick": true,
+      "keyboardExit": true,
+      "buttonEntry": true,
+      "outdoorMeterRestored": true
+    }
+  ],
+  "normalPlay": {
+    "view": "entry-normal-play",
+    "lockedPointer": true,
+    "repeatedClickGuard": true,
+    "mapGuard": true,
+    "distanceGuard": true,
+    "walkInOut": true,
+    "adaptation": {
+      "snap": false,
+      "zone": "interior",
+      "frames": 80,
+      "first": 195.6947937774537,
+      "last": 116.73607292675325,
+      "min": 116.73607292675325,
+      "max": 195.6947937774537,
+      "indoorThroughout": true
+    }
+  },
+  "views": [
+    {
+      "id": "stradun-cafe",
+      "time": 12.87,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 160,
+      "gpuError": 0,
+      "exposure": 2.8206706098353758
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 12.87,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 160,
+      "gpuError": 0,
+      "exposure": 2.8206796008746835
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 12.87,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 161,
+      "gpuError": 0,
+      "exposure": 4.426162677715957
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 19.3,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 162,
+      "gpuError": 0,
+      "exposure": 16.860402329122195
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 19.3,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 162,
+      "gpuError": 0,
+      "exposure": 16.86128066016549
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 19.3,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 163,
+      "gpuError": 0,
+      "exposure": 25.47073435542135
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 22.5,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 158,
+      "gpuError": 0,
+      "exposure": 98.26292665432179
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 22.5,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 158,
+      "gpuError": 0,
+      "exposure": 98.34114257171973
+    },
+    {
+      "id": "stradun-cafe",
+      "time": 22.5,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 159,
+      "gpuError": 0,
+      "exposure": 97.4290342201055
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 12.87,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 178,
+      "gpuError": 0,
+      "exposure": 2.8209757979570322
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 12.87,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 169,
+      "gpuError": 0,
+      "exposure": 4.407367357152559
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 12.87,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 182,
+      "gpuError": 0,
+      "exposure": 5.018521406274914
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 19.3,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 173,
+      "gpuError": 0,
+      "exposure": 16.89027771779084
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 19.3,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 164,
+      "gpuError": 0,
+      "exposure": 25.03395413389281
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 19.3,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 177,
+      "gpuError": 0,
+      "exposure": 28.53849571203353
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 22.5,
+      "pose": "room",
+      "stable": true,
+      "drawCalls": 167,
+      "gpuError": 0,
+      "exposure": 103.45192740161119
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 22.5,
+      "pose": "exhibits",
+      "stable": true,
+      "drawCalls": 160,
+      "gpuError": 0,
+      "exposure": 88.86847953901781
+    },
+    {
+      "id": "sponza-gallery",
+      "time": 22.5,
+      "pose": "exit",
+      "stable": true,
+      "drawCalls": 173,
+      "gpuError": 0,
+      "exposure": 102.10533446652457
+    }
+  ],
+  "programs": {
+    "materials": 104,
+    "collisions": [],
+    "missingMarkers": [],
+    "glErrors": []
+  },
+  "outdoors": [
+    {
+      "view": "sea",
+      "stable": true,
+      "drawCalls": 142,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "stradun",
+      "stable": true,
+      "drawCalls": 178,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "alley",
+      "stable": true,
+      "drawCalls": 150,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    },
+    {
+      "view": "roofs",
+      "stable": true,
+      "drawCalls": 185,
+      "compositorDifference": "変化した画素 0.00%   平均ΔY 0.00000   最大|ΔY| 0.0000 @"
+    }
+  ],
+  "protection": {
+    "passed": true,
+    "houses": 665,
+    "sourceBaselinePreserved": true,
+    "geographyRoutesPresetsPreserved": true
+  }
+}

@@ -8,6 +8,8 @@ export async function cafeChecks(page,{name,dir,rows,errors}) {
   if(await page.$('#btnCafe'))errors.push('Removed café link is still present');
   await page.keyboard.press('c');
   await page.waitForFunction(()=>Math.abs(window.__world.player.x-window.__world.cafe.layout.doorX)<.001);
+  await page.keyboard.press('f');
+  await page.waitForFunction(()=>window.__world.player.zone==='interior'&&!window.__world.entryControls.busy);
   await page.evaluate(()=>{window.__world.player.frozen=false;});
   await page.keyboard.down('w');
   await page.waitForFunction(()=>window.__world.player.z<window.__world.cafe.layout.z1-3,{timeout:45000});
@@ -61,6 +63,8 @@ export async function cafeChecks(page,{name,dir,rows,errors}) {
   await page.waitForFunction(()=>document.getElementById('title').classList.contains('hidden'),{timeout:20000});
   await page.keyboard.press('c');
   await page.waitForFunction(()=>Math.abs(window.__world.player.x-window.__world.cafe.layout.doorX)<.001);
+  await page.keyboard.press('f');
+  await page.waitForFunction(()=>window.__world.player.zone==='interior'&&!window.__world.entryControls.busy);
   await page.keyboard.down('w');
   await page.waitForFunction(()=>window.__world.player.z<window.__world.cafe.layout.z1-3,{timeout:45000});
   await page.keyboard.up('w');

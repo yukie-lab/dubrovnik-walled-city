@@ -34,11 +34,11 @@ export class Player {
     this.pitch = clamp(this.pitch - dy * 0.0019, -1.35, 1.35);
   }
 
-  teleport(x, z, yaw, pitch) {
+  teleport(x, z, yaw, pitch, groundY = 200) {
     this.x = x; this.z = z;
     if (yaw !== undefined) this.yaw = yaw;
     if (pitch !== undefined) this.pitch = pitch;
-    const g = this.floorAt(x, z, 200);
+    const g = this.floorAt(x, z, groundY);
     this.groundY = g.y; this.smoothY = g.y; this.zone = g.zone;
     this.vx = 0; this.vz = 0;
     this.stair=g.stair??null;this.stairLift=null;this.stairBlend=this.stair?1:0;

@@ -26,6 +26,7 @@ import { makeAudioControls } from './audio-controls.js';
 import { Player } from './player.js';
 import { makeUI } from './ui.js';
 import { makeWaterControls } from './water-controls.js';
+import {makeEntryControls} from './entry-controls.js';
 import { clamp, lerp } from './util.js';
 
 const Q = new URLSearchParams(location.search);
@@ -73,7 +74,7 @@ const camera = new THREE.PerspectiveCamera(
 // 組み立ては world.js が唯一の定義。ここに順序を書き写すと、検証ツールが
 // 見ている世界とプレイヤーが歩く世界が静かに食い違う。
 const world = buildWorld({ seed: Q.has('seed') ? qf('seed', undefined) : undefined });
-const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps, cafe } = world;
+const { plan, tex, stepPool, monuments, ground, walls, buildings, surround, sea, sky, life, steps, cafe, sponza, interiors, entryDoors } = world;
 
 scene.add(world.root);
 const instanceLOD = makeInstanceLOD(world.root, plan);
@@ -185,8 +186,8 @@ window.__auto = auto;
 // ヘッドレス幾何検証用(tools/geomtest.mjs)— 「描画された三角形」を真実として測る
 window.__world = {
   THREE, scene, camera, plan, player, auto, routes, life,
-  solids: [ground.group, walls.group, buildings.group, monuments.group, steps,...(cafe?[cafe.group]:[])],
-  cafe,
+  solids: [ground.group, walls.group, buildings.group, monuments.group, steps,...interiors.map(r=>r.group)],
+  cafe, sponza, interiors, entryDoors,
   renderer,
   radianceStorage,
   instanceLOD,
@@ -307,6 +308,10 @@ const titleCam = {
 // ---------------------------------------------------------------- 入力 ----
 const keys = new Set();
 let started = SHOT;
+let presetTimer=null;
+const entryControls=makeEntryControls({doors:entryDoors,canvas:renderer.domElement,camera,player,ui,auto,keys,
+  available:()=>started&&presetTimer===null&&!ui.isMapOpen()&&!ui.els.spots.classList.contains('show')&&!ui.els.keysCard.classList.contains('show')});
+window.__world.entryControls=entryControls;
 if (SHOT) {
   ui.hideTitle();
   // hidden はトランジション(2.2s)で消える。撮影は __READY の 1.4 秒後なので、
@@ -319,6 +324,7 @@ if (SHOT) {
 }
 
 addEventListener('keydown', (e) => {
+  if(e.target instanceof HTMLElement&&(e.target.matches('input,textarea,select')||e.target.isContentEditable))return;
   if (e.repeat) return;
   keys.add(e.code);
   if (e.shiftKey && e.code >= 'Digit1' && e.code <= 'Digit4') {
@@ -341,6 +347,8 @@ addEventListener('keydown', (e) => {
   if (e.code === 'KeyI') { ui.toggleDebug(); e.preventDefault(); }
   if (e.code === 'KeyH') { ui.toggleKeys(); e.preventDefault(); }   // 操作の札(街の中でも)
   if (e.code === 'KeyC'&&cafe) { applyPreset(cafe.layout.approach);e.preventDefault(); }
+  if (e.code === 'KeyJ'&&sponza) { applyPreset(sponza.layout.approach);e.preventDefault(); }
+  if (e.code === 'KeyF') { entryControls.interact();e.preventDefault(); }
   if (e.code === 'KeyP') state.paused = !state.paused;
   // 時計の折り返し(4.7〜23.6)と同じ範囲にする。自動進行だけ 23.6 まで
   // 伸ばして、キーは 21.9 のままだったので、手で送ると 21:54 で頭打ちに
@@ -357,12 +365,16 @@ addEventListener('keydown', (e) => {
   if (pi >= 0 && presets[pi]) applyPreset(presets[pi]);
 });
 addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('blur',()=>keys.clear());
 
 function applyPreset(p) {
+  entryControls.cancel();
+  clearTimeout(presetTimer);
   if (auto.active) auto.stop('眺めへ');
   ui.fade(true);
-  setTimeout(() => {
+  presetTimer=setTimeout(() => {
     player.teleport(p.x, p.z, p.yaw, p.pitch);
+    presetTimer=null;
     // 眺めの場所は「今の空のまま」連れて行く。情景プリセットだけ時刻を動かす。
     if (p.time != null) state.time = p.time;
     ui.hint(p.view
@@ -374,9 +386,10 @@ function applyPreset(p) {
 
 ui.onWarp = (p) => { if (p) applyPreset(p); };
 
-renderer.domElement.addEventListener('click', () => {
+renderer.domElement.addEventListener('click', (e) => {
   if (!started) return;
-  renderer.domElement.requestPointerLock();
+  if(entryControls.busy||entryControls.click(e))return;
+  renderer.domElement.requestPointerLock?.()?.catch?.(()=>{});
 });
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === renderer.domElement) {
@@ -386,6 +399,8 @@ addEventListener('mousemove', (e) => {
 // おまかせ歩きは表題から外した(扉はひとつ)。街の中から Shift+1〜4 で呼ぶ。
 function startRoute(r) {
   if (!r) return;
+  clearTimeout(presetTimer);presetTimer=null;
+  entryControls.cancel();
   if (!started) { titleCam.enter = 0; ui.enterTitle(); }
   try { audio.start(); } catch (err) { console.warn('audio:', err); }
   auto.start(r);
@@ -458,7 +473,7 @@ renderer.setRenderTarget(null);
 frameShadows.beginFrame();
 window.__SHADOW_WARMUP=warmShadowPrograms(renderer,scene,camera);
 let shaftHinted = false;
-let cafeHintState='';
+let interiorHintState='';
 let last = performance.now();
 let fps = 60, uiTimer = 0;
 
@@ -479,7 +494,8 @@ function frame(now) {
   state.elapsed = SHOT ? qf('anim', 40) : state.elapsed + dt;
 
   const sun = sunState(state.time);
-  if (started) { if (auto.active) auto.update(dt); else player.update(dt, keys); }
+  entryControls.update(dt);
+  if (started&&!entryControls.busy) { if (auto.active) auto.update(dt); else player.update(dt, keys); }
   player.pose(camera);                     // 立ち位置(= 降下の行き先)
   if (!started) {
     // 表題のあいだ、そして降下のあいだ、カメラはここが決める。
@@ -504,10 +520,10 @@ function frame(now) {
 
   instanceLOD.restoreActors();
   life.update(state.elapsed, sun, camera.position, camera);
-  cafe?.update(sun,camera.position);
+  for(const room of interiors)room.update(sun,camera.position);
   lighting.state.snap = SHOT;
   lighting.state.groundY = player.smoothY ?? (camera.position.y - 1.62);
-  lighting.state.interiorMeter=cafe?.meterAt(camera.position)??null;
+  lighting.state.interiorMeter=interiors.map(room=>room.meterAt(camera.position)).find(Boolean)??null;
   const lightState = lighting.update(sun, camera.position, player.zone, dt, state.elapsed);
   radianceStorage.update(sun.ghi);
   sky.update(sun, state.elapsed, camera.position, camera, renderer);
@@ -528,12 +544,13 @@ function frame(now) {
     shaftHinted = true;
     ui.hint('壁の中の階段 — 上りきれば、歩廊', 4200);
   }
-  if(cafe&&started) {
-    const r=cafe.layout,inside=player.zone==='interior';
-    const near=Math.hypot(player.x-r.doorX,player.z-r.z1)<5&&Math.abs(player.groundY-r.floor)<.4;
-    const next=inside?'inside':near?'near':'';
-    if(next&&next!==cafeHintState)ui.hint(inside?'カフェ — 店内を歩いて、同じ入口から通りへ戻れます':'KAVANA — 開いたアーチから、そのまま歩いて入れます',5000);
-    cafeHintState=next;
+  if(started&&!entryControls.busy) {
+    const room=interiors.find(({layout:r})=>Math.abs(player.groundY-r.floor)<.4&&
+      (r.contains(player.x,player.z)||Math.hypot(player.x-r.doorX,player.z-r.z1)<5));
+    const r=room?.layout,inside=r?.contains(player.x,player.z),next=r?r.id+(inside?':inside':':near'):'';
+    if(next&&next!==interiorHintState)ui.hint(inside?`${r.name} — 出口をクリック / F で通りへ`:
+      `${r.name} — 扉をクリック / 正面を向いて F で入れます`,5000);
+    interiorHintState=next;
   }
   if (audio.ctx?.state === 'running') {
     audio.update(dt, {

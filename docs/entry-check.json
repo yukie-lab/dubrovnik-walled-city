@@ -1,0 +1,24 @@
+{
+  "results": [
+    {
+      "id": "stradun-cafe",
+      "closedDoorBlocks": true,
+      "raySelection": true,
+      "physicalOpening": true,
+      "floorSamples": 3,
+      "ceiling": true,
+      "walkInOut": true,
+      "outdoorCrowdExcluded": true
+    },
+    {
+      "id": "sponza-gallery",
+      "closedDoorBlocks": true,
+      "raySelection": true,
+      "physicalOpening": true,
+      "floorSamples": 41,
+      "ceiling": true,
+      "walkInOut": true,
+      "outdoorCrowdExcluded": true
+    }
+  ]
+}

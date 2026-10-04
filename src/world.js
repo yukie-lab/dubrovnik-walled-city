@@ -33,6 +33,8 @@ import {makeWallStairCollision} from './wall-stair-collision.js';
 import {applyMasonryAtlas} from './masonry-atlas.js';
 import {planCafe} from './cafe-layout.js';
 import {makeCafe,excavateCafe} from './cafe.js';
+import {planSponza} from './sponza-layout.js';
+import {makeEntryDoor} from './entry-door.js';
 
 /**
  * 街を一つ作る。同じ seed からは必ず同じ街が出る。
@@ -53,8 +55,10 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
 
   const monuments = makeMonuments(plan, tex);
   const cafeLayout=planCafe(plan);
+  const sponzaLayout=planSponza(plan);
   const ground = makeGround(plan, tex, stepPool);
   excavateCafe(ground,cafeLayout);
+  excavateCafe(ground,sponzaLayout);
   const walls = makeWalls(plan, tex, stepPool, plan.outsideHeight);
   const support=makeGroundSupport(ground.group,stepPool.items);
   const wallSupport=makeGroundSupport(walls.group,[],['wall.curtain']);
@@ -64,6 +68,11 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   }};
   const buildings = makeBuildings(plan, tex, support);
   const cafe=makeCafe(cafeLayout,tex);
+  const sponza=makeCafe(sponzaLayout,tex);
+  const interiors=[cafe,sponza].filter(Boolean);
+  const entryDoors=interiors.map(room=>{
+    const door=makeEntryDoor(room.layout,tex,plan);room.group.add(door.group);return door;
+  });
   const roofSupport=life?makeGroundSupport(buildings.group,[],['house.roof','house.ridgeTile']):null;
   const birdSupport=life?{height(x,z,ceiling){
     const a=actorSupport.height(x,z,ceiling),b=roofSupport.height(x,z,ceiling);
@@ -77,7 +86,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   plan.walkingGroundAt=makeWallStairGround(plan,stepPool.items);
   plan.walkingCollide=makeWallStairCollision(plan,walls.group.getObjectByName('wall.curtain').geometry);
 
-  const parts = { ground, walls, buildings, monuments, surround, cafe, sea: seaObj, sky: skyObj, life: lifeObj };
+  const parts = { ground, walls, buildings, monuments, surround, cafe, sponza, sea: seaObj, sky: skyObj, life: lifeObj };
   const root = new THREE.Group();
   root.name = 'city';
   const groups = {};
@@ -99,7 +108,7 @@ export function buildWorld({ seed, life = true, sky = true, sea = true } = {}) {
   return {
     seed: getWorldSeed(),
     plan, tex, stepPool, steps, root, groups,masonry,
-    ground, walls, buildings, monuments, surround, cafe,
+    ground, walls, buildings, monuments, surround, cafe, sponza, interiors, entryDoors,
     sea: seaObj, sky: skyObj, life: lifeObj,
     routes: makeRoutes(plan),
     presets: makePresets(plan),

@@ -2,12 +2,18 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {chainMaterialShader} from './material-patch.js';
 import {smoothstep, tagMesh} from './util.js';
+import {furnishSponza} from './sponza-gallery.js';
 
 // Excavate only beneath the masonry footprint. Preserve every original vertex
 // and triangle outside it, interpolating all terrain attributes at the cut.
 export function excavateCafe(ground,r) {
   if(!r)return;
-  const mesh=ground.group.getObjectByName('ground.near'),g=mesh.geometry;
+  // Plaza/street paving used to run beneath the sealed monument. Remove that
+  // layer too: it has a different lighting model and lies only millimetres
+  // below the room floor. Keep all geometry outside the masonry footprint.
+  for(const name of ['ground.near','ground.paving','ground.stradun']) {
+  const mesh=ground.group.getObjectByName(name);if(!mesh)continue;
+  const g=mesh.geometry;
   const names=Object.keys(g.attributes),arrays=names.map(n=>Array.from(g.attributes[n].array));
   const attrs=names.map(n=>g.attributes[n]),pos=g.attributes.position,indices=[];
   const planes=[[0,r.x0+.12,1],[0,r.x1-.12,-1],[2,r.z0+.12,1],[2,r.z1-.12,-1]];
@@ -17,8 +23,8 @@ export function excavateCafe(ground,r) {
     const id=arrays[positionIndex].length/3;
     v.forEach((a,i)=>arrays[i].push(...a));return id;
   };
-  for(let i=0;i<g.index.count;i+=3) {
-    const ids=[g.index.getX(i),g.index.getX(i+1),g.index.getX(i+2)];
+  for(let i=0;i<(g.index?.count??pos.count);i+=3) {
+    const ids=[0,1,2].map(k=>g.index?g.index.getX(i+k):i+k);
     if(Math.max(...ids.map(i=>pos.getX(i)))<=r.x0+.12||Math.min(...ids.map(i=>pos.getX(i)))>=r.x1-.12||
        Math.max(...ids.map(i=>pos.getZ(i)))<=r.z0+.12||Math.min(...ids.map(i=>pos.getZ(i)))>=r.z1-.12) {
       indices.push(...ids);continue;
@@ -45,17 +51,20 @@ export function excavateCafe(ground,r) {
   const next=new THREE.BufferGeometry();
   names.forEach((n,i)=>next.setAttribute(n,new THREE.BufferAttribute(new attrs[i].array.constructor(arrays[i]),attrs[i].itemSize,attrs[i].normalized)));
   next.setIndex(indices);next.userData={...g.userData};mesh.geometry=next;g.dispose();
+  }
 }
 
 export function makeCafe(r,tex) {
   if(!r)return null;
   const group=new THREE.Group(),room=new THREE.Group();group.add(room);
-  const lamps=[new THREE.Vector3(r.house.x,r.ceiling-.60,r.z0+2.3),
-    new THREE.Vector3(r.doorX,r.ceiling-.60,r.z1-1.8)];
-  // Finite 250 cd warm pendant sources, in the same 5,000-lux units as the
+  const gallery=r.kind==='gallery';
+  const lamps=gallery?[-3.5,3.5].flatMap(dx=>[r.z0+4,r.z1-3.5].map(z=>new THREE.Vector3(r.house.x+dx,r.ceiling-1.1,z))):
+    [new THREE.Vector3(r.house.x,r.ceiling-.60,r.z0+2.3),new THREE.Vector3(r.doorX,r.ceiling-.60,r.z1-1.8)];
+  // Finite warm pendants (250 cd in the café, 700 cd in the larger gallery),
+  // in the same 5,000-lux units as the
   // city. Their materials are confined to this room, so light cannot leak
   // through its masonry or add point-light slots to every city shader.
-  const lampColour=new THREE.Color(0xffd4a0),lampPower=.05;
+  const lampColour=new THREE.Color(0xffd4a0),lampPower=gallery?.14:.05;
   const batches=new Map();
   const materials={
     plaster:new THREE.MeshStandardMaterial({map:tex.plaster.map,normalMap:tex.plaster.normalMap,roughness:.94,vertexColors:true}),
@@ -65,7 +74,7 @@ export function makeCafe(r,tex) {
     floor:new THREE.MeshStandardMaterial({map:tex.paving.map,normalMap:tex.paving.normalMap,roughness:.7,vertexColors:true}),
   };
   function lightMaterial(mat,key) {
-    chainMaterialShader(mat,`cafe-room-${key}-v1`,sh=>{
+    chainMaterialShader(mat,`room-${r.id}-${key}-v2`,sh=>{
       sh.uniforms.uCafeLamps={value:lamps};sh.uniforms.uCafeLampColour={value:lampColour};
       sh.vertexShader=sh.vertexShader.replace('#include <common>',`#include <common>
         varying vec3 vCafePosition; varying vec3 vCafeNormal;`)
@@ -74,14 +83,14 @@ export function makeCafe(r,tex) {
           vCafeNormal=normalize(mat3(modelMatrix)*normal);`);
       sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
         varying vec3 vCafePosition; varying vec3 vCafeNormal;
-        uniform vec3 uCafeLamps[2]; uniform vec3 uCafeLampColour;`)
+        uniform vec3 uCafeLamps[${lamps.length}]; uniform vec3 uCafeLampColour;`)
         .replace('#include <aomap_fragment>',`#include <aomap_fragment>
           float depth=max(0.0,${r.z1.toFixed(8)}-vCafePosition.z);
           float opening=.035+.13*exp(-depth*.55);
           reflectedLight.indirectDiffuse*=opening;
           reflectedLight.indirectSpecular*=opening;
           vec3 cafeIrradiance=vec3(0.0);
-          for(int j=0;j<2;j++) {
+          for(int j=0;j<${lamps.length};j++) {
             vec3 delta=uCafeLamps[j]-vCafePosition;
             float d2=max(.10,dot(delta,delta));
             cafeIrradiance+=uCafeLampColour*${lampPower}*max(0.0,dot(normalize(delta),normalize(vCafeNormal)))/d2;
@@ -136,6 +145,8 @@ export function makeCafe(r,tex) {
   box('wood',width,.18,.08,r.house.x,floor+.09,back+.05,0x69533d);
   for(let z=back+.5;z<front;z+=1.5)box('wood',width,.20,.16,r.house.x,top-.10,z,0x645039);
 
+  if(gallery)furnishSponza(r,{box,cylinder,add});
+  else {
   const c=r.counter;
   box('wood',c.w,c.h,c.d,c.x,floor+c.h/2,c.z,0x917054);
   box('stone',c.w+.08,.085,c.d+.1,c.x,floor+c.h+.04,c.z,0xbeb6a3);
@@ -182,6 +193,7 @@ export function makeCafe(r,tex) {
     g.scale(1,2.0,.28);g.rotateZ(Math.sin(angle)*.7);
     g.translate(left+.34+Math.cos(angle)*.12,floor+.38+i*.02,front-.55+Math.sin(angle)*.12);add('objects',g,0x586b43);
   }
+  }
   for(const l of lamps) {
     cylinder('objects',.009,.009,top-l.y-.08,l.x,(top+l.y+.08)/2,l.z,0x333c38,8);
     cylinder('objects',.11,.30,.22,l.x,l.y+.14,l.z,0x345550,24);
@@ -213,10 +225,14 @@ export function makeCafe(r,tex) {
     const mat=new THREE.MeshStandardMaterial({map,roughness:.8});
     if(interior)lightMaterial(mat,'sign');
     const board=new THREE.Mesh(new THREE.PlaneGeometry(w,h),mat);board.position.set(x,y,z);board.receiveShadow=true;
-    group.add(tagMesh(board,'interior.sign',{noCollide:true}));
+    (interior?room:group).add(tagMesh(board,'interior.sign',{noCollide:true}));
   }
-  placard('KAVANA','STRADUN  ·  WELCOME',1.38,.52,r.doorX,floor+3.38,r.z1+.06);
-  placard('KAVA  ·  ČAJ','ESPRESSO     /     TEA',1.25,.65,r.house.x,floor+2.0,back+.045,true);
+  placard(gallery?'SPONZA':'KAVANA',gallery?'RAGUSA  ·  GALLERY':'STRADUN  ·  WELCOME',gallery?1.8:1.38,.52,
+    r.doorX,floor+(gallery?3.82:3.38),r.z1+.06);
+  if(gallery) {
+    placard('RAGUSA','THE CITY  ·  THE SEA',3.2,1.15,r.house.x,floor+3.25,back+.05,true);
+    placard('ARCHIVUM','BOOKS  ·  MAPS  ·  VOYAGES',2.3,.6,r.house.x,floor+1.7,back+.05,true);
+  }else placard('KAVA  ·  ČAJ','ESPRESSO     /     TEA',1.25,.65,r.house.x,floor+2.0,back+.045,true);
   return {group,room,layout:r,lamps,
     update(sun,eye){room.visible=Math.hypot(eye.x-r.house.x,eye.z-r.house.z)<45;},
     meterAt(eye){

@@ -119,6 +119,17 @@ function houseBody(P, N, U, C, I, h, tint, A, S, skyFn, solids) {
   // 「格の違い」を作る。教会に鎧戸を付けないのと同じくらい根本的な差。
   if (h.monument) {
     const band = (ex, ey0, ey1, tt) => {
+      if(h.interior&&ey0<h.interior.ceiling) {
+        // The old plinth was a solid slab across the entire monument. Keep
+        // its exterior profile, but leave the room and doorway hollow.
+        const r=h.interior;
+        boxP(x0-ex,x0+r.wall,ey0,ey1,z0-ex,z1+ex,tt);
+        boxP(x1-r.wall,x1+ex,ey0,ey1,z0-ex,z1+ex,tt);
+        boxP(x0+r.wall,x1-r.wall,ey0,ey1,z0-ex,z0+r.wall,tt);
+        boxP(x0+r.wall,r.doorX-r.doorHalf,ey0,ey1,z1-r.wall,z1+ex,tt);
+        boxP(r.doorX+r.doorHalf,x1-r.wall,ey0,ey1,z1-r.wall,z1+ex,tt);
+        return;
+      }
       boxP(x0 - ex, x1 + ex, ey0, ey1, z0 - ex, z1 + ex, tt, [(x1 - x0 + ex * 2) * um, (ey1 - ey0) * um]);
     };
     const warm = new THREE.Color(tint).multiplyScalar(1.05);
@@ -841,7 +852,8 @@ export function makeBuildings(plan, tex, floorSupport) {
       // 一律に max を採ると、街路が地形より高い所で巾木が宙に浮く。
       const terrY = plan.surfaceAt(fx + f.nx * 0.06, fz + f.nz * 0.06);
       const skirtY = f.paved ? Math.max(groundY, terrY) : terrY;
-      if(!(h.interior&&shopFace))grimes.push({ x: fx + f.nx * 0.03, z: fz + f.nz * 0.03, rotY, w: wallLen * 0.98, h: 0.9 + h.seed * 0.9, y: skirtY });
+      const interiorFace=h.interior&&f.nz===1;
+      if(!interiorFace)grimes.push({ x: fx + f.nx * 0.03, z: fz + f.nz * 0.03, rotY, w: wallLen * 0.98, h: 0.9 + h.seed * 0.9, y: skirtY });
       // 巾木(base course)— 壁は地面に「刺さって」いない。ここに影が一本入るだけで
       // 建物が地面に立ちはじめる。手続き生成がバレる最大の箇所。
       // 店口の面には巾木を回さない。開口を横切る 0.40m の帯は実物に無い。
@@ -894,8 +906,8 @@ export function makeBuildings(plan, tex, floorSupport) {
           if (h.monument) {
             // 中央ベイは大ポータル、他は縦長窓。間引かない(格式は規律から来る)
             if (isGround && cix === ((nCols / 2) | 0) && !doorPlaced) {
-              doors.push({ x: wx, z: wz, y: groundY, rotY, seed: s, arch: true, big: true });
-              doorCuts.push({ c: off * wallLen * spread, half: 1.15 });
+              if(!interiorFace)doors.push({ x: wx, z: wz, y: groundY, rotY, seed: s, arch: true, big: true });
+              doorCuts.push({ c: off * wallLen * spread, half: interiorFace?h.interior.doorHalf+.2:1.15 });
               doorPlaced = true;
               continue;
             }

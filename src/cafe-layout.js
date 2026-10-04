@@ -14,7 +14,7 @@ export function planCafe(plan) {
   const bays=Math.max(1,Math.round(h.w/4.1)),doorX=h.x+((Math.floor(bays/2)+.5)/bays-.5)*h.w;
   const cafe={id:'stradun-cafe',name:'ストラドゥンの小さなカフェ',house,x0,x1,z0,z1,wall,floor,ceiling,
     doorX,doorHalf:.925,spring:2.05,colliders:[],
-    approach:{x:doorX,z:z1+2.3,yaw:0,pitch:0,name:'カフェ前 — 開いたアーチから店内へ'},
+    approach:{x:doorX,z:z1+2.3,yaw:0,pitch:0,name:'カフェ前 — 扉をクリック、または F で入店'},
     contains(x,z){return x>x0&&x<x1&&z>z0&&z<z1;},
     floorAt(x,z,currentY){
       // Include the flush stone threshold; a viewpoint above the roof keeps
@@ -28,7 +28,7 @@ export function planCafe(plan) {
   collider(x0,x0+wall,z0,z1);collider(x1-wall,x1,z0,z1);
   collider(x0,x1,z0,z0+wall);
   // The arch's stone jamb projects 19 cm to each side, but its clear opening
-  // remains 1.85 m. The walker fits through without an interaction key.
+  // remains 1.85 m. The open door leaves leave room for the walker.
   collider(x0,doorX-cafe.doorHalf,z1-wall,z1+.275);
   collider(doorX+cafe.doorHalf,x1,z1-wall,z1+.275);
   cafe.counter={x:x0+wall+.48,z:z0+wall+2.05,w:.85,d:2.8,h:1.02};

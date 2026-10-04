@@ -33,6 +33,9 @@ function depthFor(mat) {
 
 
 export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSupport,birdSupport=actorSupport) {
+  // Outdoor crowds and wall lamps keep their outdoor domain when a formerly
+  // solid house becomes walkable. They do not inherit the visitor's access.
+  const inRoom=(x,z,y)=>plan.interiors.some(r=>x>r.x0-.3&&x<r.x1+.3&&z>r.z0-.3&&z<r.z1+.1&&y<r.ceiling);
   // 時刻で変わるもの。update() が行列を書き換えるだけの設計だったので、
   // 深夜 2 時のカフェも 23 時の市場も 03:30 の全開の鎧戸も、そのまま出ていた。
   // 洗濯物のメッシュは関数の頭で作られるので、宣言はここに置く。
@@ -417,6 +420,7 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
       }
     }
   }
+  for(let i=lamps.length-1;i>=0;i--)if(inRoom(lamps[i].x,lamps[i].z,lamps[i].y))lamps.splice(i,1);
   {
     // 壁座 → S 字の腕 → 六角のガラス箱 → 円錐の笠 → つまみ。
     // L 字の棒に黒い箱では、街灯ではなく防犯カメラに見える。
@@ -612,6 +616,7 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
   {
     // y は呼び出し側の推定値。実際の床に必ずスナップする(浮き/めり込み対策)。
     const place = (x, z, y, seed, face) => {
+      if(inRoom(x,z,y))return null;
       const c = plan.collide(x, z, 0.4, y + 1.0);
       if (Math.hypot(c.x - x, c.z - z) > 0.15) return null;
       const g = plan.groundAt(x, z, y + 1.0);
@@ -887,6 +892,7 @@ export function makeLife(plan, tex, stepPool, floorSupport, actorSupport=floorSu
         for (let k = 0; k <= 8; k++) {
           const u = k / 8 - 0.5;
           const px2 = f.x + c.tx * c.span * u, pz2 = f.z + c.tz * c.span * u;
+          if(inRoom(px2,pz2,f.y)){ok=false;break;}
           const cc = plan.collide(px2, pz2, 0.4, f.y + 1.0);
           if (Math.hypot(cc.x - px2, cc.z - pz2) > 0.2) { ok = false; break; }
           const g = plan.groundAt(px2, pz2, f.y + 1.2);
