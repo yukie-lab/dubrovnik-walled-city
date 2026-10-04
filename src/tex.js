@@ -988,14 +988,14 @@ export function makeTextures() {
 }
 
 
-// 看板の紋章。4x3 のアトラス。文字は読めなくてよい — 職種が分かればよい。
-// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛 / バッグ / 果物
+// 看板の紋章。4x4 のアトラス。文字は読めなくてよい — 職種が分かればよい。
+// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛 / バッグ / 果物 / 本 / 人形 / チーズ
 function signAtlas(rng, { size = 512 } = {}) {
   const {columns,rows}=SHOP_SIGN_ATLAS;
   const cw=size/columns,chh=size/2;
   const [c, ctx] = canvas(size,chh*rows);
   const addedRng=rngFor(0xb0719); // New signs must not shift the awning texture's random stream.
-  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a','#482e39','#30452d'];
+  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a','#482e39','#30452d','#293b49','#45332e','#44402b'];
   for (let k = 0; k < SHOP_TRADES.length; k++) {
     const cx0 = (k % columns) * cw, cy0 = Math.floor(k/columns) * chh;
     // 板の地。塗料の褪せと縁の摩耗。
@@ -1054,13 +1054,40 @@ function signAtlas(rng, { size = 512 } = {}) {
       ctx.lineTo(S*.88,S*.78);ctx.quadraticCurveTo(0,S*.98,-S*.88,S*.78);ctx.closePath();ctx.fill();
       ctx.beginPath();ctx.ellipse(0,-S*.21,S*.42,S*.58,0,Math.PI,Math.PI*2);ctx.stroke();
       ctx.fillStyle=bg[k];ctx.fillRect(-S*.12,S*.14,S*.24,S*.23);
-    } else {                             // 葉付きリンゴと洋梨
+    } else if (k === 9) {                 // 葉付きリンゴと洋梨
       ctx.beginPath();ctx.ellipse(-S*.40,S*.18,S*.57,S*.62,-.20,0,Math.PI*2);ctx.fill();
       ctx.beginPath();ctx.ellipse(S*.49,S*.40,S*.43,S*.43,0,0,Math.PI*2);ctx.fill();
       ctx.beginPath();ctx.moveTo(S*.13,S*.22);ctx.quadraticCurveTo(S*.32,-S*.48,S*.50,-S*.39);
       ctx.quadraticCurveTo(S*.70,-S*.41,S*.88,S*.32);ctx.closePath();ctx.fill();
       ctx.beginPath();ctx.moveTo(-S*.40,-S*.32);ctx.lineTo(-S*.30,-S*.67);ctx.stroke();
       ctx.beginPath();ctx.ellipse(-S*.05,-S*.66,S*.28,S*.12,-.36,0,Math.PI*2);ctx.fill();
+    } else if (k === 10) {                // 開いた本
+      for(const side of [-1,1]) {
+        ctx.beginPath();ctx.moveTo(0,-S*.48);ctx.quadraticCurveTo(side*S*.45,-S*.79,side*S*.96,-S*.62);
+        ctx.lineTo(side*S*.96,S*.62);ctx.quadraticCurveTo(side*S*.45,S*.45,0,S*.72);ctx.closePath();ctx.fill();
+      }
+      ctx.strokeStyle=bg[k];ctx.lineWidth=S*.07;
+      ctx.beginPath();ctx.moveTo(0,-S*.48);ctx.lineTo(0,S*.72);ctx.stroke();
+      for(const side of [-1,1])for(let line=0;line<3;line++) {
+        ctx.beginPath();ctx.moveTo(side*S*.20,(-.28+line*.26)*S);
+        ctx.quadraticCurveTo(side*S*.5,(-.42+line*.26)*S,side*S*.76,(-.33+line*.26)*S);ctx.stroke();
+      }
+    } else if (k === 11) {                // スカートを着た人形
+      ctx.beginPath();ctx.arc(0,-S*.65,S*.28,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.18,-S*.30);ctx.lineTo(S*.18,-S*.30);
+      ctx.lineTo(S*.58,S*.71);ctx.quadraticCurveTo(0,S*.95,-S*.58,S*.71);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.15,-S*.18);ctx.lineTo(-S*.62,S*.23);
+      ctx.moveTo(S*.15,-S*.18);ctx.lineTo(S*.62,S*.23);ctx.stroke();
+      ctx.fillRect(-S*.64,S*.91,S*1.28,S*.12);
+    } else {                             // 穴のあるチーズのくさび
+      ctx.beginPath();ctx.moveTo(-S*.94,S*.16);ctx.lineTo(S*.37,-S*.70);ctx.lineTo(S*.98,-S*.12);
+      ctx.lineTo(S*.98,S*.70);ctx.lineTo(-S*.94,S*.70);ctx.closePath();ctx.fill();
+      ctx.strokeStyle=bg[k];ctx.lineWidth=S*.065;
+      ctx.beginPath();ctx.moveTo(-S*.88,S*.20);ctx.lineTo(S*.90,S*.03);ctx.stroke();
+      ctx.fillStyle=bg[k];
+      for(const [x,y,r] of [[-.53,.44,.10],[.06,.34,.13],[.66,.43,.11]]) {
+        ctx.beginPath();ctx.arc(x*S,y*S,r*S,0,Math.PI*2);ctx.fill();
+      }
     }
     ctx.restore();
   }

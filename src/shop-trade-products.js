@@ -1,4 +1,5 @@
 import {BOUTIQUE_FRUIT_SHAPES,BOUTIQUE_FRUIT_COLOURS} from './shop-boutique-fruit.js';
+import {CULTURE_FOOD_SHAPES,CULTURE_FOOD_COLOURS} from './shop-books-souvenirs-cheese.js';
 
 // Analytic solids for the sign-led trades. Coordinates are metres in a
 // product's local frame; each surface retains its own normal and material.
@@ -39,7 +40,9 @@ export const TRADE_SHAPES=/* glsl */`
     if(h.t<hit.t){h.n=m*h.n;h.p=c+m*h.p;hit=h;}
   }
   ${BOUTIQUE_FRUIT_SHAPES}
+  ${CULTURE_FOOD_SHAPES}
   void displayTradeProduct(vec3 ro,vec3 rd,float kind,float seed,inout DisplayHit hit) {
+    if(kind>24.5){displayCultureFood(ro,rd,kind,seed,hit);return;}
     if(kind>17.5){displayBoutiqueFruit(ro,rd,kind,seed,hit);return;}
     if(kind<7.5) {
       // Baked loaves: a domed round loaf or a longer scored country loaf.
@@ -114,8 +117,10 @@ export const TRADE_SHAPES=/* glsl */`
 // Inserted after label sampling so paper sleeves can share the label atlas.
 export const TRADE_COLOURS=/* glsl */`
   ${BOUTIQUE_FRUIT_COLOURS}
+  ${CULTURE_FOOD_COLOURS}
   vec3 tradeColour(DisplayHit hit,out float gloss) {
     vec3 p=hit.p,n=hit.n;float seed=hit.seed;gloss=0.;
+    if(hit.part>22.5)return cultureFoodColour(hit,gloss);
     if(hit.part>16.5)return boutiqueFruitColour(hit,gloss);
     if(hit.part<7.5) {
       float crust=.90+.10*sin(p.x*273.+sin(p.y*93.))*sin(p.z*212.);

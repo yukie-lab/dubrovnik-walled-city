@@ -8,12 +8,14 @@ import {TRADE_SHAPES,TRADE_COLOURS} from './shop-trade-products.js';
 export const SHOP_DISPLAY={halfWidth:.925,height:2.975,depth:1.18,rows:4,columns:7};
 
 function labelAtlas() {
-  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=1024;
+  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=2048;
   const ctx=canvas.getContext('2d');
   const labels=[['OLIVE OIL','EXTRA VIRGIN'],['HONEY','LOCAL HARVEST'],['WINE','DALMATIA'],['LAVENDER','HANDMADE'],
     ['OLIVES','IN BRINE'],['FIG JAM','SMALL BATCH'],['SEA SALT','ADRIATIC'],['ROSEMARY','DRIED HERBS'],
     ['APOTEKA','BOTANICAL EXTRACT'],['ROSE WATER','TRADITIONAL TONIC'],['HERBAL BALM','LAVENDER'],['SOAP','OLIVE OIL'],
-    ['LINEN','NATURAL FIBRE'],['THREAD','COTTON'],['POLISH','LEATHER CARE'],['SAGE','DRIED LEAVES']];
+    ['LINEN','NATURAL FIBRE'],['THREAD','COTTON'],['POLISH','LEATHER CARE'],['SAGE','DRIED LEAVES'],
+    ['DUBROVNIK','A HISTORY'],['ADRIATIC','COAST & ISLANDS'],['BOTANICA','FIELD NOTES'],
+    ['POEMS','BY THE SEA'],['OLD TOWN','WALKS & MAPS'],['TALES','OF THE COAST']];
   for(let i=0;i<labels.length;i++) {
     const x=(i%4)*256,y=Math.floor(i/4)*256;
     ctx.fillStyle=i===2?'#e9d7ad':'#e6d9b7';ctx.fillRect(x,y,256,256);
@@ -27,7 +29,7 @@ function labelAtlas() {
     for(let j=0;j<3;j++) {
       ctx.beginPath();ctx.ellipse(x+125+j*3,y+80-j*9,9,3,-.55,0,Math.PI*2);ctx.fill();
     }
-    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(i===0||i===2?'250 ml':i>=8&&i<=10?'100 ml':'DUBROVNIK',x+128,y+216);
+    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(i>=16?'RAGUSA EDITIONS':i===0||i===2?'250 ml':i>=8&&i<=10?'100 ml':'DUBROVNIK',x+128,y+216);
   }
   const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
   map.anisotropy=4;return map;
@@ -142,9 +144,10 @@ const SHAPES=/* glsl */`
     for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.945:.945,1.4875,-.60),vec3(.02,1.4875,.60),0.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,-.02,-.60),vec3(.925,.02,.60),1.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,2.995,-.60),vec3(.925,.02,.60),0.,0.,vDisplaySeed,hit);
-    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5,fruitShop=vDisplayKind>8.5;
+    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5,fruitShop=vDisplayKind>8.5&&vDisplayKind<9.5;
     bool boutique=vDisplayKind>7.5&&vDisplayKind<8.5;
-    float columns=fishShop||fruitShop||boutique?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
+    bool cheeseShop=vDisplayKind>11.5;
+    float columns=fishShop||fruitShop||boutique||cheeseShop?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
     for(int row=0;row<4;row++) {
       if((fishShop||fruitShop)&&row==3)continue;
       float shelfY=fishShop?.90+float(row)*.57:fruitShop?.85+float(row)*.60:.79+float(row)*.50;
@@ -174,13 +177,16 @@ const SHAPES=/* glsl */`
         else if(vDisplayKind<6.5)kind=11.;
         else if(vDisplayKind<7.5)kind=col==2?16.:col==0||col==3?14.:15.;
         else if(vDisplayKind<8.5)kind=mod(float(col+row),2.)<1.?18.:19.;
-        else kind=20.+mod(float(col+row),5.);
+        else if(vDisplayKind<9.5)kind=20.+mod(float(col+row),5.);
+        else if(vDisplayKind<10.5)kind=mod(float(col+row),3.)<2.?25.:26.;
+        else if(vDisplayKind<11.5)kind=27.+mod(float(col+row),3.);
+        else kind=30.+mod(float(col+row),3.);
         float scale=.88+seed*.17;
         float spacing=1.56/columns;
         vec3 centre=vec3((float(col)-(columns-1.)*.5)*spacing+(displayHash(id+3.)-.5)*.012,shelfY+(fishShop?.025:0.),-.89+(displayHash(id+14.)-.5)*.085);
         vec3 q=(ro-centre)/scale;
         float a,b;vec3 n;
-        float halfDepth=fruitShop?.15:.10;
+        float halfDepth=cheeseShop?.17:fruitShop?.15:.10;
         if(!displayBounds(q,rd/scale,vec3(-.184,0,-halfDepth),vec3(.184,.42,halfDepth),a,b,n)||a>hit.t)continue;
         // Ray parameter remains in world metres even when the product varies.
         displayProduct(q,rd/scale,kind,seed,hit);
@@ -193,7 +199,7 @@ const SHAPES=/* glsl */`
     vec2 cell=vec2(mod(id,4.),floor(id/4.));
     // CanvasTexture is flipped on upload. Keep all samples inside their own
     // atlas cell, including the mip footprint around a label's paper edge.
-    vec2 atlas=(cell+vec2(.025)+clamp(uv,0.,1.)*.95)/vec2(4.,4.);
+    vec2 atlas=(cell+vec2(.025)+clamp(uv,0.,1.)*.95)/vec2(4.,8.);
     atlas.y=1.-atlas.y;return texture2D(uProductLabels,atlas).rgb;
   }
   ${TRADE_COLOURS}
@@ -279,8 +285,8 @@ export function makeShopDisplay(shops,shopOpen) {
         // Creases where products meet timber, with shelf overhang shadow on
         // the rear wall. No black outline is drawn around the product itself.
         if((displayHit.part>=2.&&displayHit.part<=5.)||displayHit.part>=7.)displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
-        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:vDisplayKind>8.5?.85:.79;
-        float shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:vDisplayKind>8.5?.60:.50;
+        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:vDisplayKind>8.5&&vDisplayKind<9.5?.85:.79;
+        float shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:vDisplayKind>8.5&&vDisplayKind<9.5?.60:.50;
         if(displayHit.part<.5&&displayPoint.y>shelfBase)displayOcclusion*=mix(.60,1.,smoothstep(0.,.065,mod(displayPoint.y-shelfBase,shelfStep)));
         vec3 displayLit=displayAlbedo*displayDiffuse*displayOcclusion;
         vec3 displayHalf=normalize(displayLight-displayRd);
@@ -293,7 +299,7 @@ export function makeShopDisplay(shops,shopOpen) {
         reflectedLight.indirectDiffuse+=displayLit*vec3(.0062,.0042,.0020)*uShopOpen*mix(1.,.42,displayDepth);
         reflectedLight.indirectDiffuse*=mix(.45,1.,uShopOpen);`);
   };
-  material.customProgramCacheKey=()=> 'trade-shop-display-v3';
+  material.customProgramCacheKey=()=> 'trade-shop-display-v4';
   const mesh=new THREE.InstancedMesh(geometry,material,shops.length);
   mesh.userData.displays=shops.map(s=>({x:s.x,y:s.y,z:s.z,rotY:s.rotY,seed:s.seed,kind:shopTrade(s),trade:SHOP_TRADES[shopTrade(s)],icon:SHOP_ICONS[shopTrade(s)],hasSign:hasShopSign(s)}));
   return mesh;

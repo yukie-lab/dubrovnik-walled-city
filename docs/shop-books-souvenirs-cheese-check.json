@@ -1,0 +1,522 @@
+{
+  "date": "2026-10-04",
+  "sources": {
+    "src/shop-catalog.js": "4c5543a4e38a5235cdc8c2ae02ecc0cc14b0b38e2b0923ed66de9045f82e159d",
+    "src/shop-books-souvenirs-cheese.js": "496b4ea3170e8d00e12bb820d8c260c2c9420eb7676c051c85a05227b39ce32c",
+    "src/shop-trade-products.js": "e44cfbe2b04650aff896d19ed6d03a7d8ca2251cdade6f052a3a6ef983ae557a",
+    "src/shop-display.js": "76da150dd8ca6a6640f0cf3bc023b180a9cf37d7e5bea5f747978dda7d509302",
+    "src/tex.js": "414146ce19ea3a4adccd2769337187312619bbde036c73637fd7535b463d798c"
+  },
+  "errors": [],
+  "storefronts": 97,
+  "signs": 60,
+  "counts": {
+    "bakery": 9,
+    "locksmith": 8,
+    "tailor": 9,
+    "fishmonger": 9,
+    "wine": 6,
+    "apothecary": 7,
+    "cobbler": 10,
+    "barber": 6,
+    "boutique": 8,
+    "fruit": 5,
+    "bookshop": 8,
+    "souvenirs": 6,
+    "cheese": 6
+  },
+  "signMismatches": [],
+  "newShops": [
+    {
+      "x": -71.56123303867237,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.7479499746114016,
+      "kind": 10,
+      "trade": "bookshop",
+      "icon": "book",
+      "hasSign": true
+    },
+    {
+      "x": -81.11576363867614,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.2591455476358533,
+      "kind": 11,
+      "trade": "souvenirs",
+      "icon": "doll",
+      "hasSign": true
+    },
+    {
+      "x": -110.79223347137915,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.574084009276703,
+      "kind": 12,
+      "trade": "cheese",
+      "icon": "cheese",
+      "hasSign": true
+    }
+  ],
+  "programAudit": {
+    "materials": 87,
+    "collisions": [],
+    "missing": [],
+    "glErrors": []
+  },
+  "views": [
+    {
+      "trade": "bakery",
+      "file": "shop-books-souvenirs-cheese-first-0--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-books-souvenirs-cheese-first-0--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-books-souvenirs-cheese-first-0-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-books-souvenirs-cheese-first-1--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-books-souvenirs-cheese-first-1--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 140,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-books-souvenirs-cheese-first-1-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-books-souvenirs-cheese-first-2--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-books-souvenirs-cheese-first-2--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-books-souvenirs-cheese-first-2-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-books-souvenirs-cheese-first-2--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-books-souvenirs-cheese-first-2--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-books-souvenirs-cheese-first-3--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-books-souvenirs-cheese-first-3--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-books-souvenirs-cheese-first-3-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-books-souvenirs-cheese-first-3--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-books-souvenirs-cheese-first-3--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-books-souvenirs-cheese-first-4--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-books-souvenirs-cheese-first-4--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-books-souvenirs-cheese-first-4-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-books-souvenirs-cheese-first-5--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-books-souvenirs-cheese-first-5--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-books-souvenirs-cheese-first-5-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-books-souvenirs-cheese-first-6--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-books-souvenirs-cheese-first-6--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-books-souvenirs-cheese-first-6-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-books-souvenirs-cheese-first-7--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-books-souvenirs-cheese-first-7--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-books-souvenirs-cheese-first-7-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-books-souvenirs-cheese-first-8--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-books-souvenirs-cheese-first-8--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-books-souvenirs-cheese-first-8-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-books-souvenirs-cheese-first-8--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-books-souvenirs-cheese-first-8--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-books-souvenirs-cheese-first-9--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-books-souvenirs-cheese-first-9--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-books-souvenirs-cheese-first-9-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-books-souvenirs-cheese-first-9--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-books-souvenirs-cheese-first-9--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-books-souvenirs-cheese-first-10--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-books-souvenirs-cheese-first-10--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-books-souvenirs-cheese-first-10-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-books-souvenirs-cheese-first-10--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-books-souvenirs-cheese-first-10--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-books-souvenirs-cheese-first-11--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-books-souvenirs-cheese-first-11--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 140,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-books-souvenirs-cheese-first-11-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-books-souvenirs-cheese-first-11--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-books-souvenirs-cheese-first-11--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 141,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-books-souvenirs-cheese-first-12--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-books-souvenirs-cheese-first-12--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-books-souvenirs-cheese-first-12-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-books-souvenirs-cheese-first-12--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-books-souvenirs-cheese-first-12--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 141,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-books-souvenirs-cheese-first-13--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    }
+  ],
+  "cafe": {
+    "view": "cafe-shortcut-without-link",
+    "x": -86.68010520899551,
+    "z": -2.1499999999999995,
+    "zone": "stradun",
+    "removed": true
+  },
+  "protection": {
+    "passed": true,
+    "unchangedSources": 4,
+    "houseRecords": 665,
+    "unchanged": [
+      "wall",
+      "streets",
+      "routes",
+      "presets"
+    ]
+  }
+}

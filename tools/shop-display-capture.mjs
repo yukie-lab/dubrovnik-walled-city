@@ -18,12 +18,12 @@ export async function shopDisplayChecks(page,{name,dir,rows,errors,args=[]}) {
       counts:Object.fromEntries(trades.map((trade,kind)=>[trade,all.filter(s=>s.kind===kind).length])),
       hasCafeLink:!!document.getElementById('btnCafe')};
   },{trades:SHOP_TRADES});
-  if(inventory.hasCafeLink||inventory.kinds.length!==10||inventory.selected.some(s=>!s)||inventory.mismatches.length)throw new Error('Shop inventory / sign correspondence / removed UI failure');
+  if(inventory.hasCafeLink||inventory.kinds.length!==13||inventory.selected.some(s=>!s)||inventory.mismatches.length)throw new Error('Shop inventory / sign correspondence / removed UI failure');
   rows.push({view:'shop-inventory',...inventory});
   for(const [index,s] of inventory.selected.entries()) {
     if(requested&&!requested.includes(s.trade))continue;
     const poses=index<SHOP_TRADES.length?[[-.35,2.2,12.87],[-1.25,1.7,12.87],[.55,1.7,12.87]]:[[-.35,2.2,12.87]];
-    if([2,3,8,9].includes(index))poses.push([-.35,2.2,19.3],[-.35,2.2,22.5]);
+    if([2,3,8,9,10,11,12].includes(index))poses.push([-.35,2.2,19.3],[-.35,2.2,22.5]);
     for(const [lat,dist,time] of poses) {
       const data=await page.evaluate(async ({s,lat,dist,time,atlas})=>{
         const w=window.__world,p=w.player,c=Math.cos(s.rotY),sn=Math.sin(s.rotY);
