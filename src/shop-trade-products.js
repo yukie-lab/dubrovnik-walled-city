@@ -1,4 +1,6 @@
-// Analytic solids for the eight sign-led trades. Coordinates are metres in a
+import {BOUTIQUE_FRUIT_SHAPES,BOUTIQUE_FRUIT_COLOURS} from './shop-boutique-fruit.js';
+
+// Analytic solids for the sign-led trades. Coordinates are metres in a
 // product's local frame; each surface retains its own normal and material.
 export const TRADE_SHAPES=/* glsl */`
   void tradeEllipsoid(vec3 ro,vec3 rd,vec3 c,vec3 r,float part,float kind,float seed,inout DisplayHit hit) {
@@ -36,7 +38,9 @@ export const TRADE_SHAPES=/* glsl */`
     tradeEllipsoid(transpose(m)*(ro-c),transpose(m)*rd,vec3(0),r,part,kind,seed,h);
     if(h.t<hit.t){h.n=m*h.n;h.p=c+m*h.p;hit=h;}
   }
+  ${BOUTIQUE_FRUIT_SHAPES}
   void displayTradeProduct(vec3 ro,vec3 rd,float kind,float seed,inout DisplayHit hit) {
+    if(kind>17.5){displayBoutiqueFruit(ro,rd,kind,seed,hit);return;}
     if(kind<7.5) {
       // Baked loaves: a domed round loaf or a longer scored country loaf.
       vec3 radius=kind<6.5?vec3(.127,.092,.09):vec3(.146,.063,.068);
@@ -109,8 +113,10 @@ export const TRADE_SHAPES=/* glsl */`
 
 // Inserted after label sampling so paper sleeves can share the label atlas.
 export const TRADE_COLOURS=/* glsl */`
+  ${BOUTIQUE_FRUIT_COLOURS}
   vec3 tradeColour(DisplayHit hit,out float gloss) {
     vec3 p=hit.p,n=hit.n;float seed=hit.seed;gloss=0.;
+    if(hit.part>16.5)return boutiqueFruitColour(hit,gloss);
     if(hit.part<7.5) {
       float crust=.90+.10*sin(p.x*273.+sin(p.y*93.))*sin(p.z*212.);
       float cut=1.-smoothstep(.014,.028,abs(fract((p.x+p.y*.45)*16.+.5)-.5));

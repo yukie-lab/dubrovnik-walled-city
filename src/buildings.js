@@ -20,7 +20,7 @@ import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkG
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
 import {cafeHouseGeometry} from './cafe-layout.js';
 import {makeShopDisplay} from './shop-display.js';
-import {shopTrade,shopSignUV,hasShopSign,SHOP_ICONS} from './shop-catalog.js';
+import {shopTrade,shopSignUV,hasShopSign,SHOP_ICONS,SHOP_SIGN_ATLAS} from './shop-catalog.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
@@ -1424,10 +1424,10 @@ export function makeBuildings(plan, tex, floorSupport) {
 
     // ===== 看板と日よけ — 「石の街」に「商いの街」を重ねる。
     // 全店が同じ顔で、看板も日よけも無いと、パン屋も宝石屋も見分けがつかない。
-    // 板の紋章は 4x2 のアトラスから、インスタンスごとに UV をずらして選ぶ。
+    // 板の紋章は共有アトラスから、インスタンスごとに UV をずらして選ぶ。
     {
       const dm5 = new THREE.Object3D();
-      const CELL_U = 0.25, CELL_V = 0.5;
+      const CELL_U = 1/SHOP_SIGN_ATLAS.columns, CELL_V = 1/SHOP_SIGN_ATLAS.rows;
       // --- 吊り看板(錬鉄のブラケット + 板)
       const signGeo = (() => {
         const parts = [];
@@ -1456,7 +1456,7 @@ export function makeBuildings(plan, tex, floorSupport) {
           // BoxGeometry の面順: +x -x +y -y +z -z(各 4 頂点)
           for (let fi = 0; fi < 6; fi++) for (let k = 0; k < 4; k++) {
             const i = fi * 4 + k;
-            if (fi < 2) uv.setXY(i, 0.015 + uv.getX(i) * (CELL_U - 0.03), 0.02 + uv.getY(i) * (CELL_V - 0.04));
+            if (fi < 2) uv.setXY(i, CELL_U*(.06+uv.getX(i)*.88), CELL_V*(.04+uv.getY(i)*.92));
             else uv.setXY(i, 0.012 + uv.getX(i) * 0.010, 0.012 + uv.getY(i) * 0.010);
           }
         }

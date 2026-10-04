@@ -1,0 +1,375 @@
+{
+  "date": "2026-10-04",
+  "sources": {
+    "src/shop-catalog.js": "551b93f1bbaf70b1c14d6b5b69c192b2512fec76493b1b7113a0d791243edcb2",
+    "src/shop-boutique-fruit.js": "c344c15bc4136175350d21a53712ce86a9d1030c2f0f16670307bcb907921dbb",
+    "src/shop-trade-products.js": "d53927d07fb285ae24027178220651b0ba91923f0c564359f28d6519644cd8be",
+    "src/shop-display.js": "7b8c7d9f20805b0e7db37eb9b18c20c89be64532ffa0be9143f79700b20fa1c6",
+    "src/buildings.js": "cd8be2c6caca5468297cf35476db9f351e2ea5a976d30ec641a189709196dee6",
+    "src/tex.js": "9af66ce689efeb8c7edb7eb53835809cc25e9d225018a4bde49bbdc308dc58a7"
+  },
+  "errors": [],
+  "storefronts": 97,
+  "signs": 60,
+  "counts": {
+    "bakery": 13,
+    "locksmith": 12,
+    "tailor": 9,
+    "fishmonger": 12,
+    "wine": 7,
+    "apothecary": 9,
+    "cobbler": 12,
+    "barber": 10,
+    "boutique": 8,
+    "fruit": 5
+  },
+  "signMismatches": [],
+  "programs": [
+    {
+      "report": "shop-boutique-fruit-first-programs",
+      "materials": 87,
+      "collisions": [],
+      "missing": [],
+      "glErrors": []
+    },
+    {
+      "report": "shop-boutique-fruit-final-programs",
+      "materials": 87,
+      "collisions": [],
+      "missing": [],
+      "glErrors": []
+    }
+  ],
+  "views": [
+    {
+      "trade": "bakery",
+      "file": "shop-boutique-fruit-first-0--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-boutique-fruit-first-0--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-boutique-fruit-first-0-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-boutique-fruit-first-1--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-boutique-fruit-first-1--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 140,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-boutique-fruit-first-1-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-boutique-fruit-first-2--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-boutique-fruit-first-2--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-boutique-fruit-first-2-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-boutique-fruit-first-2--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-boutique-fruit-first-2--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-boutique-fruit-first-3--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-boutique-fruit-first-3--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-boutique-fruit-first-3-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-boutique-fruit-first-3--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-boutique-fruit-first-3--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-boutique-fruit-first-4--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-boutique-fruit-first-4--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-boutique-fruit-first-4-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-boutique-fruit-first-5--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-boutique-fruit-first-5--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-boutique-fruit-first-5-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-boutique-fruit-first-6--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-boutique-fruit-first-6--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-boutique-fruit-first-6-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-boutique-fruit-first-7--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-boutique-fruit-first-7--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-boutique-fruit-first-7-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-boutique-fruit-first-10--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-boutique-fruit-final-8--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-boutique-fruit-final-8--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-boutique-fruit-final-8-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-boutique-fruit-final-8--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-boutique-fruit-final-8--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-boutique-fruit-final-9--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-boutique-fruit-final-9--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-boutique-fruit-final-9-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-boutique-fruit-final-9--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-boutique-fruit-final-9--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    }
+  ],
+  "cafe": {
+    "view": "cafe-shortcut-without-link",
+    "x": -86.68010520899551,
+    "z": -2.1499999999999995,
+    "zone": "stradun",
+    "removed": true
+  },
+  "protection": {
+    "passed": true,
+    "unchangedSources": 4,
+    "houseRecords": 665,
+    "unchanged": [
+      "wall",
+      "streets",
+      "routes",
+      "presets"
+    ]
+  }
+}

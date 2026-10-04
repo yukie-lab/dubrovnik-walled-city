@@ -142,11 +142,12 @@ const SHAPES=/* glsl */`
     for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.945:.945,1.4875,-.60),vec3(.02,1.4875,.60),0.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,-.02,-.60),vec3(.925,.02,.60),1.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,2.995,-.60),vec3(.925,.02,.60),0.,0.,vDisplaySeed,hit);
-    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5;
-    float columns=fishShop?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
+    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5,fruitShop=vDisplayKind>8.5;
+    bool boutique=vDisplayKind>7.5&&vDisplayKind<8.5;
+    float columns=fishShop||fruitShop||boutique?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
     for(int row=0;row<4;row++) {
-      if(fishShop&&row==3)continue;
-      float shelfY=fishShop?.90+float(row)*.57:.79+float(row)*.50;
+      if((fishShop||fruitShop)&&row==3)continue;
+      float shelfY=fishShop?.90+float(row)*.57:fruitShop?.85+float(row)*.60:.79+float(row)*.50;
       displayBox(ro,rd,vec3(0,shelfY-.018,-.925),vec3(.86,.018,.24),1.,0.,vDisplaySeed,hit);
       if(fishShop) {
         // Shallow chilled trays with a raised metal lip and crushed-ice bed.
@@ -162,7 +163,7 @@ const SHAPES=/* glsl */`
         float seed=displayHash(id+8.2);
         // Stock has deliberate families, modest height variation and a few
         // empty spaces, rather than unrelated colours in an exact grid.
-        if(displayHash(id+71.)<.09)continue;
+        if(!fruitShop&&displayHash(id+71.)<.09)continue;
         float kind;
         if(vDisplayKind<.5)kind=mod(float(col+row),2.)<1.?6.:7.;
         else if(vDisplayKind<1.5)kind=mod(float(col),2.)<1.?12.:13.;
@@ -171,13 +172,16 @@ const SHAPES=/* glsl */`
         else if(vDisplayKind<4.5)kind=row<2?2.:col<4?0.:1.;
         else if(vDisplayKind<5.5)kind=col==3?5.:col==1||col==5?4.:16.;
         else if(vDisplayKind<6.5)kind=11.;
-        else kind=col==2?16.:col==0||col==3?14.:15.;
+        else if(vDisplayKind<7.5)kind=col==2?16.:col==0||col==3?14.:15.;
+        else if(vDisplayKind<8.5)kind=mod(float(col+row),2.)<1.?18.:19.;
+        else kind=20.+mod(float(col+row),5.);
         float scale=.88+seed*.17;
         float spacing=1.56/columns;
         vec3 centre=vec3((float(col)-(columns-1.)*.5)*spacing+(displayHash(id+3.)-.5)*.012,shelfY+(fishShop?.025:0.),-.89+(displayHash(id+14.)-.5)*.085);
         vec3 q=(ro-centre)/scale;
         float a,b;vec3 n;
-        if(!displayBounds(q,rd/scale,vec3(-.184,0,-.10),vec3(.184,.42,.10),a,b,n)||a>hit.t)continue;
+        float halfDepth=fruitShop?.15:.10;
+        if(!displayBounds(q,rd/scale,vec3(-.184,0,-halfDepth),vec3(.184,.42,halfDepth),a,b,n)||a>hit.t)continue;
         // Ray parameter remains in world metres even when the product varies.
         displayProduct(q,rd/scale,kind,seed,hit);
       }
@@ -275,7 +279,8 @@ export function makeShopDisplay(shops,shopOpen) {
         // Creases where products meet timber, with shelf overhang shadow on
         // the rear wall. No black outline is drawn around the product itself.
         if((displayHit.part>=2.&&displayHit.part<=5.)||displayHit.part>=7.)displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
-        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:.79,shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:.50;
+        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:vDisplayKind>8.5?.85:.79;
+        float shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:vDisplayKind>8.5?.60:.50;
         if(displayHit.part<.5&&displayPoint.y>shelfBase)displayOcclusion*=mix(.60,1.,smoothstep(0.,.065,mod(displayPoint.y-shelfBase,shelfStep)));
         vec3 displayLit=displayAlbedo*displayDiffuse*displayOcclusion;
         vec3 displayHalf=normalize(displayLight-displayRd);
@@ -288,7 +293,7 @@ export function makeShopDisplay(shops,shopOpen) {
         reflectedLight.indirectDiffuse+=displayLit*vec3(.0062,.0042,.0020)*uShopOpen*mix(1.,.42,displayDepth);
         reflectedLight.indirectDiffuse*=mix(.45,1.,uShopOpen);`);
   };
-  material.customProgramCacheKey=()=> 'trade-shop-display-v2';
+  material.customProgramCacheKey=()=> 'trade-shop-display-v3';
   const mesh=new THREE.InstancedMesh(geometry,material,shops.length);
   mesh.userData.displays=shops.map(s=>({x:s.x,y:s.y,z:s.z,rotY:s.rotY,seed:s.seed,kind:shopTrade(s),trade:SHOP_TRADES[shopTrade(s)],icon:SHOP_ICONS[shopTrade(s)],hasSign:hasShopSign(s)}));
   return mesh;

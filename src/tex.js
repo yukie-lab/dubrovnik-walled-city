@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { mulberry32, clamp, lerp } from './util.js';
 import { rngFor } from './seed.js';
 import { replaceMasonryTextures } from './masonry.js';
+import {SHOP_SIGN_ATLAS,SHOP_TRADES} from './shop-catalog.js';
 
 function canvas(size, h = size) {
   const c = document.createElement('canvas');
@@ -987,18 +988,20 @@ export function makeTextures() {
 }
 
 
-// 看板の紋章。4x2 のアトラス。文字は読めなくてよい — 職種が分かればよい。
-// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛
+// 看板の紋章。4x3 のアトラス。文字は読めなくてよい — 職種が分かればよい。
+// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛 / バッグ / 果物
 function signAtlas(rng, { size = 512 } = {}) {
-  const [c, ctx] = canvas(size);
-  const cw = size / 4, chh = size / 2;
-  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a'];
-  for (let k = 0; k < 8; k++) {
-    const cx0 = (k % 4) * cw, cy0 = ((k / 4) | 0) * chh;
+  const {columns,rows}=SHOP_SIGN_ATLAS;
+  const cw=size/columns,chh=size/2;
+  const [c, ctx] = canvas(size,chh*rows);
+  const addedRng=rngFor(0xb0719); // New signs must not shift the awning texture's random stream.
+  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a','#482e39','#30452d'];
+  for (let k = 0; k < SHOP_TRADES.length; k++) {
+    const cx0 = (k % columns) * cw, cy0 = Math.floor(k/columns) * chh;
     // 板の地。塗料の褪せと縁の摩耗。
     ctx.fillStyle = bg[k];
     ctx.fillRect(cx0, cy0, cw, chh);
-    dabs(ctx, cx0 + 2, cy0 + 2, cw - 4, chh - 4, 22, rng, 38, 10, 26, cw * 0.10, 0.10);
+    dabs(ctx, cx0 + 2, cy0 + 2, cw - 4, chh - 4, 22, k<8?rng:addedRng, 38, 10, 26, cw * 0.10, 0.10);
     // 金色の縁取り
     ctx.strokeStyle = 'rgba(196,166,102,0.85)'; ctx.lineWidth = Math.max(2, cw * 0.028);
     ctx.strokeRect(cx0 + cw * 0.07, cy0 + chh * 0.10, cw * 0.86, chh * 0.80);
@@ -1043,9 +1046,21 @@ function signAtlas(rng, { size = 512 } = {}) {
       ctx.quadraticCurveTo(-S * 0.5, -S * 0.35, -S * 0.15, S * 0.05);
       ctx.quadraticCurveTo(S * 0.35, S * 0.35, S * 0.95, S * 0.30);
       ctx.lineTo(S * 0.95, S * 0.55); ctx.closePath(); ctx.fill();
-    } else {                             // 櫛
+    } else if (k === 7) {                 // 櫛
       ctx.fillRect(-S * 0.9, -S * 0.7, S * 1.8, S * 0.42);
       for (let t = 0; t < 7; t++) ctx.fillRect(-S * 0.85 + t * S * 0.26, -S * 0.3, S * 0.11, S * 0.9);
+    } else if (k === 8) {                 // 持ち手付きハンドバッグ
+      ctx.beginPath();ctx.moveTo(-S*.67,-S*.20);ctx.lineTo(S*.67,-S*.20);
+      ctx.lineTo(S*.88,S*.78);ctx.quadraticCurveTo(0,S*.98,-S*.88,S*.78);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.ellipse(0,-S*.21,S*.42,S*.58,0,Math.PI,Math.PI*2);ctx.stroke();
+      ctx.fillStyle=bg[k];ctx.fillRect(-S*.12,S*.14,S*.24,S*.23);
+    } else {                             // 葉付きリンゴと洋梨
+      ctx.beginPath();ctx.ellipse(-S*.40,S*.18,S*.57,S*.62,-.20,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(S*.49,S*.40,S*.43,S*.43,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(S*.13,S*.22);ctx.quadraticCurveTo(S*.32,-S*.48,S*.50,-S*.39);
+      ctx.quadraticCurveTo(S*.70,-S*.41,S*.88,S*.32);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.40,-S*.32);ctx.lineTo(-S*.30,-S*.67);ctx.stroke();
+      ctx.beginPath();ctx.ellipse(-S*.05,-S*.66,S*.28,S*.12,-.36,0,Math.PI*2);ctx.fill();
     }
     ctx.restore();
   }
