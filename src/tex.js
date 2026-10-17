@@ -988,14 +988,19 @@ export function makeTextures() {
 }
 
 
-// 看板の紋章。4x4 のアトラス。文字は読めなくてよい — 職種が分かればよい。
-// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛 / バッグ / 果物 / 本 / 人形 / チーズ
-function signAtlas(rng, { size = 512 } = {}) {
-  const {columns,rows}=SHOP_SIGN_ATLAS;
-  const cw=size/columns,chh=size/2;
+// 看板の紋章。4 列 × 6 行のアトラス。文字は読めなくてよい — 職種が分かればよい。
+// パン / 鍵 / 鋏 / 魚 / 瓶 / 薬研 / 靴 / 櫛 / バッグ / 果物 / 本 / 人形 / チーズ / 帽子 / 麦 / 食器 / 花瓶 / 額縁
+// / ネクタイ / 指輪 / 蝋燭 / ジェラートのコーン / リエリツァ / 錨
+// セルの縦横比は板の面(0.52 × 0.30m、UV の余白込み)に合わせる。以前は 128×256px の
+// セルを横長の面に貼っていたので、絵が縦に約 3.6 倍つぶれていた。
+function signAtlas(rng, { size = 1024 } = {}) {
+  const {columns,rows,cellAspect}=SHOP_SIGN_ATLAS;
+  const cw=size/columns,chh=Math.round(cw*cellAspect);
   const [c, ctx] = canvas(size,chh*rows);
   const addedRng=rngFor(0xb0719); // New signs must not shift the awning texture's random stream.
-  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a','#482e39','#30452d','#293b49','#45332e','#44402b'];
+  // 腕金と板の縁は各セルの左下の余白(地色)を拾う。地色は暗く保つ。
+  const bg = ['#2e3a44', '#3d3129', '#243528', '#33262c', '#2b3540', '#3a3326', '#262c36', '#33302a','#482e39','#30452d','#293b49','#45332e','#44402b',
+    '#3b2c3a','#3d3a2c','#27404a','#42402d','#35302c','#2b3048','#3a2235','#3b3524','#2c4140','#402c22','#24343e'];
   for (let k = 0; k < SHOP_TRADES.length; k++) {
     const cx0 = (k % columns) * cw, cy0 = Math.floor(k/columns) * chh;
     // 板の地。塗料の褪せと縁の摩耗。
@@ -1007,7 +1012,7 @@ function signAtlas(rng, { size = 512 } = {}) {
     ctx.strokeRect(cx0 + cw * 0.07, cy0 + chh * 0.10, cw * 0.86, chh * 0.80);
     ctx.save();
     ctx.translate(cx0 + cw / 2, cy0 + chh / 2);
-    const S = Math.min(cw, chh) * 0.30;
+    const S = Math.min(cw, chh) * 0.34;
     ctx.fillStyle = '#c9ab68'; ctx.strokeStyle = '#c9ab68';
     ctx.lineWidth = Math.max(2, S * 0.16); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     if (k === 0) {                       // パン(丸パンに切れ目)
@@ -1079,7 +1084,7 @@ function signAtlas(rng, { size = 512 } = {}) {
       ctx.beginPath();ctx.moveTo(-S*.15,-S*.18);ctx.lineTo(-S*.62,S*.23);
       ctx.moveTo(S*.15,-S*.18);ctx.lineTo(S*.62,S*.23);ctx.stroke();
       ctx.fillRect(-S*.64,S*.91,S*1.28,S*.12);
-    } else {                             // 穴のあるチーズのくさび
+    } else if (k === 12) {                // 穴のあるチーズのくさび
       ctx.beginPath();ctx.moveTo(-S*.94,S*.16);ctx.lineTo(S*.37,-S*.70);ctx.lineTo(S*.98,-S*.12);
       ctx.lineTo(S*.98,S*.70);ctx.lineTo(-S*.94,S*.70);ctx.closePath();ctx.fill();
       ctx.strokeStyle=bg[k];ctx.lineWidth=S*.065;
@@ -1088,6 +1093,101 @@ function signAtlas(rng, { size = 512 } = {}) {
       for(const [x,y,r] of [[-.53,.44,.10],[.06,.34,.13],[.66,.43,.11]]) {
         ctx.beginPath();ctx.arc(x*S,y*S,r*S,0,Math.PI*2);ctx.fill();
       }
+    } else if (k === 13) {                // 帽子(つば広の帽子に帯)
+      ctx.beginPath();ctx.ellipse(0,S*.40,S*1.0,S*.26,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.52,S*.34);ctx.lineTo(-S*.46,-S*.42);
+      ctx.quadraticCurveTo(0,-S*.72,S*.46,-S*.42);ctx.lineTo(S*.52,S*.34);ctx.closePath();ctx.fill();
+      ctx.fillStyle=bg[k];ctx.fillRect(-S*.50,S*.02,S*1.0,S*.15);
+    } else if (k === 14) {                // 麦の穂
+      ctx.beginPath();ctx.moveTo(0,S*.98);ctx.lineTo(0,-S*.55);ctx.stroke();
+      for(let g=0;g<4;g++) for(const side of [-1,1]) {
+        ctx.beginPath();ctx.ellipse(side*S*.22,-S*.38+g*S*.28,S*.10,S*.22,side*.55,0,Math.PI*2);ctx.fill();
+      }
+      ctx.beginPath();ctx.ellipse(0,-S*.78,S*.10,S*.21,0,0,Math.PI*2);ctx.fill();
+    } else if (k === 15) {                // 食器(受け皿に載った取っ手付きカップ)
+      ctx.beginPath();ctx.ellipse(0,S*.70,S*.98,S*.20,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.56,-S*.34);ctx.lineTo(S*.56,-S*.34);
+      ctx.quadraticCurveTo(S*.52,S*.64,0,S*.64);ctx.quadraticCurveTo(-S*.52,S*.64,-S*.56,-S*.34);ctx.fill();
+      ctx.beginPath();ctx.arc(S*.74,S*.06,S*.27,-Math.PI/2,Math.PI/2);ctx.stroke();
+    } else if (k === 16) {                // 花瓶(首の細い壺に帯)
+      ctx.fillRect(-S*.27,-S*1.0,S*.54,S*.13);
+      ctx.beginPath();ctx.moveTo(-S*.16,-S*.88);ctx.lineTo(S*.16,-S*.88);ctx.lineTo(S*.16,-S*.50);
+      ctx.bezierCurveTo(S*.98,-S*.20,S*.75,S*.80,S*.30,S*.96);ctx.lineTo(-S*.30,S*.96);
+      ctx.bezierCurveTo(-S*.75,S*.80,-S*.98,-S*.20,-S*.16,-S*.50);ctx.closePath();ctx.fill();
+      ctx.strokeStyle=bg[k];ctx.lineWidth=S*.07;
+      ctx.beginPath();ctx.moveTo(-S*.72,S*.20);ctx.lineTo(S*.72,S*.20);ctx.stroke();
+    } else if (k === 17) {                // 絵(額縁に入った山と太陽)
+      ctx.fillRect(-S*.95,-S*.78,S*1.9,S*1.56);
+      ctx.fillStyle=bg[k];ctx.fillRect(-S*.74,-S*.58,S*1.48,S*1.16);
+      ctx.fillStyle='#c9ab68';
+      ctx.beginPath();ctx.moveTo(-S*.74,S*.58);ctx.lineTo(-S*.25,-S*.12);ctx.lineTo(S*.10,S*.30);
+      ctx.lineTo(S*.35,S*.05);ctx.lineTo(S*.74,S*.58);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.arc(S*.40,-S*.30,S*.17,0,Math.PI*2);ctx.fill();
+    } else if (k === 18) {                // ネクタイ(結び目と剣先、斜めの縞)
+      ctx.beginPath();ctx.moveTo(-S*.30,-S*.98);ctx.lineTo(S*.30,-S*.98);ctx.lineTo(S*.17,-S*.66);
+      ctx.lineTo(-S*.17,-S*.66);ctx.closePath();ctx.fill();
+      ctx.beginPath();ctx.moveTo(-S*.15,-S*.58);ctx.lineTo(S*.15,-S*.58);ctx.lineTo(S*.44,S*.64);
+      ctx.lineTo(0,S*1.0);ctx.lineTo(-S*.44,S*.64);ctx.closePath();ctx.fill();
+      ctx.save();ctx.clip();ctx.strokeStyle=bg[k];ctx.lineWidth=S*.08;
+      for(let d=-1.3;d<1.6;d+=.40){ctx.beginPath();ctx.moveTo(-S*.6,(d-.5)*S);ctx.lineTo(S*.6,(d+.5)*S);ctx.stroke();}
+      ctx.restore();
+    } else if (k === 19) {                // 指輪(輪の上に多面体の石)
+      ctx.lineWidth=S*.17;
+      ctx.beginPath();ctx.arc(0,S*.33,S*.58,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-S*.42,-S*.60);ctx.lineTo(-S*.24,-S*.90);ctx.lineTo(S*.24,-S*.90);
+      ctx.lineTo(S*.42,-S*.60);ctx.lineTo(0,-S*.22);ctx.closePath();ctx.fill();
+      ctx.strokeStyle=bg[k];ctx.lineWidth=S*.05;
+      ctx.beginPath();ctx.moveTo(-S*.42,-S*.60);ctx.lineTo(S*.42,-S*.60);
+      ctx.moveTo(-S*.10,-S*.90);ctx.lineTo(-S*.17,-S*.60);ctx.lineTo(0,-S*.22);ctx.lineTo(S*.17,-S*.60);ctx.lineTo(S*.10,-S*.90);ctx.stroke();
+    } else if (k === 20) {                // 炎のついた蝋燭と受け皿
+      ctx.fillRect(-S*.21,-S*.30,S*.42,S*1.06);
+      ctx.beginPath();ctx.ellipse(0,S*.80,S*.64,S*.15,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.moveTo(0,-S*1.02);ctx.bezierCurveTo(S*.30,-S*.70,S*.22,-S*.44,0,-S*.42);
+      ctx.bezierCurveTo(-S*.22,-S*.44,-S*.30,-S*.70,0,-S*1.02);ctx.fill();
+      ctx.fillStyle=bg[k];
+      ctx.beginPath();ctx.ellipse(0,-S*.55,S*.07,S*.12,0,0,Math.PI*2);ctx.fill();
+      // 縁から垂れた蝋
+      ctx.beginPath();ctx.moveTo(-S*.21,-S*.16);ctx.lineTo(-S*.08,-S*.16);ctx.lineTo(-S*.08,S*.10);
+      ctx.arc(-S*.125,S*.10,S*.045,0,Math.PI);ctx.lineTo(-S*.17,-S*.10);ctx.lineTo(-S*.21,-S*.10);ctx.closePath();ctx.fill();
+    } else if (k === 21) {                // ジェラートのコーン(格子のコーンに三つの玉)
+      ctx.strokeStyle=bg[k];ctx.lineWidth=S*.06;
+      for(const [x,y,r] of [[0,-.66,.30],[-.21,-.32,.30],[.21,-.32,.30]]) {
+        ctx.beginPath();ctx.arc(x*S,y*S,r*S,0,Math.PI*2);ctx.fill();ctx.stroke();
+      }
+      ctx.beginPath();ctx.moveTo(-S*.47,-S*.14);ctx.lineTo(S*.47,-S*.14);ctx.lineTo(0,S*1.0);ctx.closePath();
+      ctx.fill();ctx.stroke();
+      ctx.save();ctx.clip();ctx.lineWidth=S*.045;
+      for(let d=-1.2;d<=1.6;d+=.27) {
+        ctx.beginPath();ctx.moveTo(-S*.6,(d-.35)*S);ctx.lineTo(S*.6,(d+.35)*S);
+        ctx.moveTo(-S*.6,(d+.35)*S);ctx.lineTo(S*.6,(d-.35)*S);ctx.stroke();
+      }
+      ctx.restore();
+    } else if (k === 22) {                // リエリツァ(洋梨形の胴、短い棹、三本の弦)
+      ctx.beginPath();ctx.ellipse(0,S*.42,S*.50,S*.55,0,0,Math.PI*2);ctx.fill();
+      ctx.beginPath();ctx.ellipse(0,-S*.12,S*.33,S*.44,0,0,Math.PI*2);ctx.fill();
+      ctx.fillRect(-S*.11,-S*.78,S*.22,S*.40);
+      ctx.beginPath();ctx.moveTo(-S*.24,-S*.74);ctx.lineTo(S*.24,-S*.74);ctx.lineTo(S*.20,-S*1.0);
+      ctx.lineTo(-S*.20,-S*1.0);ctx.closePath();ctx.fill();
+      ctx.fillStyle=bg[k];ctx.strokeStyle=bg[k];
+      for(const side of [-1,1]) {
+        ctx.beginPath();ctx.ellipse(side*S*.25,S*.16,S*.055,S*.14,0,0,Math.PI*2);ctx.fill();
+      }
+      for(let peg=0;peg<3;peg++){ctx.beginPath();ctx.arc((peg-1)*S*.10,-S*.87,S*.035,0,Math.PI*2);ctx.fill();}
+      ctx.fillRect(-S*.17,S*.52,S*.34,S*.06);
+      ctx.lineWidth=S*.03;
+      for(const x of [-.07,0,.07]){ctx.beginPath();ctx.moveTo(x*S,-S*.74);ctx.lineTo(x*S,S*.84);ctx.stroke();}
+    } else {                              // 錨(環・ストック・爪)
+      ctx.lineWidth=S*.15;
+      ctx.beginPath();ctx.arc(0,-S*.82,S*.15,0,Math.PI*2);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(0,-S*.67);ctx.lineTo(0,S*.88);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(-S*.46,-S*.46);ctx.lineTo(S*.46,-S*.46);ctx.stroke();
+      ctx.beginPath();ctx.arc(0,S*.20,S*.70,Math.PI*.17,Math.PI*.83);ctx.stroke();
+      for(const side of [-1,1]) {
+        const a=side>0?Math.PI*.17:Math.PI*.83,ex=Math.cos(a)*S*.70,ey=S*.20+Math.sin(a)*S*.70;
+        ctx.beginPath();ctx.moveTo(ex+side*S*.13,ey+S*.03);ctx.lineTo(ex+side*S*.03,ey-S*.34);
+        ctx.lineTo(ex-side*S*.16,ey+S*.03);ctx.closePath();ctx.fill();
+      }
+      ctx.beginPath();ctx.moveTo(-S*.12,S*.84);ctx.lineTo(S*.12,S*.84);ctx.lineTo(0,S*1.0);ctx.closePath();ctx.fill();
     }
     ctx.restore();
   }

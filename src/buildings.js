@@ -20,7 +20,7 @@ import { doorLeafGeometry, doorFrameGeometry, doorArchTopGeometry, doorIronworkG
 import { houseCoreGeometry, roofShellGeometry, profilePrismGeometry } from './roof-solid.js';
 import {cafeHouseGeometry} from './cafe-layout.js';
 import {makeShopDisplay} from './shop-display.js';
-import {shopTrade,shopSignUV,hasShopSign,SHOP_ICONS,SHOP_SIGN_ATLAS} from './shop-catalog.js';
+import {assignShopTrades,shopTrade,shopSignUV,hasShopSign,SHOP_ICONS,SHOP_SIGN_ATLAS} from './shop-catalog.js';
 import { bakeRoofPiece, mergeRoofPieces } from './roof-batch.js';
 import { stoneFinish, masonryFinishAttribute } from './masonry.js';
 import { streetY , HOUSE_BASE_BURY } from './plan.js';
@@ -1367,6 +1367,8 @@ export function makeBuildings(plan, tex, floorSupport) {
 
   // ===== ストラドゥンの店舗アーチ(clear 1.85×2.95m、膝高 0.72m のカウンター)
   if (shops.length) {
+    // 業種は通り全体で一度に配る。看板と商品棚はこの結果だけを読む。
+    assignShopTrades(shops);
     const CW = 0.925, SPR = 2.05, DP = 0.24;   // 半幅 / 迫元高さ / 見付
     const arGeo = (() => {
       const shape = new THREE.Shape();
@@ -1448,9 +1450,9 @@ export function makeBuildings(plan, tex, floorSupport) {
           const n = g.attributes.position.count, arr = new Float32Array(n * 3);
           for (let i = 0; i < n; i++) { arr[i * 3] = c[0]; arr[i * 3 + 1] = c[1]; arr[i * 3 + 2] = c[2]; }
           g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
-          // 板以外は UV をセルの隅(地色)に潰す
+          // 板以外は UV をセルの隅(金の縁より外の地色)に潰す
           const uv = g.attributes.uv;
-          if (c[0] < 0.5) for (let i = 0; i < uv.count; i++) uv.setXY(i, 0.012 + uv.getX(i) * 0.010, 0.012 + uv.getY(i) * 0.010);
+          if (c[0] < 0.5) for (let i = 0; i < uv.count; i++) uv.setXY(i, CELL_U * (0.010 + uv.getX(i) * 0.025), CELL_V * (0.010 + uv.getY(i) * 0.040));
           parts.push(g); return g;
         };
         const IR = [0.16, 0.155, 0.15];
@@ -1469,7 +1471,7 @@ export function makeBuildings(plan, tex, floorSupport) {
           for (let fi = 0; fi < 6; fi++) for (let k = 0; k < 4; k++) {
             const i = fi * 4 + k;
             if (fi < 2) uv.setXY(i, CELL_U*(.06+uv.getX(i)*.88), CELL_V*(.04+uv.getY(i)*.92));
-            else uv.setXY(i, 0.012 + uv.getX(i) * 0.010, 0.012 + uv.getY(i) * 0.010);
+            else uv.setXY(i, CELL_U * (0.010 + uv.getX(i) * 0.025), CELL_V * (0.010 + uv.getY(i) * 0.040));
           }
         }
         put(board, [1, 1, 1]);

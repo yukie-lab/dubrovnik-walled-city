@@ -15,7 +15,9 @@ function labelAtlas() {
     ['APOTEKA','BOTANICAL EXTRACT'],['ROSE WATER','TRADITIONAL TONIC'],['HERBAL BALM','LAVENDER'],['SOAP','OLIVE OIL'],
     ['LINEN','NATURAL FIBRE'],['THREAD','COTTON'],['POLISH','LEATHER CARE'],['SAGE','DRIED LEAVES'],
     ['DUBROVNIK','A HISTORY'],['ADRIATIC','COAST & ISLANDS'],['BOTANICA','FIELD NOTES'],
-    ['POEMS','BY THE SEA'],['OLD TOWN','WALKS & MAPS'],['TALES','OF THE COAST']];
+    ['POEMS','BY THE SEA'],['OLD TOWN','WALKS & MAPS'],['TALES','OF THE COAST'],
+    ['BRAŠNO','MLIN DUBROVNIK'],['FLOUR','STONE GROUND'],['PŠENICA','WHOLE WHEAT'],
+    ['SV. VLAHO','PČELINJI VOSAK','RUČNI RAD']];
   for(let i=0;i<labels.length;i++) {
     const x=(i%4)*256,y=Math.floor(i/4)*256;
     ctx.fillStyle=i===2?'#e9d7ad':'#e6d9b7';ctx.fillRect(x,y,256,256);
@@ -29,7 +31,7 @@ function labelAtlas() {
     for(let j=0;j<3;j++) {
       ctx.beginPath();ctx.ellipse(x+125+j*3,y+80-j*9,9,3,-.55,0,Math.PI*2);ctx.fill();
     }
-    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(i>=16?'RAGUSA EDITIONS':i===0||i===2?'250 ml':i>=8&&i<=10?'100 ml':'DUBROVNIK',x+128,y+216);
+    ctx.fillRect(x+104,y+194,48,1);ctx.font='11px Georgia';ctx.fillText(labels[i][2]??(i>=22?'1 kg':i>=16?'RAGUSA EDITIONS':i===0||i===2?'250 ml':i>=8&&i<=10?'100 ml':'DUBROVNIK'),x+128,y+216);
   }
   const map=new THREE.CanvasTexture(canvas);map.colorSpace=THREE.SRGBColorSpace;
   map.anisotropy=4;return map;
@@ -137,6 +139,31 @@ const SHAPES=/* glsl */`
     }
   }
 
+  // Shelving per trade (k = trade index): columns, rows, lowest shelf and
+  // shelf spacing. Fish, gelato, fruit and flour keep three tall rows;
+  // paintings and instruments three wide ones; ties and jewellery three rows
+  // under the tie rail and above the velvet; bottles seven across.
+  vec4 shopShelving(float k) {
+    int t=int(k+.5);
+    if(t==3)return vec4(4,3,.90,.57);
+    if(t==21)return vec4(7,3,.90,.57);
+    if(t==9||t==14)return vec4(4,3,.85,.60);
+    if(t==17||t==22)return vec4(3,3,.78,.62);
+    if(t==18||t==19)return vec4(4,3,.79,.50);
+    if(t==4||t==5)return vec4(7,4,.79,.50);
+    if(t==8||(t>=12&&t<=16)||t==20||t==23)return vec4(4,4,.79,.50);
+    return vec4(5,4,.79,.50);
+  }
+  // Half-width, height and half-depth of one product's cell (local units).
+  vec3 shopCell(float k) {
+    int t=int(k+.5);
+    if(t==17||t==22)return vec3(.25,.56,.17);
+    if(t==21)return vec3(.11,.32,.19);
+    if(t>=12&&t<=16)return vec3(.184,t==12?.42:.56,.17);
+    if(t==9||t>=18)return vec3(.184,.42,.15);
+    return vec3(.184,.42,.10);
+  }
+
   DisplayHit displayTrace(vec3 ro,vec3 rd) {
     DisplayHit hit;hit.t=1e7;hit.n=vec3(0,0,1);hit.p=vec3(0);hit.part=0.;hit.kind=0.;hit.seed=vDisplaySeed;
     // The five closed faces of the niche. The front is the aperture itself.
@@ -144,13 +171,15 @@ const SHAPES=/* glsl */`
     for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.945:.945,1.4875,-.60),vec3(.02,1.4875,.60),0.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,-.02,-.60),vec3(.925,.02,.60),1.,0.,vDisplaySeed,hit);
     displayBox(ro,rd,vec3(0,2.995,-.60),vec3(.925,.02,.60),0.,0.,vDisplaySeed,hit);
-    bool fishShop=vDisplayKind>2.5&&vDisplayKind<3.5,fruitShop=vDisplayKind>8.5&&vDisplayKind<9.5;
-    bool boutique=vDisplayKind>7.5&&vDisplayKind<8.5;
-    bool cheeseShop=vDisplayKind>11.5;
-    float columns=fishShop||fruitShop||boutique||cheeseShop?4.:vDisplayKind>3.5&&vDisplayKind<5.5?7.:5.;
+    int trade=int(vDisplayKind+.5);
+    bool fishShop=trade==3,fruitShop=trade==9,gelato=trade==21;
+    vec4 shelving=shopShelving(vDisplayKind);
+    float columns=shelving.x,rowCount=shelving.y,shelfBase=shelving.z,shelfStep=shelving.w;
+    vec3 cell=shopCell(vDisplayKind);
+    if(trade==18)tieRail(ro,rd,vDisplaySeed,hit);
     for(int row=0;row<4;row++) {
-      if((fishShop||fruitShop)&&row==3)continue;
-      float shelfY=fishShop?.90+float(row)*.57:fruitShop?.85+float(row)*.60:.79+float(row)*.50;
+      if(float(row)>rowCount-.5)continue;
+      float shelfY=shelfBase+float(row)*shelfStep;
       displayBox(ro,rd,vec3(0,shelfY-.018,-.925),vec3(.86,.018,.24),1.,0.,vDisplaySeed,hit);
       if(fishShop) {
         // Shallow chilled trays with a raised metal lip and crushed-ice bed.
@@ -158,15 +187,32 @@ const SHAPES=/* glsl */`
         displayBox(ro,rd,vec3(0,shelfY+.031,-.70),vec3(.84,.031,.012),10.,17.,vDisplaySeed,hit);
         for(int side=0;side<2;side++)displayBox(ro,rd,vec3(side==0?-.831:.831,shelfY+.031,-.92),vec3(.012,.031,.22),10.,17.,vDisplaySeed,hit);
       }
+      bool well=gelato&&row<2;
+      if(well) {
+        // A chilled steel well: pans stand on a steel deck behind a front lip
+        // that hides their sides, as in a gelato counter.
+        displayBox(ro,rd,vec3(0,shelfY+.004,-.92),vec3(.84,.004,.22),10.,57.,vDisplaySeed,hit);
+        displayBox(ro,rd,vec3(0,shelfY+.040,-.674),vec3(.86,.040,.010),10.,57.,vDisplaySeed,hit);
+      }
       // Small paper price cards occupy the timber lip, not the bottles.
-      for(int tag=0;tag<3;tag++)displayBox(ro,rd,vec3(-.58+float(tag)*.55,shelfY-.018,-.681),vec3(.053,.014,.0015),6.,0.,float(tag)+float(row)*3.,hit);
+      float near,far;vec3 face;
+      if(!well&&displayBounds(ro,rd,vec3(-.633,shelfY-.032,-.6825),vec3(.573,shelfY-.004,-.6795),near,far,face)&&near<hit.t)
+        for(int tag=0;tag<3;tag++)displayBox(ro,rd,vec3(-.58+float(tag)*.55,shelfY-.018,-.681),vec3(.053,.014,.0015),6.,0.,float(tag)+float(row)*3.,hit);
+      // Visit only the product cells the ray can reach: skip the row unless
+      // the ray crosses its band of cells (at any scale and jitter), then keep
+      // the columns it passes over inside that band. Hashing and bounding all
+      // 28 cells for every pixel used to cost more than the products.
+      float lift=fishShop?.025:well?.008:0.,reachX=cell.x*1.05+.006,reachZ=cell.z*1.05+.043;
+      if(!displayBounds(ro,rd,vec3(-.86,shelfY+lift,-.89-reachZ),vec3(.86,shelfY+lift+cell.y*1.05,-.89+reachZ),near,far,face)||near>hit.t)continue;
+      float x0=ro.x+rd.x*near,x1=ro.x+rd.x*min(far,hit.t),middle=(columns-1.)*.5,pitch=1.56/columns;
+      float firstCol=ceil((min(x0,x1)-reachX)/pitch+middle-.001),lastCol=floor((max(x0,x1)+reachX)/pitch+middle+.001);
       for(int col=0;col<7;col++) {
-        if(float(col)>=columns)continue;
+        if(float(col)>=columns||float(col)<firstCol||float(col)>lastCol)continue;
         float id=float(row)*17.+float(col)+vDisplaySeed*311.;
         float seed=displayHash(id+8.2);
         // Stock has deliberate families, modest height variation and a few
         // empty spaces, rather than unrelated colours in an exact grid.
-        if(!fruitShop&&displayHash(id+71.)<.09)continue;
+        if(!fruitShop&&!gelato&&displayHash(id+71.)<.09)continue;
         float kind;
         if(vDisplayKind<.5)kind=mod(float(col+row),2.)<1.?6.:7.;
         else if(vDisplayKind<1.5)kind=mod(float(col),2.)<1.?12.:13.;
@@ -180,14 +226,25 @@ const SHAPES=/* glsl */`
         else if(vDisplayKind<9.5)kind=20.+mod(float(col+row),5.);
         else if(vDisplayKind<10.5)kind=mod(float(col+row),3.)<2.?25.:26.;
         else if(vDisplayKind<11.5)kind=27.+mod(float(col+row),3.);
-        else kind=30.+mod(float(col+row),3.);
-        float scale=.88+seed*.17;
-        float spacing=1.56/columns;
-        vec3 centre=vec3((float(col)-(columns-1.)*.5)*spacing+(displayHash(id+3.)-.5)*.012,shelfY+(fishShop?.025:0.),-.89+(displayHash(id+14.)-.5)*.085);
+        // Ties: low trays and gift boxes on the top shelf, clear of the rail.
+        else if(trade==18)kind=row==2?(mod(float(col),2.)<.5?48.:50.):48.+mod(float(col+row),3.);
+        // Jewellery: rings and earrings below, necklaces on neck forms above.
+        else if(trade==19)kind=row==2?51.:mod(float(col+row),2.)<.5?52.:53.;
+        // Gelato: two rows of pans in the well, cone racks on the shelf above.
+        else if(gelato) {
+          if(row==2&&mod(float(col),2.)>.5)continue;
+          kind=row==2?59.:mod(float(col+row),2.)<.5?57.:58.;
+        }
+        // From cheese on, each trade owns three consecutive product kinds.
+        else kind=30.+float(trade-12)*3.+mod(float(col+row),3.);
+        // Gelato pans line up exactly, the size the counter was cut for. The
+        // row band above relies on scale < 1.05 and jitter of ±6 / ±42.5 mm.
+        float scale=gelato?1.:.88+seed*.17;
+        vec2 jitter=gelato?vec2(0):vec2(displayHash(id+3.)-.5,displayHash(id+14.)-.5)*vec2(.012,.085);
+        vec3 centre=vec3((float(col)-middle)*pitch+jitter.x,shelfY+lift,-.89+jitter.y);
         vec3 q=(ro-centre)/scale;
         float a,b;vec3 n;
-        float halfDepth=cheeseShop?.17:fruitShop?.15:.10;
-        if(!displayBounds(q,rd/scale,vec3(-.184,0,-halfDepth),vec3(.184,.42,halfDepth),a,b,n)||a>hit.t)continue;
+        if(!displayBounds(q,rd/scale,vec3(-cell.x,0,-cell.z),vec3(cell.x,cell.y,cell.z),a,b,n)||a>hit.t)continue;
         // Ray parameter remains in world metres even when the product varies.
         displayProduct(q,rd/scale,kind,seed,hit);
       }
@@ -206,6 +263,8 @@ const SHAPES=/* glsl */`
   vec3 displayColour(DisplayHit hit,vec3 rd,out float gloss) {
     vec3 p=hit.p,n=hit.n;float seed=hit.seed;gloss=0.;
     if(hit.part>6.5)return tradeColour(hit,gloss);
+    // The jeweller's niche and shelves are lined in dark velvet.
+    if(hit.part<1.5&&vDisplayKind>18.5&&vDisplayKind<19.5)return jewelVelvet(p,n);
     if(hit.part<.5) {
       float mottling=sin(p.x*21.+sin(p.y*17.))*sin(p.y*32.+p.z*13.);
       return vec3(.40,.345,.27)*(1.+.035*mottling);
@@ -284,9 +343,9 @@ export function makeShopDisplay(shops,shopOpen) {
         float displayOcclusion=mix(1.,.58,displayDepth);
         // Creases where products meet timber, with shelf overhang shadow on
         // the rear wall. No black outline is drawn around the product itself.
-        if((displayHit.part>=2.&&displayHit.part<=5.)||displayHit.part>=7.)displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
-        float shelfBase=vDisplayKind>2.5&&vDisplayKind<3.5?.90:vDisplayKind>8.5&&vDisplayKind<9.5?.85:.79;
-        float shelfStep=vDisplayKind>2.5&&vDisplayKind<3.5?.57:vDisplayKind>8.5&&vDisplayKind<9.5?.60:.50;
+        if((displayHit.part>=2.&&displayHit.part<=5.)||(displayHit.part>=7.&&displayHit.part<35.5))displayOcclusion*=mix(.72,1.,smoothstep(0.,.035,displayHit.p.y));
+        vec4 displayShelving=shopShelving(vDisplayKind);
+        float shelfBase=displayShelving.z,shelfStep=displayShelving.w;
         if(displayHit.part<.5&&displayPoint.y>shelfBase)displayOcclusion*=mix(.60,1.,smoothstep(0.,.065,mod(displayPoint.y-shelfBase,shelfStep)));
         vec3 displayLit=displayAlbedo*displayDiffuse*displayOcclusion;
         vec3 displayHalf=normalize(displayLight-displayRd);
@@ -299,7 +358,7 @@ export function makeShopDisplay(shops,shopOpen) {
         reflectedLight.indirectDiffuse+=displayLit*vec3(.0062,.0042,.0020)*uShopOpen*mix(1.,.42,displayDepth);
         reflectedLight.indirectDiffuse*=mix(.45,1.,uShopOpen);`);
   };
-  material.customProgramCacheKey=()=> 'trade-shop-display-v4';
+  material.customProgramCacheKey=()=> 'trade-shop-display-v7';
   const mesh=new THREE.InstancedMesh(geometry,material,shops.length);
   mesh.userData.displays=shops.map(s=>({x:s.x,y:s.y,z:s.z,rotY:s.rotY,seed:s.seed,kind:shopTrade(s),trade:SHOP_TRADES[shopTrade(s)],icon:SHOP_ICONS[shopTrade(s)],hasSign:hasShopSign(s)}));
   return mesh;

@@ -1,0 +1,1808 @@
+{
+  "date": "2026-10-17",
+  "sources": {
+    "src/shop-catalog.js": "a32fdb7f1422839c716587cbc37d1c718ac853c8c1a63604f2b561c7cdea32a8",
+    "src/shop-crafts-provisions.js": "ff75da9ce2add2644b41916ae0936c6ec6603930f95ced8b8e53cda1ad89175c",
+    "src/shop-ties-jewels-candles.js": "1b45091c92581541d2f2afada6a09b60eaa2808edc1c22e149f589fc5f07fa89",
+    "src/shop-gelato-music-nautical.js": "32f284cbc8bec78da918331193dfc4e7d83ca12fe39d5275ef04381b51d6128e",
+    "src/shop-trade-products.js": "fecc30a3a2b3534f35c012f4c6379d6b921d16194d0874f4ec9f7a25708ccb2e",
+    "src/shop-display.js": "3bdc7c322e8a037ae882299e664fc25b74bc3bc237b599a0bd22fd367679a5b1",
+    "src/tex.js": "7592597f7ad1b3a0e83128688093aa3a745548da655d0027ac2a18c41e30da67",
+    "src/buildings.js": "19dd9e120cdf4d14b0076deded9b1de227bf4d7c15ef8ebaef44069334e95180",
+    "tools/shop-display-capture.mjs": "31fa859395638d181cad637e3291781dd967b22972732dd09ac26dea0144fb79"
+  },
+  "errors": [],
+  "storefronts": 97,
+  "signs": 60,
+  "counts": {
+    "bakery": 4,
+    "locksmith": 4,
+    "tailor": 4,
+    "fishmonger": 4,
+    "wine": 4,
+    "apothecary": 4,
+    "cobbler": 4,
+    "barber": 4,
+    "boutique": 4,
+    "fruit": 4,
+    "bookshop": 4,
+    "souvenirs": 5,
+    "cheese": 4,
+    "hatter": 4,
+    "miller": 4,
+    "tableware": 4,
+    "vases": 4,
+    "gallery": 4,
+    "ties": 4,
+    "jeweller": 4,
+    "candlemaker": 4,
+    "gelato": 4,
+    "music": 4,
+    "nautical": 4
+  },
+  "signed": {
+    "bakery": 2,
+    "locksmith": 2,
+    "tailor": 3,
+    "fishmonger": 2,
+    "wine": 2,
+    "apothecary": 2,
+    "cobbler": 3,
+    "barber": 2,
+    "boutique": 2,
+    "fruit": 3,
+    "bookshop": 2,
+    "souvenirs": 2,
+    "cheese": 3,
+    "hatter": 3,
+    "miller": 3,
+    "tableware": 2,
+    "vases": 3,
+    "gallery": 2,
+    "ties": 3,
+    "jeweller": 3,
+    "candlemaker": 2,
+    "gelato": 3,
+    "music": 3,
+    "nautical": 3
+  },
+  "signMismatches": [],
+  "allocation": {
+    "method": "assignShopTrades (src/shop-catalog.js): four blocks along the street, each trade once per block, the spare shop a souvenir shop; 60,000 seeded swaps inside blocks",
+    "streetSides": {
+      "south": 50,
+      "north": 47
+    },
+    "perTrade": [
+      {
+        "trade": "bakery",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 40.5
+      },
+      {
+        "trade": "locksmith",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 27.4
+      },
+      {
+        "trade": "tailor",
+        "count": 4,
+        "signs": 3,
+        "south": 3,
+        "north": 1,
+        "nearestSameTrade": 39.1
+      },
+      {
+        "trade": "fishmonger",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 30.8
+      },
+      {
+        "trade": "wine",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 47.1
+      },
+      {
+        "trade": "apothecary",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 52.4
+      },
+      {
+        "trade": "cobbler",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 37.9
+      },
+      {
+        "trade": "barber",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 26.5
+      },
+      {
+        "trade": "boutique",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 37.1
+      },
+      {
+        "trade": "fruit",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 49.6
+      },
+      {
+        "trade": "bookshop",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 51.9
+      },
+      {
+        "trade": "souvenirs",
+        "count": 5,
+        "signs": 2,
+        "south": 3,
+        "north": 2,
+        "nearestSameTrade": 42
+      },
+      {
+        "trade": "cheese",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 60.5
+      },
+      {
+        "trade": "hatter",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 34.7
+      },
+      {
+        "trade": "miller",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 58.7
+      },
+      {
+        "trade": "tableware",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 27.1
+      },
+      {
+        "trade": "vases",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 30.5
+      },
+      {
+        "trade": "gallery",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 39.4
+      },
+      {
+        "trade": "ties",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 26.3
+      },
+      {
+        "trade": "jeweller",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 27.4
+      },
+      {
+        "trade": "candlemaker",
+        "count": 4,
+        "signs": 2,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 65
+      },
+      {
+        "trade": "gelato",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 64.1
+      },
+      {
+        "trade": "music",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 53.2
+      },
+      {
+        "trade": "nautical",
+        "count": 4,
+        "signs": 3,
+        "south": 2,
+        "north": 2,
+        "nearestSameTrade": 32.5
+      }
+    ],
+    "nearestSameTrade": 26.3,
+    "meanNearestSameTrade": 41.7,
+    "adjacentSameTrade": 0,
+    "neighbourRelations": 165,
+    "repeatedPairs": [
+      {
+        "trades": [
+          "wine",
+          "vases"
+        ],
+        "times": 2
+      }
+    ]
+  },
+  "before": {
+    "committed13": {
+      "counts": [
+        5,
+        10
+      ],
+      "signs": [
+        2,
+        6
+      ],
+      "nearestSameTrade": 3.1,
+      "adjacentSameTrade": 11
+    },
+    "uncommitted18": {
+      "counts": [
+        1,
+        8
+      ],
+      "signs": [
+        1,
+        5
+      ],
+      "nearestSameTrade": 3.1,
+      "adjacentSameTrade": 9
+    }
+  },
+  "photographed": [
+    {
+      "x": 31.890506031499243,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.3896160339936614,
+      "kind": 0,
+      "trade": "bakery",
+      "icon": "bread",
+      "hasSign": true
+    },
+    {
+      "x": -70.68048845811437,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.3955638576298952,
+      "kind": 1,
+      "trade": "locksmith",
+      "icon": "key",
+      "hasSign": true
+    },
+    {
+      "x": -90.23470299544977,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.09654387133195996,
+      "kind": 2,
+      "trade": "tailor",
+      "icon": "scissors",
+      "hasSign": true
+    },
+    {
+      "x": -106.5845592222028,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.26431264798156917,
+      "kind": 3,
+      "trade": "fishmonger",
+      "icon": "fish",
+      "hasSign": true
+    },
+    {
+      "x": -110.79223347137915,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.574084009276703,
+      "kind": 4,
+      "trade": "wine",
+      "icon": "bottle",
+      "hasSign": true
+    },
+    {
+      "x": -75.23681815881983,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.9276112816296518,
+      "kind": 5,
+      "trade": "apothecary",
+      "icon": "mortar",
+      "hasSign": true
+    },
+    {
+      "x": -63.79365530561191,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.7897018897347152,
+      "kind": 6,
+      "trade": "cobbler",
+      "icon": "shoe",
+      "hasSign": true
+    },
+    {
+      "x": -81.11576363867614,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.2591455476358533,
+      "kind": 7,
+      "trade": "barber",
+      "icon": "comb",
+      "hasSign": true
+    },
+    {
+      "x": -84.39963653455955,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.005866985535249114,
+      "kind": 8,
+      "trade": "boutique",
+      "icon": "handbag",
+      "hasSign": true
+    },
+    {
+      "x": 0.29903983378317234,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.22568203788250685,
+      "kind": 9,
+      "trade": "fruit",
+      "icon": "fruit",
+      "hasSign": true
+    },
+    {
+      "x": -78.89495846491076,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.22677049064077437,
+      "kind": 10,
+      "trade": "bookshop",
+      "icon": "book",
+      "hasSign": true
+    },
+    {
+      "x": -118.73660542551428,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.4867450762540102,
+      "kind": 11,
+      "trade": "souvenirs",
+      "icon": "doll",
+      "hasSign": true
+    },
+    {
+      "x": -110.85697533645902,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.38462188048288226,
+      "kind": 12,
+      "trade": "cheese",
+      "icon": "cheese",
+      "hasSign": true
+    },
+    {
+      "x": -57.78777127840091,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.1441640064585954,
+      "kind": 13,
+      "trade": "hatter",
+      "icon": "hat",
+      "hasSign": true
+    },
+    {
+      "x": -77.61915944421044,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.861338953487575,
+      "kind": 14,
+      "trade": "miller",
+      "icon": "wheat",
+      "hasSign": true
+    },
+    {
+      "x": -61.08959704809823,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.7597709510009736,
+      "kind": 15,
+      "trade": "tableware",
+      "icon": "plate",
+      "hasSign": true
+    },
+    {
+      "x": -43.6825311638749,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.00870200851932168,
+      "kind": 16,
+      "trade": "vases",
+      "icon": "vase",
+      "hasSign": true
+    },
+    {
+      "x": -93.58725495135178,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.32632087799720466,
+      "kind": 17,
+      "trade": "gallery",
+      "icon": "frame",
+      "hasSign": true
+    },
+    {
+      "x": -102.66923585860641,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.9862443243619055,
+      "kind": 18,
+      "trade": "ties",
+      "icon": "tie",
+      "hasSign": true
+    },
+    {
+      "x": -68.10820310446842,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.46769929374568164,
+      "kind": 19,
+      "trade": "jeweller",
+      "icon": "ring",
+      "hasSign": true
+    },
+    {
+      "x": -107.37919149345953,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.6788691077381372,
+      "kind": 20,
+      "trade": "candlemaker",
+      "icon": "candle",
+      "hasSign": true
+    },
+    {
+      "x": -95.18743065004703,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.819656740874052,
+      "kind": 21,
+      "trade": "gelato",
+      "icon": "cone",
+      "hasSign": true
+    },
+    {
+      "x": -28.780715830891854,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.5433558926451951,
+      "kind": 22,
+      "trade": "music",
+      "icon": "lijerica",
+      "hasSign": true
+    },
+    {
+      "x": -71.56123303867237,
+      "y": 2.6,
+      "z": -4.449999999999999,
+      "rotY": 0,
+      "seed": 0.7479499746114016,
+      "kind": 23,
+      "trade": "nautical",
+      "icon": "anchor",
+      "hasSign": true
+    },
+    {
+      "x": -106.5845592222028,
+      "y": 2.6,
+      "z": 4.449999999999999,
+      "rotY": 3.141592653589793,
+      "seed": 0.26431264798156917,
+      "kind": 3,
+      "trade": "fishmonger",
+      "icon": "fish",
+      "hasSign": true
+    }
+  ],
+  "programAudit": {
+    "materials": 104,
+    "collisions": [],
+    "missing": [],
+    "glErrors": []
+  },
+  "views": [
+    {
+      "trade": "bakery",
+      "file": "shop-trades-24-0--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 141,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-trades-24-0--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 141,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bakery",
+      "file": "shop-trades-24-0-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 141,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-trades-24-1--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-trades-24-1--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "locksmith",
+      "file": "shop-trades-24-1-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-trades-24-2--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-trades-24-2--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-trades-24-2-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-trades-24-2--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tailor",
+      "file": "shop-trades-24-2--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-3--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-3--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-3-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-3--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-3--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-trades-24-4--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-trades-24-4--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "wine",
+      "file": "shop-trades-24-4-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-trades-24-5--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-trades-24-5--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "apothecary",
+      "file": "shop-trades-24-5-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 156,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-trades-24-6--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-trades-24-6--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cobbler",
+      "file": "shop-trades-24-6-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-trades-24-7--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-trades-24-7--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "barber",
+      "file": "shop-trades-24-7-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-trades-24-8--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-trades-24-8--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-trades-24-8-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-trades-24-8--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "boutique",
+      "file": "shop-trades-24-8--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-trades-24-9--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-trades-24-9--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 138,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-trades-24-9-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 139,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-trades-24-9--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fruit",
+      "file": "shop-trades-24-9--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 139,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-trades-24-10--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 155,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-trades-24-10--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-trades-24-10-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 157,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-trades-24-10--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 157,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "bookshop",
+      "file": "shop-trades-24-10--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-trades-24-11--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-trades-24-11--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 156,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-trades-24-11-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-trades-24-11--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "souvenirs",
+      "file": "shop-trades-24-11--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-trades-24-12--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-trades-24-12--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-trades-24-12-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-trades-24-12--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "cheese",
+      "file": "shop-trades-24-12--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "hatter",
+      "file": "shop-trades-24-13--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "hatter",
+      "file": "shop-trades-24-13--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "hatter",
+      "file": "shop-trades-24-13-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "hatter",
+      "file": "shop-trades-24-13--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 152,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "hatter",
+      "file": "shop-trades-24-13--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "miller",
+      "file": "shop-trades-24-14--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "miller",
+      "file": "shop-trades-24-14--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "miller",
+      "file": "shop-trades-24-14-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "miller",
+      "file": "shop-trades-24-14--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "miller",
+      "file": "shop-trades-24-14--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tableware",
+      "file": "shop-trades-24-15--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tableware",
+      "file": "shop-trades-24-15--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tableware",
+      "file": "shop-trades-24-15-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tableware",
+      "file": "shop-trades-24-15--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "tableware",
+      "file": "shop-trades-24-15--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "vases",
+      "file": "shop-trades-24-16--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 145,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "vases",
+      "file": "shop-trades-24-16--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 133,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "vases",
+      "file": "shop-trades-24-16-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 144,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "vases",
+      "file": "shop-trades-24-16--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "vases",
+      "file": "shop-trades-24-16--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gallery",
+      "file": "shop-trades-24-17--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gallery",
+      "file": "shop-trades-24-17--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gallery",
+      "file": "shop-trades-24-17-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gallery",
+      "file": "shop-trades-24-17--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gallery",
+      "file": "shop-trades-24-17--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "ties",
+      "file": "shop-trades-24-18--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "ties",
+      "file": "shop-trades-24-18--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "ties",
+      "file": "shop-trades-24-18-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "ties",
+      "file": "shop-trades-24-18--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 152,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "ties",
+      "file": "shop-trades-24-18--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 147,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "jeweller",
+      "file": "shop-trades-24-19--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "jeweller",
+      "file": "shop-trades-24-19--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "jeweller",
+      "file": "shop-trades-24-19-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "jeweller",
+      "file": "shop-trades-24-19--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 153,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "jeweller",
+      "file": "shop-trades-24-19--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "candlemaker",
+      "file": "shop-trades-24-20--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "candlemaker",
+      "file": "shop-trades-24-20--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "candlemaker",
+      "file": "shop-trades-24-20-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "candlemaker",
+      "file": "shop-trades-24-20--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 151,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "candlemaker",
+      "file": "shop-trades-24-20--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 148,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gelato",
+      "file": "shop-trades-24-21--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 155,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gelato",
+      "file": "shop-trades-24-21--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 157,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gelato",
+      "file": "shop-trades-24-21-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gelato",
+      "file": "shop-trades-24-21--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 157,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "gelato",
+      "file": "shop-trades-24-21--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 152,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "music",
+      "file": "shop-trades-24-22--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "music",
+      "file": "shop-trades-24-22--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "music",
+      "file": "shop-trades-24-22-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 142,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "music",
+      "file": "shop-trades-24-22--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 143,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "music",
+      "file": "shop-trades-24-22--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 139,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "nautical",
+      "file": "shop-trades-24-23--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "nautical",
+      "file": "shop-trades-24-23--1.25-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "nautical",
+      "file": "shop-trades-24-23-0.55-12.87.png",
+      "stable": true,
+      "drawCalls": 152,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "nautical",
+      "file": "shop-trades-24-23--0.35-19.3.png",
+      "stable": true,
+      "drawCalls": 150,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "nautical",
+      "file": "shop-trades-24-23--0.35-22.5.png",
+      "stable": true,
+      "drawCalls": 146,
+      "gpuError": 0,
+      "signMismatches": 0
+    },
+    {
+      "trade": "fishmonger",
+      "file": "shop-trades-24-24--0.35-12.87.png",
+      "stable": true,
+      "drawCalls": 149,
+      "gpuError": 0,
+      "signMismatches": 0
+    }
+  ],
+  "displayTiming": {
+    "method": "Storefront display mesh alone, 1 m in front of the window nearest x = -95, fov 60, 1600×1000 at dpr 1, headless Chrome (ANGLE Metal). Builds alternate in one browser; median of 5 rounds (3 for the added trades), each the median of 5 × 8 frames.",
+    "committedMs": {
+      "bakery": 10.74,
+      "locksmith": 11.71,
+      "tailor": 12.03,
+      "fishmonger": 11.53,
+      "wine": 13.67,
+      "apothecary": 13.83,
+      "cobbler": 12.06,
+      "barber": 13.3,
+      "boutique": 11.5,
+      "fruit": 10.85,
+      "bookshop": 13.41,
+      "souvenirs": 13.5,
+      "cheese": 11.84
+    },
+    "currentMs": {
+      "bakery": 7.31,
+      "locksmith": 7.84,
+      "tailor": 7.7,
+      "fishmonger": 8.85,
+      "wine": 7.68,
+      "apothecary": 7.77,
+      "cobbler": 7.47,
+      "barber": 8.05,
+      "boutique": 7.68,
+      "fruit": 8.45,
+      "bookshop": 8.36,
+      "souvenirs": 8.34,
+      "cheese": 7.74,
+      "hatter": 8.19,
+      "miller": 7.82,
+      "tableware": 8.34,
+      "vases": 8.33,
+      "gallery": 7.95,
+      "ties": 8.51,
+      "jeweller": 7.51,
+      "candlemaker": 8.15,
+      "gelato": 8.25,
+      "music": 8.29,
+      "nautical": 8.1
+    },
+    "sharedTradesRatio": 0.65
+  },
+  "cullingPixelCheck": {
+    "method": "Same tree with and without the row / column culling, 24 trades × 4 close views (whole, left, lowest row, third row) at 12.87 h, 1600×1000",
+    "views": 96,
+    "identical": 51,
+    "differing": [
+      {
+        "file": "q-apothecary-left.png",
+        "pixels": 36,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-apothecary-r0.png",
+        "pixels": 92,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-apothecary-r2.png",
+        "pixels": 59,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-apothecary-whole.png",
+        "pixels": 21,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bakery-left.png",
+        "pixels": 26,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bakery-r0.png",
+        "pixels": 19,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bakery-r2.png",
+        "pixels": 9,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bakery-whole.png",
+        "pixels": 4,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-barber-left.png",
+        "pixels": 19,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-barber-r0.png",
+        "pixels": 9,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-barber-r2.png",
+        "pixels": 3,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-barber-whole.png",
+        "pixels": 2,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bookshop-left.png",
+        "pixels": 11,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bookshop-r0.png",
+        "pixels": 45,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bookshop-r2.png",
+        "pixels": 31,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-bookshop-whole.png",
+        "pixels": 15,
+        "over8": 4,
+        "max": 51
+      },
+      {
+        "file": "q-cobbler-left.png",
+        "pixels": 11,
+        "over8": 1,
+        "max": 48
+      },
+      {
+        "file": "q-cobbler-r0.png",
+        "pixels": 19,
+        "over8": 1,
+        "max": 53
+      },
+      {
+        "file": "q-cobbler-r2.png",
+        "pixels": 8,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-cobbler-whole.png",
+        "pixels": 2,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-gallery-left.png",
+        "pixels": 37,
+        "over8": 1,
+        "max": 44
+      },
+      {
+        "file": "q-gallery-r0.png",
+        "pixels": 37,
+        "over8": 0,
+        "max": 3
+      },
+      {
+        "file": "q-gallery-r2.png",
+        "pixels": 29,
+        "over8": 1,
+        "max": 65
+      },
+      {
+        "file": "q-gallery-whole.png",
+        "pixels": 7,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-gelato-left.png",
+        "pixels": 75,
+        "over8": 1,
+        "max": 43
+      },
+      {
+        "file": "q-gelato-r0.png",
+        "pixels": 38,
+        "over8": 0,
+        "max": 6
+      },
+      {
+        "file": "q-gelato-r2.png",
+        "pixels": 89,
+        "over8": 1,
+        "max": 20
+      },
+      {
+        "file": "q-gelato-whole.png",
+        "pixels": 20,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-locksmith-r0.png",
+        "pixels": 1,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-music-left.png",
+        "pixels": 41,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-music-r0.png",
+        "pixels": 11,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-music-r2.png",
+        "pixels": 13,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-music-whole.png",
+        "pixels": 7,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-souvenirs-left.png",
+        "pixels": 57,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-souvenirs-r0.png",
+        "pixels": 84,
+        "over8": 1,
+        "max": 111
+      },
+      {
+        "file": "q-souvenirs-r2.png",
+        "pixels": 44,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-souvenirs-whole.png",
+        "pixels": 20,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-tailor-left.png",
+        "pixels": 46,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-tailor-r0.png",
+        "pixels": 35,
+        "over8": 2,
+        "max": 13
+      },
+      {
+        "file": "q-tailor-r2.png",
+        "pixels": 23,
+        "over8": 2,
+        "max": 20
+      },
+      {
+        "file": "q-tailor-whole.png",
+        "pixels": 20,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-wine-left.png",
+        "pixels": 95,
+        "over8": 1,
+        "max": 39
+      },
+      {
+        "file": "q-wine-r0.png",
+        "pixels": 95,
+        "over8": 2,
+        "max": 99
+      },
+      {
+        "file": "q-wine-r2.png",
+        "pixels": 97,
+        "over8": 0,
+        "max": 1
+      },
+      {
+        "file": "q-wine-whole.png",
+        "pixels": 31,
+        "over8": 0,
+        "max": 1
+      }
+    ],
+    "worstPixelsOver8": 4
+  },
+  "cafe": {
+    "view": "cafe-shortcut-without-link",
+    "x": -86.68010520899551,
+    "z": -2.1499999999999995,
+    "zone": "stradun",
+    "removed": true
+  },
+  "protection": {
+    "passed": true,
+    "unchangedSources": 4,
+    "houseRecords": 665,
+    "unchanged": [
+      "wall",
+      "streets",
+      "routes",
+      "presets"
+    ]
+  }
+}

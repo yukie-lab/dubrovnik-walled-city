@@ -16,14 +16,20 @@ export async function shopDisplayChecks(page,{name,dir,rows,errors,args=[]}) {
     const mismatches=signs.filter(sign=>!all.some(s=>Math.abs(s.x-sign.x)<.0001&&Math.abs(s.z-sign.z)<.0001&&s.kind===sign.trade&&s.icon===sign.icon));
     return {count:all.length,selected,kinds:[...new Set(all.map(s=>s.kind))],signs:signs.length,mismatches,
       counts:Object.fromEntries(trades.map((trade,kind)=>[trade,all.filter(s=>s.kind===kind).length])),
+      signed:Object.fromEntries(trades.map((trade,kind)=>[trade,all.filter(s=>s.kind===kind&&s.hasSign).length])),
       hasCafeLink:!!document.getElementById('btnCafe')};
   },{trades:SHOP_TRADES});
-  if(inventory.hasCafeLink||inventory.kinds.length!==13||inventory.selected.some(s=>!s)||inventory.mismatches.length)throw new Error('Shop inventory / sign correspondence / removed UI failure');
+  if(inventory.hasCafeLink||inventory.kinds.length!==SHOP_TRADES.length||inventory.selected.some(s=>!s)||inventory.mismatches.length)throw new Error('Shop inventory / sign correspondence / removed UI failure');
+  // The allocation deals trades evenly: shop and hanging-sign counts per trade
+  // may differ by at most one.
+  const T=SHOP_TRADES.length,signTotal=Object.values(inventory.signed).reduce((a,b)=>a+b,0);
+  const even=(values,total)=>values.every(v=>v>=Math.floor(total/T)&&v<=Math.ceil(total/T));
+  if(!even(Object.values(inventory.counts),inventory.count)||!even(Object.values(inventory.signed),signTotal))throw new Error('Shop trades are not dealt evenly');
   rows.push({view:'shop-inventory',...inventory});
   for(const [index,s] of inventory.selected.entries()) {
     if(requested&&!requested.includes(s.trade))continue;
     const poses=index<SHOP_TRADES.length?[[-.35,2.2,12.87],[-1.25,1.7,12.87],[.55,1.7,12.87]]:[[-.35,2.2,12.87]];
-    if([2,3,8,9,10,11,12].includes(index))poses.push([-.35,2.2,19.3],[-.35,2.2,22.5]);
+    if(index===2||index===3||(index>=8&&index<SHOP_TRADES.length))poses.push([-.35,2.2,19.3],[-.35,2.2,22.5]);
     for(const [lat,dist,time] of poses) {
       const data=await page.evaluate(async ({s,lat,dist,time,atlas})=>{
         const w=window.__world,p=w.player,c=Math.cos(s.rotY),sn=Math.sin(s.rotY);

@@ -1,5 +1,8 @@
 import {BOUTIQUE_FRUIT_SHAPES,BOUTIQUE_FRUIT_COLOURS} from './shop-boutique-fruit.js';
 import {CULTURE_FOOD_SHAPES,CULTURE_FOOD_COLOURS} from './shop-books-souvenirs-cheese.js';
+import {CRAFT_SHAPES,CRAFT_COLOURS} from './shop-crafts-provisions.js';
+import {TIES_JEWELS_CANDLES_SHAPES,TIES_JEWELS_CANDLES_COLOURS} from './shop-ties-jewels-candles.js';
+import {GELATO_MUSIC_NAUTICAL_SHAPES,GELATO_MUSIC_NAUTICAL_COLOURS} from './shop-gelato-music-nautical.js';
 
 // Analytic solids for the sign-led trades. Coordinates are metres in a
 // product's local frame; each surface retains its own normal and material.
@@ -41,7 +44,13 @@ export const TRADE_SHAPES=/* glsl */`
   }
   ${BOUTIQUE_FRUIT_SHAPES}
   ${CULTURE_FOOD_SHAPES}
+  ${CRAFT_SHAPES}
+  ${TIES_JEWELS_CANDLES_SHAPES}
+  ${GELATO_MUSIC_NAUTICAL_SHAPES}
   void displayTradeProduct(vec3 ro,vec3 rd,float kind,float seed,inout DisplayHit hit) {
+    if(kind>56.5){displayGelatoMusicNautical(ro,rd,kind,seed,hit);return;}
+    if(kind>47.5){displayTiesJewelsCandles(ro,rd,kind,seed,hit);return;}
+    if(kind>32.5){displayCraftProvision(ro,rd,kind,seed,hit);return;}
     if(kind>24.5){displayCultureFood(ro,rd,kind,seed,hit);return;}
     if(kind>17.5){displayBoutiqueFruit(ro,rd,kind,seed,hit);return;}
     if(kind<7.5) {
@@ -118,8 +127,14 @@ export const TRADE_SHAPES=/* glsl */`
 export const TRADE_COLOURS=/* glsl */`
   ${BOUTIQUE_FRUIT_COLOURS}
   ${CULTURE_FOOD_COLOURS}
+  ${CRAFT_COLOURS}
+  ${TIES_JEWELS_CANDLES_COLOURS}
+  ${GELATO_MUSIC_NAUTICAL_COLOURS}
   vec3 tradeColour(DisplayHit hit,out float gloss) {
     vec3 p=hit.p,n=hit.n;float seed=hit.seed;gloss=0.;
+    if(hit.part>62.5)return gelatoMusicNauticalColour(hit,gloss);
+    if(hit.part>50.5)return tiesJewelsCandlesColour(hit,gloss);
+    if(hit.part>35.5)return craftProvisionColour(hit,gloss);
     if(hit.part>22.5)return cultureFoodColour(hit,gloss);
     if(hit.part>16.5)return boutiqueFruitColour(hit,gloss);
     if(hit.part<7.5) {
